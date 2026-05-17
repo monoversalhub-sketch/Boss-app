@@ -59,10 +59,9 @@ export async function GET(request, { params }) {
         phone: order.customers?.phone || "",
       },
       tailor: {
-        shop:            tailor?.shop             || "BOSS Shop",
-        city:            tailor?.city             || "",
-        phone:           tailor?.phone            || "",
-        subaccount_code: tailor?.paystack_customer_code || null,
+        shop:                   tailor?.shop             || "BOSS Shop",
+        city:                   tailor?.city             || "",
+        phone:                  tailor?.phone            || "",
         virtual_account_number: tailor?.virtual_account_number || null,
         virtual_bank_name:      tailor?.virtual_bank_name      || null,
         virtual_account_name:   tailor?.virtual_account_name   || null,

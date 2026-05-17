@@ -652,7 +652,7 @@ function OrderDetailFlow({open,onClose,orderId,customers,setCustomers,toast,tail
       email:`${(customer.phone||"boss").replace(/\D/g,"")}@boss.app`,
       amount:bal,name:customer.name,phone:customer.phone,
       ref:`BOSS_${order.id}_${Date.now()}`,
-      subaccountCode:tailor?.subaccount_code||null,
+
       onSuccess:async(ref)=>{
         await updateOrder({paid:(parseFloat(order.paid)||0)+bal,paystackRef:ref});
         await db.recordPayment({orderId:order.id,amount:bal,method:"paystack",paystackRef:ref});
@@ -704,15 +704,31 @@ function OrderDetailFlow({open,onClose,orderId,customers,setCustomers,toast,tail
         </div>
       </div>
 
-      {/* ── Collect full balance online (direct popup) ── */}
-      {bal>0&&(
+      {/* ── Collect payment — virtual account transfer ── */}
+      {bal>0&&tailor?.virtual_account_number&&(
         <div>
           <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Collect Payment Now</SectionLabel>
-          <Btn variant="primary" onClick={collectOnline} style={{background:"#0EA5E9",color:"#fff"}}>
-            💳 Open Paystack Here — Collect {fmt(bal)}
-          </Btn>
-          <div style={{fontSize:11,color:C.sub,textAlign:"center",marginTop:8,lineHeight:1.5}}>
-            Use this if the customer is with you in person or on a call. Opens the Paystack popup directly on this device.
+          <div style={{background:"rgba(0,102,204,0.06)",border:"1px solid rgba(0,102,204,0.18)",borderRadius:14,padding:"14px 16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.accent,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10}}>🏦 Ask Customer to Transfer</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontSize:13,color:C.sub}}>Bank</div>
+              <div style={{fontSize:13,fontWeight:700,color:C.text}}>{tailor?.virtual_bank_name||"—"}</div>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontSize:13,color:C.sub}}>Account No.</div>
+              <div style={{fontSize:16,fontWeight:900,color:C.text,letterSpacing:"1.5px"}}>{tailor?.virtual_account_number||"—"}</div>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontSize:13,color:C.sub}}>Account Name</div>
+              <div style={{fontSize:13,fontWeight:700,color:C.text}}>{tailor?.virtual_account_name||tailor?.shop||"—"}</div>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:13,color:C.sub}}>Amount</div>
+              <div style={{fontSize:16,fontWeight:900,color:C.red}}>{fmt(bal)}</div>
+            </div>
+            <Btn variant="primary" onClick={collectOnline} style={{background:"#0EA5E9",color:"#fff",marginBottom:0}}>
+              💳 Open Paystack — Collect {fmt(bal)}
+            </Btn>
           </div>
         </div>
       )}
@@ -1516,7 +1532,7 @@ function WalletTab({customers,tailor}){
           <div style={{...S.card,textAlign:"center",padding:"24px 20px"}}>
             <div style={{fontSize:32,marginBottom:10}}>🏦</div>
             <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:6}}>No payment account yet</div>
-            <div style={{fontSize:13,color:C.sub,marginBottom:16}}>Set up your virtual account in Settings to receive bank transfers from clients</div>
+            <div style={{fontSize:13,color:C.sub,marginBottom:16}}>Set up your virtual account in your <strong>Profile</strong> tab to receive bank transfers from clients</div>
           </div>
         )}
       </div>
@@ -1552,21 +1568,10 @@ function WalletTab({customers,tailor}){
 
 
 // ─────────────────────────────────────────
-// SETTINGS TAB — Full Control Center
+// ─────────────────────────────────────────
+// PROFILE TAB — Control Center
 // Sections: Profile · Security · Financial Identity · Data & Backup · Tools
 // ─────────────────────────────────────────
-const NG_BANKS=[
-  {name:"Access Bank",code:"044"},{name:"Fidelity Bank",code:"070"},
-  {name:"First Bank of Nigeria",code:"011"},{name:"First City Monument Bank",code:"214"},
-  {name:"Guaranty Trust Bank",code:"058"},{name:"Heritage Bank",code:"030"},
-  {name:"Keystone Bank",code:"082"},{name:"Polaris Bank",code:"076"},
-  {name:"Stanbic IBTC Bank",code:"221"},{name:"Sterling Bank",code:"232"},
-  {name:"Union Bank",code:"032"},{name:"United Bank for Africa",code:"033"},
-  {name:"Unity Bank",code:"215"},{name:"Wema Bank",code:"035"},
-  {name:"Zenith Bank",code:"057"},{name:"Kuda Bank",code:"090267"},
-  {name:"Opay",code:"100004"},{name:"Palmpay",code:"100033"},
-  {name:"Moniepoint MFB",code:"090405"},{name:"Carbon",code:"565"},
-];
 
 function SettingsTab({tailor,customers,setTailor}){
   const[shop,setShop]=useState(tailor?.shop||"");
@@ -1574,14 +1579,9 @@ function SettingsTab({tailor,customers,setTailor}){
   const[city,setCity]=useState(tailor?.city||"");
   const[saved,setSaved]=useState(false);
 
-  // Financial Identity — Virtual Account (doc says Virtual Accounts only)
+  // Financial Identity — Virtual Account only
   const[vaStatus,setVaStatus]=useState(tailor?.virtual_account_number?"connected":"idle");
   const[vaMsg,setVaMsg]=useState("");
-  const[bankCode,setBankCode]=useState(tailor?.bank_code||"");
-  const[accountNum,setAccountNum]=useState(tailor?.account_number||"");
-  const[accountName,setAccountName]=useState(tailor?.account_name||"");
-  const[bankVerifyStatus,setBankVerifyStatus]=useState(tailor?.account_name?"verified":"idle");
-  const[bankMsg,setBankMsg]=useState(tailor?.account_name||"");
 
   // Security
   const[newPw,setNewPw]=useState("");
@@ -1600,41 +1600,28 @@ function SettingsTab({tailor,customers,setTailor}){
     await db.setTailor(t);setTailor(t);setSaved(true);setTimeout(()=>setSaved(false),2200);
   }
 
-  async function verifyBankAccount(){
-    if(!bankCode){setBankMsg("Select your bank first.");setBankVerifyStatus("error");return;}
-    if(accountNum.replace(/\D/g,"").length!==10){setBankMsg("Account number must be 10 digits.");setBankVerifyStatus("error");return;}
-    setBankVerifyStatus("verifying");setBankMsg("Verifying…");
-    try{
-      const res=await fetch(`/api/paystack-verify-account?account_number=${accountNum.replace(/\D/g,"")}&bank_code=${bankCode}`);
-      const data=await res.json();
-      if(data.error){setBankMsg(data.error);setBankVerifyStatus("error");return;}
-      setAccountName(data.account_name);setBankMsg(`✅ ${data.account_name}`);setBankVerifyStatus("verified");
-    }catch{setBankMsg("Network error. Try again.");setBankVerifyStatus("error");}
-  }
+
 
   async function connectVirtualAccount(){
-    if(bankVerifyStatus!=="verified"||!accountName)return;
-    setBankVerifyStatus("saving");setBankMsg("Connecting virtual account…");
+    if(!shop.trim()){setVaMsg("Please save your shop name first.");return;}
+    setVaStatus("saving");setVaMsg("Creating your virtual account…");
     try{
-      const bankObj=NG_BANKS.find(b=>b.code===bankCode);
       const res=await fetch("/api/paystack-virtual-account",{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({business_name:tailor?.shop||shop,bank_code:bankCode,account_number:accountNum.replace(/\D/g,""),account_name:accountName}),
+        body:JSON.stringify({shop_name:tailor?.shop||shop.trim(),phone:tailor?.phone||phone.trim()}),
       });
       const data=await res.json();
-      if(data.error){setBankMsg(data.error);setBankVerifyStatus("error");return;}
+      if(data.error){setVaMsg(data.error);setVaStatus("error");return;}
       const updated={...(tailor||{}),
-        bank_name:bankObj?.name||"",bank_code:bankCode,
-        account_number:accountNum.replace(/\D/g,""),account_name:accountName,
-        virtual_account_number:data.virtual_account_number||accountNum.replace(/\D/g,""),
-        virtual_bank_name:data.virtual_bank_name||bankObj?.name||"",
-        virtual_account_name:data.virtual_account_name||accountName,
+        virtual_account_number:data.virtual_account_number,
+        virtual_bank_name:data.virtual_bank_name,
+        virtual_account_name:data.virtual_account_name||tailor?.shop||shop.trim(),
         virtual_account_status:"active",
+        paystack_customer_code:data.customer_code||"",
       };
       await db.setTailor(updated);setTailor(updated);
-      setBankVerifyStatus("done");setBankMsg("✅ Virtual account connected. Customers can now pay directly.");
-      setVaStatus("connected");
-    }catch{setBankMsg("Error connecting. Try again.");setBankVerifyStatus("error");}
+      setVaStatus("connected");setVaMsg("✅ Virtual account created. Customers can now pay directly via bank transfer.");
+    }catch{setVaMsg("Error connecting. Try again.");setVaStatus("error");}
   }
 
   async function handlePasswordReset(){
@@ -1697,8 +1684,8 @@ function SettingsTab({tailor,customers,setTailor}){
 
       {/* Header */}
       <div style={{padding:"24px 20px 0"}}>
-        <div style={{fontSize:13,fontWeight:600,color:C.sub,marginBottom:2}}>Control Center</div>
-        <div style={{fontSize:30,fontWeight:900,letterSpacing:"-1px",color:C.text}}>Settings</div>
+        <div style={{fontSize:13,fontWeight:600,color:C.sub,marginBottom:2}}>My Account</div>
+        <div style={{fontSize:30,fontWeight:900,letterSpacing:"-1px",color:C.text}}>Profile</div>
       </div>
 
       {/* BOSS Trust Score */}
@@ -1754,56 +1741,49 @@ function SettingsTab({tailor,customers,setTailor}){
       {/* ── 3. FINANCIAL IDENTITY — Virtual Account ── */}
       {sectionHead("🏦","Financial Identity")}
       <div style={{padding:"0 20px",display:"flex",flexDirection:"column",gap:12}}>
-        {hasVirtualAccount&&bankVerifyStatus!=="verified"&&bankVerifyStatus!=="saving"?(
-          <div style={{...S.card}}>
-            <div style={{fontSize:13,fontWeight:800,color:C.green,marginBottom:10}}>✅ Virtual Account Connected</div>
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {hasVirtualAccount?(
+          <div style={{...S.card,background:"rgba(0,102,204,0.04)",border:"1px solid rgba(0,102,204,0.15)"}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.accent,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:12}}>✅ Virtual Account Active</div>
+            <div style={{display:"flex",flexDirection:"column",gap:0}}>
               {[
-                {l:"Bank",v:tailor?.virtual_bank_name||tailor?.bank_name||"—"},
-                {l:"Account Number",v:tailor?.virtual_account_number||tailor?.account_number||"—"},
-                {l:"Account Name",v:tailor?.virtual_account_name||tailor?.account_name||"—"},
-                {l:"Status",v:tailor?.virtual_account_status||"active"},
+                {l:"Bank",v:tailor?.virtual_bank_name||"—"},
+                {l:"Account Number",v:tailor?.virtual_account_number||"—",mono:true},
+                {l:"Account Name",v:tailor?.virtual_account_name||tailor?.shop||"—"},
               ].map(r=>(
-                <div key={r.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+                <div key={r.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
                   <div style={{fontSize:12,color:C.sub,fontWeight:600}}>{r.l}</div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>{r.v}</div>
+                  <div style={{fontSize:r.mono?17:13,fontWeight:r.mono?900:700,color:C.text,letterSpacing:r.mono?"2px":"0px"}}>{r.v}</div>
                 </div>
               ))}
             </div>
+            {vaMsg&&<div style={{fontSize:13,color:vaMsg.startsWith("✅")?C.green:C.red,marginTop:8,fontWeight:500}}>{vaMsg}</div>}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:14}}>
-              <Btn variant="outline" onClick={copyVirtualAccount}>{vaMsg||"📋 Copy Details"}</Btn>
-              <Btn variant="outline" onClick={()=>{setBankVerifyStatus("idle");setBankMsg("");setAccountName("");}}>Change Account</Btn>
+              <Btn variant="outline" onClick={copyVirtualAccount}>{vaMsg&&!vaMsg.startsWith("✅")?"Error":"📋 Copy Details"}</Btn>
+              <Btn variant="outline" onClick={()=>{
+                const num=tailor?.virtual_account_number||"";
+                const bank=tailor?.virtual_bank_name||"";
+                const name=tailor?.virtual_account_name||tailor?.shop||"";
+                const msg=`💳 Pay me via bank transfer:\n\nBank: ${bank}\nAccount No: ${num}\nAccount Name: ${name}\n\nPowered by BOSS`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
+              }}>📤 Share</Btn>
             </div>
           </div>
         ):(
           <>
-            <div style={{fontSize:13,color:C.sub,lineHeight:1.6,padding:"4px 0"}}>
-              Each tailor on BOSS gets a <strong style={{color:C.accent}}>dedicated virtual account</strong>. Customers pay via direct bank transfer — money goes straight to your bank. BOSS never holds your funds.
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:4}}>
-              <div style={{fontSize:12,fontWeight:600,color:C.sub,textTransform:"uppercase",letterSpacing:"0.5px"}}>Your Bank</div>
-              <select value={bankCode} onChange={e=>{setBankCode(e.target.value);setBankVerifyStatus("idle");setBankMsg("");setAccountName("");}}
-                style={{background:C.s2,color:C.text,border:`1px solid ${C.border2}`,borderRadius:14,padding:"13px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-                <option value="">— Select bank —</option>
-                {NG_BANKS.map(b=><option key={b.code} value={b.code}>{b.name}</option>)}
-              </select>
-            </div>
-            <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
-              <div style={{flex:1}}>
-                <Input label="Account Number (10 digits)" value={accountNum}
-                  onChange={e=>{setAccountNum(e.target.value.replace(/\D/g,"").slice(0,10));setBankVerifyStatus("idle");setBankMsg("");setAccountName("");}}
-                  placeholder="0123456789" inputMode="numeric" maxLength={10}/>
+            <div style={{background:"rgba(0,102,204,0.06)",border:"1px solid rgba(0,102,204,0.15)",borderRadius:14,padding:"14px 16px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:C.text,marginBottom:6}}>🏦 Get Your Virtual Account</div>
+              <div style={{fontSize:12,color:C.sub,lineHeight:1.7}}>
+                BOSS gives you a <strong style={{color:C.accent}}>dedicated bank account</strong> — your own account number that customers can transfer money to directly. BOSS never holds your funds.
               </div>
-              <Btn variant="outline" onClick={verifyBankAccount} disabled={bankVerifyStatus==="verifying"||bankVerifyStatus==="saving"}>
-                {bankVerifyStatus==="verifying"?"…":"Verify"}
-              </Btn>
+              <div style={{marginTop:10,padding:"10px 12px",background:"rgba(52,199,89,0.08)",borderRadius:10,border:"1px solid rgba(52,199,89,0.2)"}}>
+                <div style={{fontSize:12,fontWeight:700,color:C.green}}>Your shop name is used as the account name</div>
+                <div style={{fontSize:11,color:C.sub,marginTop:3}}>Make sure your shop name is saved above before creating.</div>
+              </div>
             </div>
-            {bankMsg&&<div style={{fontSize:13,color:bankVerifyStatus==="verified"||bankVerifyStatus==="done"?C.green:bankVerifyStatus==="error"?C.red:C.sub,fontWeight:bankVerifyStatus==="verified"?700:400}}>{bankMsg}</div>}
-            {(bankVerifyStatus==="verified"||bankVerifyStatus==="saving")&&(
-              <Btn variant="primary" onClick={connectVirtualAccount} disabled={bankVerifyStatus==="saving"}>
-                {bankVerifyStatus==="saving"?"Connecting…":"✅ Connect Virtual Account"}
-              </Btn>
-            )}
+            {vaMsg&&<div style={{fontSize:13,color:vaMsg.startsWith("✅")?C.green:C.red,fontWeight:500,padding:"4px 0"}}>{vaMsg}</div>}
+            <Btn variant="primary" onClick={connectVirtualAccount} disabled={vaStatus==="saving"}>
+              {vaStatus==="saving"?"⏳ Creating Account…":"✅ Create My Virtual Account"}
+            </Btn>
           </>
         )}
       </div>
@@ -1976,7 +1956,7 @@ export default function BOSSApp(){
   const IconHome=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
   const IconClients=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
   const IconWallet=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
-  const IconSettings=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+  const IconProfile=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>;
 
   const NAV_LEFT=[
     {id:"today",    icon:<IconHome/>,     label:"Today"   },
@@ -1984,7 +1964,7 @@ export default function BOSSApp(){
   ];
   const NAV_RIGHT=[
     {id:"wallet",   icon:<IconWallet/>,   label:"Wallet"  },
-    {id:"settings", icon:<IconSettings/>, label:"Settings"},
+    {id:"settings", icon:<IconProfile/>,  label:"Profile" },
   ];
 
   return(

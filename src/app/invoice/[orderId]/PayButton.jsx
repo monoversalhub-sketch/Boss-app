@@ -80,12 +80,6 @@ export default function PayButton({ order, customer, tailor, publicKey }) {
       },
     };
 
-    // Route to tailor's bank account if they have a subaccount
-    if (tailor.subaccount_code) {
-      config.subaccount = tailor.subaccount_code;
-      config.bearer     = "account";
-    }
-
     window.PaystackPop.setup(config).openIframe();
   }
 

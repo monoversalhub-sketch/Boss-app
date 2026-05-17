@@ -1,14 +1,15 @@
 // src/app/api/paystack-virtual-account/route.js
 // Creates a dedicated virtual account for a tailor via Paystack
+// The shop name is used as the customer name for the virtual account.
 // Doc: https://paystack.com/docs/payments/dedicated-virtual-accounts/
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
-    const { business_name, bank_code, account_number, account_name } = await request.json();
+    const { shop_name, phone } = await request.json();
 
-    if (!business_name) {
-      return NextResponse.json({ error: "Business name is required." }, { status: 400 });
+    if (!shop_name) {
+      return NextResponse.json({ error: "Shop name is required." }, { status: 400 });
     }
 
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
@@ -16,14 +17,19 @@ export async function POST(request) {
       // Dev fallback — return mock virtual account
       return NextResponse.json({
         ok: true,
-        virtual_account_number: account_number,
+        virtual_account_number: "0000000000",
         virtual_bank_name: "Wema Bank",
-        virtual_account_name: account_name || business_name,
+        virtual_account_name: shop_name,
         virtual_account_status: "active",
       });
     }
 
-    // Step 1: Create a Paystack customer
+    // Step 1: Create a Paystack customer using the shop name
+    // Split shop name into first/last for Paystack's name fields
+    const nameParts = shop_name.trim().split(/\s+/);
+    const firstName = nameParts[0] || shop_name;
+    const lastName  = nameParts.slice(1).join(" ") || "Business";
+
     const customerRes = await fetch("https://api.paystack.co/customer", {
       method: "POST",
       headers: {
@@ -31,10 +37,10 @@ export async function POST(request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: `va_${Date.now()}@boss-app.com`,
-        first_name: business_name.split(" ")[0] || business_name,
-        last_name: business_name.split(" ").slice(1).join(" ") || "Business",
-        phone: "",
+        email:      `va_${Date.now()}@boss-app.com`,
+        first_name: firstName,
+        last_name:  lastName,
+        phone:      phone || "",
       }),
     });
 
@@ -46,6 +52,7 @@ export async function POST(request) {
     const customerCode = customerData.data?.customer_code;
 
     // Step 2: Create dedicated virtual account
+    // Paystack assigns the bank (Wema Bank or Titan by Paystack)
     const vaRes = await fetch("https://api.paystack.co/dedicated_account", {
       method: "POST",
       headers: {
@@ -53,32 +60,51 @@ export async function POST(request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        customer: customerCode,
-        preferred_bank: "wema-bank", // Paystack supports wema-bank for dedicated accounts
+        customer:       customerCode,
+        preferred_bank: "wema-bank", // Paystack supports wema-bank and titan-paystack
       }),
     });
 
     const vaData = await vaRes.json();
 
     if (!vaData.status) {
-      // Fallback: use the verified bank account as manual virtual account
+      // Try titan-paystack as fallback
+      const vaRes2 = await fetch("https://api.paystack.co/dedicated_account", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customer:       customerCode,
+          preferred_bank: "titan-paystack",
+        }),
+      });
+      const vaData2 = await vaRes2.json();
+
+      if (!vaData2.status) {
+        return NextResponse.json({
+          error: vaData2.message || "Could not create virtual account. Try again later.",
+        }, { status: 400 });
+      }
+
       return NextResponse.json({
-        ok: true,
-        virtual_account_number: account_number,
-        virtual_bank_name: "Manual",
-        virtual_account_name: account_name || business_name,
-        virtual_account_status: "manual",
-        note: vaData.message,
+        ok:                     true,
+        virtual_account_number: vaData2.data?.account_number,
+        virtual_bank_name:      vaData2.data?.bank?.name || "Titan by Paystack",
+        virtual_account_name:   shop_name, // always show shop name
+        virtual_account_status: "active",
+        customer_code:          customerCode,
       });
     }
 
     return NextResponse.json({
-      ok: true,
+      ok:                     true,
       virtual_account_number: vaData.data?.account_number,
-      virtual_bank_name: vaData.data?.bank?.name || "Wema Bank",
-      virtual_account_name: vaData.data?.account_name || business_name,
+      virtual_bank_name:      vaData.data?.bank?.name || "Wema Bank",
+      virtual_account_name:   shop_name, // always show shop name
       virtual_account_status: "active",
-      customer_code: customerCode,
+      customer_code:          customerCode,
     });
 
   } catch (err) {

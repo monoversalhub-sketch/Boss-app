@@ -1,22 +1,20 @@
 // src/lib/paystack.js
 // ─────────────────────────────────────────────────────────────────
-//  BOSS — Paystack Integration
+//  BOSS — Paystack Integration (Virtual Accounts Only)
 //
 //  HOW MONEY FLOWS:
-//  ─────────────────────────────────────────────────────────────────
-//  Each tailor registers their bank account during setup.
-//  BOSS creates a Paystack Subaccount for them — this is a Paystack
-//  object that holds the tailor's bank details.
+//  Each tailor gets a Paystack Dedicated Virtual Account.
+//  Customers pay by bank transfer → money goes straight to tailor's bank.
+//  BOSS never holds funds.
 //
-//  When a customer pays online:
-//    Customer → Paystack → Tailor's bank account (automatically)
+//  Virtual Account flow:
+//    Customer → Bank Transfer → Tailor's Virtual Account → Tailor's Bank
+//    dedicatedaccount.transfer.success webhook → order auto-updated
 //
-//  Paystack deducts their fee (1.5%, capped at ₦2,000) from the
-//  transaction. The tailor receives the rest — directly in their
-//  account, within 24–48 hours of settlement.
-//
-//  BOSS does NOT hold the money. It never touches the tailor's funds.
-//  ─────────────────────────────────────────────────────────────────
+//  Online payment (invoice link / popup):
+//    Customer → Paystack Checkout → fires charge.success webhook
+//    → order auto-updated in BOSS
+// ─────────────────────────────────────────────────────────────────
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
 
@@ -32,29 +30,11 @@ function loadPaystackSDK() {
 }
 
 // ── Open Paystack payment popup ───────────────────────────────────
-//
-//  Usage:
-//    openPaystackPopup({
-//      email:          "customer@email.com",
-//      amount:         5000,              // in NAIRA (not kobo)
-//      name:           "Chukwudi Obi",
-//      phone:          "08012345678",
-//      ref:            "BOSS-orderId-timestamp",
-//      subaccountCode: "ACCT_xxxxxxxxxx",  // tailor's Paystack subaccount
-//      onSuccess:      (ref) => { ... },
-//      onClose:        ()    => { ... },
-//    })
-//
-//  If subaccountCode is provided, Paystack routes the money directly
-//  to the tailor's bank account. If not set (tailor hasn't added their
-//  bank yet), payment still works but goes to the BOSS main account
-//  and must be manually forwarded.
 export function openPaystackPopup({
-  email, amount, name, phone, ref, subaccountCode, onSuccess, onClose,
+  email, amount, name, phone, ref, onSuccess, onClose,
 }) {
   loadPaystackSDK();
 
-  // Wait for SDK to load if it was just injected
   const tryOpen = (attempts = 0) => {
     if (!window.PaystackPop) {
       if (attempts > 20) {
@@ -86,14 +66,6 @@ export function openPaystackPopup({
       onClose:  ()         => { onClose   && onClose(); },
     };
 
-    // If the tailor has a Paystack subaccount, route money to them
-    if (subaccountCode) {
-      config.subaccount = subaccountCode;
-      // "account"  → Paystack fee charged to the tailor's subaccount (tailor pays fees)
-      // "subaccount" → fee charged to the main account (not used here)
-      config.bearer     = "account";
-    }
-
     window.PaystackPop.setup(config).openIframe();
   };
 
@@ -101,7 +73,7 @@ export function openPaystackPopup({
 }
 
 // ── Generate a shareable Paystack payment link (for WhatsApp) ─────
-export function paystackLink({ amount, email, name, ref, subaccountCode }) {
+export function paystackLink({ amount, email, name, ref }) {
   const params = new URLSearchParams({
     amount:    Math.round(amount * 100),
     email:     email || "customer@boss.app",
@@ -110,7 +82,6 @@ export function paystackLink({ amount, email, name, ref, subaccountCode }) {
     ref:       ref || "BOSS_" + Date.now(),
     currency:  "NGN",
     key:       PUBLIC_KEY,
-    ...(subaccountCode && { subaccount: subaccountCode }),
   });
   return `https://checkout.paystack.com/pay?${params.toString()}`;
 }

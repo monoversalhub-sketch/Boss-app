@@ -12,7 +12,7 @@ It helps tailors (and other artisans) become trusted, organised, visible, and ba
 ## Project Structure
 
 ```
-boss-complete/
+boss/
 ├── src/
 │   ├── app/
 │   │   ├── api/
@@ -23,9 +23,9 @@ boss-complete/
 │   │   │   │   ├── session/            ← Session check
 │   │   │   │   ├── forgot-password/    ← Send reset email
 │   │   │   │   └── reset-password/     ← Update password
-│   │   │   ├── paystack-virtual-account/ ← Create dedicated virtual account
+│   │   │   ├── paystack-virtual-account/ ← Create dedicated virtual account (uses shop name)
 │   │   │   ├── paystack-verify-account/  ← Verify bank account number
-│   │   │   ├── paystack-webhook/         ← Handle charge.success + transfer.success
+│   │   │   ├── paystack-webhook/         ← Handle charge.success + dedicatedaccount.transfer.success
 │   │   │   ├── welcome-email/            ← Onboarding email via Resend
 │   │   │   └── invoice/[orderId]/        ← Public invoice page API
 │   │   ├── invoice/[orderId]/    ← Public-facing invoice + pay page
@@ -37,7 +37,7 @@ boss-complete/
 │   │   └── BOSSApp.jsx           ← Full app (all screens + logic, inline styles)
 │   └── lib/
 │       ├── db.js                 ← Data layer (Supabase + localStorage fallback)
-│       ├── paystack.js           ← Paystack payment helpers
+│       ├── paystack.js           ← Paystack payment helpers (virtual accounts)
 │       └── supabase.js           ← Supabase client
 ├── public/
 │   ├── favicon.svg
@@ -70,6 +70,7 @@ Customer opens link → sees order breakdown → taps Pay
    │  Option B: Virtual Account Transfer  │
    │  Customer sends bank transfer to     │
    │  tailor's dedicated virtual account  │
+   │  (Wema Bank or Titan by Paystack)    │
    │  dedicatedaccount.transfer.success   │
    │  webhook fires                       │
    │  → auto-matched to order by amount   │
@@ -84,10 +85,24 @@ Customer opens link → sees order breakdown → taps Pay
 
 ---
 
+## Virtual Account Setup
+
+Each tailor gets a **Paystack Dedicated Virtual Account** using their shop name.
+
+1. Tailor saves their shop name in Profile tab
+2. Taps "Create My Virtual Account"
+3. Paystack creates a unique account (Wema Bank or Titan by Paystack)
+4. **Account Name = Shop Name** — customers recognise who they're paying
+5. Tailor shares account details via WhatsApp or invoice links
+
+No manual bank entry or verification needed. Paystack handles everything.
+
+---
+
 ## Navigation Structure
 
 ```
-Today | Clients | [+] | Wallet | Settings
+Today | Clients | [+] | Wallet | Profile
               ↑
          Action Sheet:
          ➕ New Order
@@ -96,13 +111,13 @@ Today | Clients | [+] | Wallet | Settings
 
 ---
 
-## Settings Tab — Control Center
+## Profile Tab — Control Center
 
 | Section | Contents |
 |---|---|
 | 🏪 Profile | Shop name, phone, city |
 | 🔒 Security | Password reset, Google/Apple OAuth (coming soon), logout |
-| 🏦 Financial Identity | Dedicated Virtual Account (Paystack) — copy/share details |
+| 🏦 Financial Identity | Dedicated Virtual Account (Paystack) — account number, bank, name |
 | ☁️ Data & Backup | JSON export, file restore, Google Drive (coming soon) |
 | 🧰 Tools | Smart Pricing Engine (labour + production costs + margin + VAT) |
 
@@ -133,8 +148,6 @@ Computed from real business activity. Range: 0–100.
 Levels: **New → Building → Growing → Trusted**  
 Credit Readiness: **Low / Medium / High**
 
-Score is recomputed server-side after every webhook event and stored in `tailors.bos_score`.
-
 ---
 
 ## Quick Setup
@@ -151,6 +164,7 @@ Score is recomputed server-side after every webhook event and stored in `tailors
 2. Copy your **Public Key** and **Secret Key**
 3. Set Webhook URL: `https://your-app.vercel.app/api/paystack-webhook`
 4. Enable events: `charge.success` + `dedicatedaccount.transfer.success`
+5. Enable Dedicated Virtual Accounts in your Paystack dashboard
 
 ### 3. Resend (welcome emails — optional)
 
