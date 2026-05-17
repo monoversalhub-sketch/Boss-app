@@ -1,0 +1,18 @@
+/* src/app/globals.css */
+html, body, #__next {
+  height: 100%;
+  overflow: hidden;
+  background: #F5F5F7;
+  color: #1C1C1E;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, select, textarea, button {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
