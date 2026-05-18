@@ -1,87 +1,83 @@
 // src/lib/paystack.js
 // ─────────────────────────────────────────────────────────────────
-//  BOSS — Paystack Integration (Virtual Accounts Only)
+//  Paystack popup helper — BOSS v5
 //
-//  HOW MONEY FLOWS:
-//  Each tailor gets a Paystack Dedicated Virtual Account.
-//  Customers pay by bank transfer → money goes straight to tailor's bank.
-//  BOSS never holds funds.
+//  ARCHITECTURE NOTE:
+//  Money from the popup goes to BOSS's Paystack balance.
+//  The webhook (dedicatedaccount.transfer.success / charge.success)
+//  then credits the tailor's wallet_balance on the tailors table.
+//  BOSS does NOT use Paystack subaccounts — they are removed.
 //
-//  Virtual Account flow:
-//    Customer → Bank Transfer → Tailor's Virtual Account → Tailor's Bank
-//    dedicatedaccount.transfer.success webhook → order auto-updated
-//
-//  Online payment (invoice link / popup):
-//    Customer → Paystack Checkout → fires charge.success webhook
-//    → order auto-updated in BOSS
+//  Primary payment method: bank transfer to Dedicated Virtual Account
+//  Secondary: this Paystack popup (card / Paystack bank transfer)
 // ─────────────────────────────────────────────────────────────────
 
-const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
-
-// ── Load the Paystack inline SDK once ────────────────────────────
 let sdkLoaded = false;
+
 function loadPaystackSDK() {
   if (sdkLoaded || typeof window === "undefined") return;
-  const script    = document.createElement("script");
-  script.src      = "https://js.paystack.co/v1/inline.js";
-  script.async    = true;
-  document.head.appendChild(script);
-  sdkLoaded = true;
+  const s    = document.createElement("script");
+  s.src      = "https://js.paystack.co/v1/inline.js";
+  s.async    = true;
+  document.head.appendChild(s);
+  sdkLoaded  = true;
 }
 
-// ── Open Paystack payment popup ───────────────────────────────────
-export function openPaystackPopup({
-  email, amount, name, phone, ref, onSuccess, onClose,
-}) {
+/**
+ * Open the Paystack payment popup.
+ *
+ * @param {object} options
+ * @param {string}   options.email        Customer email (required by Paystack)
+ * @param {number}   options.amount       Amount in NGN (we convert to kobo)
+ * @param {string}   options.name         Customer display name
+ * @param {string}   options.phone        Customer phone number
+ * @param {string}   options.ref          Unique reference (BOSS_<orderId>_<timestamp>)
+ * @param {function} options.onSuccess    Called with reference on success
+ * @param {function} options.onClose      Called when popup is closed without payment
+ */
+export function openPaystackPopup({ email, amount, name, phone, ref, onSuccess, onClose }) {
   loadPaystackSDK();
 
-  const tryOpen = (attempts = 0) => {
-    if (!window.PaystackPop) {
-      if (attempts > 20) {
-        alert("Paystack could not load. Please check your internet connection.");
-        return;
-      }
-      setTimeout(() => tryOpen(attempts + 1), 200);
-      return;
-    }
+  const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
 
-    if (!PUBLIC_KEY) {
-      alert("Paystack is not configured. Add NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY to your environment.");
-      return;
-    }
+  if (!publicKey) {
+    console.warn("[paystack] NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY not set — popup blocked.");
+    alert("Paystack is not configured. Add NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY to .env.local");
+    return;
+  }
 
-    const config = {
-      key:      PUBLIC_KEY,
+  // Wait for SDK to load (up to 3 seconds)
+  let attempts = 0;
+  const interval = setInterval(() => {
+    attempts++;
+    if (typeof window.PaystackPop !== "undefined") {
+      clearInterval(interval);
+      _openPopup();
+    }
+    if (attempts > 30) {
+      clearInterval(interval);
+      alert("Paystack failed to load. Check your internet connection and try again.");
+    }
+  }, 100);
+
+  function _openPopup() {
+    const handler = window.PaystackPop.setup({
+      key:      publicKey,
       email:    email || `${(phone || "customer").replace(/\D/g, "")}@boss.app`,
-      amount:   Math.round(amount * 100),   // ₦ → kobo
+      amount:   Math.round((amount || 0) * 100),   // NGN → kobo
       currency: "NGN",
       ref:      ref || "BOSS_" + Date.now(),
       metadata: {
         custom_fields: [
-          { display_name: "Customer", variable_name: "customer_name", value: name  || "" },
-          { display_name: "Phone",    variable_name: "phone",         value: phone || "" },
+          { display_name:"Customer", variable_name:"customer_name", value: name  || "" },
+          { display_name:"Phone",    variable_name:"phone",         value: phone || "" },
         ],
       },
+      // NO subaccount_code — money goes to BOSS Paystack balance.
+      // Webhook credits the tailor's wallet_balance.
       callback: (response) => { onSuccess && onSuccess(response.reference); },
-      onClose:  ()         => { onClose   && onClose(); },
-    };
-
-    window.PaystackPop.setup(config).openIframe();
-  };
-
-  tryOpen();
-}
-
-// ── Generate a shareable Paystack payment link (for WhatsApp) ─────
-export function paystackLink({ amount, email, name, ref }) {
-  const params = new URLSearchParams({
-    amount:    Math.round(amount * 100),
-    email:     email || "customer@boss.app",
-    firstname: (name || "").split(" ")[0],
-    lastname:  (name || "").split(" ").slice(1).join(" ") || "",
-    ref:       ref || "BOSS_" + Date.now(),
-    currency:  "NGN",
-    key:       PUBLIC_KEY,
-  });
-  return `https://checkout.paystack.com/pay?${params.toString()}`;
+      onClose:  ()         => { onClose   && onClose();                     },
+    });
+    handler.openIframe();
+  }
 }

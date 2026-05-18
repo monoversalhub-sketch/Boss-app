@@ -80,22 +80,17 @@ export default async function InvoicePage({ params }) {
   const data = await getInvoice(params.orderId);
 
   // ── Error state ───────────────────────────────────────────────
-  if (!data || data.error) {
-    const isConfig = data?.error === "SUPABASE_NOT_CONFIGURED";
+  if (!data) {
     return (
       <html lang="en">
         <body style={{ margin: 0, background: C.bg, minHeight: "100vh",
           display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: "system-ui, sans-serif", color: "#fff", padding: 24 }}>
           <div style={{ textAlign: "center", maxWidth: 360 }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>{isConfig ? "⚙️" : "🔍"}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>
-              {isConfig ? "Service Unavailable" : "Invoice Not Found"}
-            </div>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
+            <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Invoice Not Found</div>
             <div style={{ fontSize: 14, color: C.sub, lineHeight: 1.6 }}>
-              {isConfig
-                ? "This service is temporarily unavailable. Please contact the shop directly."
-                : "This link may be invalid or expired. Please ask the shop to resend it."}
+              This link may be invalid or expired. Please ask the shop to resend it.
             </div>
             <div style={{ marginTop: 24, fontSize: 12, color: C.sub }}>
               Powered by BOSS · Build Trust. Grow Faster.
@@ -317,44 +312,6 @@ export default async function InvoicePage({ params }) {
             tailor={tailor}
             publicKey={publicKey}
           />
-
-          {/* ── Virtual account transfer option ── */}
-          {!isPaid && tailor.virtual_account_number && (
-            <div style={{
-              background:   C.s1,
-              border:       `1px solid ${C.border2}`,
-              borderRadius: 16,
-              padding:      "20px",
-              marginTop:    0,
-              marginBottom: 20,
-            }}>
-              <div style={{ fontSize: 11, color: C.sub, fontWeight: 600,
-                textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 14 }}>
-                Or Pay via Bank Transfer
-              </div>
-              {[
-                { label: "Bank",         value: tailor.virtual_bank_name || "—" },
-                { label: "Account No.",  value: tailor.virtual_account_number },
-                { label: "Account Name", value: tailor.virtual_account_name || tailor.shop },
-                { label: "Amount",       value: `₦${balance.toLocaleString("en-NG")}` },
-              ].map(({ label, value }) => (
-                <div key={label} style={{
-                  display:       "flex",
-                  justifyContent:"space-between",
-                  padding:       "9px 0",
-                  borderBottom:  `1px solid ${C.border}`,
-                }}>
-                  <div style={{ fontSize: 13, color: C.sub }}>{label}</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: label === "Amount" ? C.gold : "#fff" }}>
-                    {value}
-                  </div>
-                </div>
-              ))}
-              <div style={{ fontSize: 12, color: C.sub, marginTop: 12, lineHeight: 1.5 }}>
-                After payment, send your receipt to the shop on WhatsApp to confirm.
-              </div>
-            </div>
-          )}
 
           {/* ── Footer ── */}
           <div style={{

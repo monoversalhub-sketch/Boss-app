@@ -1,4 +1,13 @@
 // src/app/api/invoice/[orderId]/route.js
+// ─────────────────────────────────────────────────────────────────
+//  Public invoice API — no auth required.
+//  Used by the invoice page (/invoice/[orderId]) to fetch order data.
+//
+//  Returns the order, customer, and tailor details including the
+//  tailor's VIRTUAL ACCOUNT (for bank transfer payment instructions).
+//  No subaccount_code — that model is removed.
+// ─────────────────────────────────────────────────────────────────
+
 import { createClient } from "@supabase/supabase-js";
 
 function getServiceClient() {
@@ -15,68 +24,67 @@ export async function GET(request, { params }) {
   }
 
   const supabase = getServiceClient();
-
-  if (supabase) {
-    // Step 1: get order + customer
-    const { data: order, error: orderErr } = await supabase
-      .from("orders")
-      .select(`
-        id, type, price, deposit, paid,
-        delivery_date, status, notes, paystack_ref, created_at,
-        tailor_id,
-        customers ( id, name, phone )
-      `)
-      .eq("id", orderId)
-      .single();
-
-    if (orderErr || !order) {
-      return Response.json(
-        { error: "Invoice not found. The link may be expired or incorrect." },
-        { status: 404 }
-      );
-    }
-
-    // Step 2: get tailor separately (avoids column name mismatch)
-    const { data: tailor } = await supabase
-      .from("tailors")
-      .select("id, shop, phone, city, paystack_customer_code, virtual_account_number, virtual_bank_name, virtual_account_name")
-      .eq("id", order.tailor_id)
-      .single();
-
-    return Response.json({
-      order: {
-        id:            order.id,
-        type:          order.type          || "Order",
-        price:         parseFloat(order.price)   || 0,
-        deposit:       parseFloat(order.deposit) || 0,
-        paid:          parseFloat(order.paid)    || 0,
-        delivery_date: order.delivery_date || null,
-        status:        order.status        || "In Progress",
-        notes:         order.notes         || "",
-      },
-      customer: {
-        name:  order.customers?.name  || "Customer",
-        phone: order.customers?.phone || "",
-      },
-      tailor: {
-        shop:                   tailor?.shop             || "BOSS Shop",
-        city:                   tailor?.city             || "",
-        phone:                  tailor?.phone            || "",
-        virtual_account_number: tailor?.virtual_account_number || null,
-        virtual_bank_name:      tailor?.virtual_bank_name      || null,
-        virtual_account_name:   tailor?.virtual_account_name   || null,
-      },
-    });
+  if (!supabase) {
+    return Response.json({ error: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
   }
 
-  return Response.json(
-    { error: "SUPABASE_NOT_CONFIGURED" },
-    { status: 503 }
-  );
+  const { data: order, error } = await supabase
+    .from("orders")
+    .select(`
+      id, type, price, deposit, paid,
+      delivery_date, status, notes, paystack_ref, created_at,
+      customers ( id, name, phone ),
+      tailors   (
+        id, shop, phone, city,
+        virtual_account_number,
+        virtual_bank_name,
+        virtual_account_name,
+        virtual_account_status
+      )
+    `)
+    .eq("id", orderId)
+    .single();
+
+  if (error || !order) {
+    return Response.json(
+      { error: "Invoice not found. The link may be invalid or expired." },
+      { status: 404 }
+    );
+  }
+
+  const t = order.tailors || {};
+
+  return Response.json({
+    order: {
+      id:            order.id,
+      type:          order.type          || "Order",
+      price:         parseFloat(order.price)   || 0,
+      deposit:       parseFloat(order.deposit) || 0,
+      paid:          parseFloat(order.paid)    || 0,
+      delivery_date: order.delivery_date       || null,
+      status:        order.status              || "In Progress",
+      notes:         order.notes               || "",
+    },
+    customer: {
+      name:  order.customers?.name  || "Customer",
+      phone: order.customers?.phone || "",
+    },
+    tailor: {
+      shop:                   t.shop                   || "BOSS Shop",
+      city:                   t.city                   || "",
+      phone:                  t.phone                  || "",
+      // Virtual account — what the customer uses to pay via bank transfer
+      virtual_account_number: t.virtual_account_number || null,
+      virtual_bank_name:      t.virtual_bank_name      || null,
+      virtual_account_name:   t.virtual_account_name   || null,
+      virtual_account_status: t.virtual_account_status || "inactive",
+    },
+  });
 }
 
-// POST — accepts embedded invoice data from the app (for when orders aren't in DB yet)
-export async function POST(request, { params }) {
+// POST — accepts embedded invoice data from the app
+// Used when the order isn't in the DB yet (local-only mode)
+export async function POST(request) {
   try {
     const body = await request.json();
     const { order, customer, tailor } = body;
@@ -88,4 +96,3 @@ export async function POST(request, { params }) {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
 }
-

@@ -10,7 +10,7 @@
 //    • Earnings summary
 //    • Improved UI polish
 // ─────────────────────────────────────────────────────────────────
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { db } from "../lib/db";
 import { openPaystackPopup } from "../lib/paystack";
 
@@ -26,8 +26,7 @@ const APP_URL =
   (typeof window !== "undefined" ? window.location.origin : "https://boss-app-nine.vercel.app");
 
 function invoiceUrl(orderId) {
-  const base = APP_URL.replace(/\/+$/, ""); // strip trailing slashes
-  return `${base}/invoice/${orderId}`;
+  return `${APP_URL}/invoice/${orderId}`;
 }
 
 // ─────────────────────────────────────────
@@ -43,7 +42,7 @@ const MEAS_FIELDS = [
   { k:"sleeve",   l:"Sleeve"   },{ k:"inseam",  l:"Inseam"  },
   { k:"length",   l:"Length"   },{ k:"neck",    l:"Neck"    },
 ];
-const STATUSES = ["In Progress","Ready","Delivered"];
+const STATUSES = ["Pending","In Progress","Ready","Delivered"];
 
 // ─────────────────────────────────────────
 // DESIGN TOKENS — Reference design (soft, clean, human)
@@ -120,10 +119,8 @@ const GLOBAL_CSS = `
   @keyframes toast   { 0%{opacity:0;transform:translateX(-50%) translateY(6px)} 15%{opacity:1;transform:translateX(-50%) translateY(0)} 80%{opacity:1} 100%{opacity:0;transform:translateX(-50%) translateY(6px)} }
   @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
 
-  html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:#F5F5F7;-webkit-text-size-adjust:100%}
-  /* Viewport height fix for Chrome Android — 100svh can fail on some builds */
-  html{height:-webkit-fill-available}
-  #__next,#boss-root{height:100%;min-height:-webkit-fill-available;display:flex;flex-direction:column;overflow:hidden}
+  html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:#F5F5F7}
+  #__next,#boss-root{height:100%;display:flex;flex-direction:column;overflow:hidden}
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
   ::-webkit-scrollbar{width:0}
@@ -165,11 +162,30 @@ function fmtDate(d){
 function getBalance(order){
   return Math.max(0,(parseFloat(order.price)||0)-(parseFloat(order.deposit)||0)-(parseFloat(order.paid)||0));
 }
+function getTotalPaid(order){
+  return (parseFloat(order.deposit)||0)+(parseFloat(order.paid)||0);
+}
+function getPaymentState(order){
+  const total=parseFloat(order.price)||0;
+  const paid=getTotalPaid(order);
+  if(total===0)return"unpaid";
+  if(paid<=0)return"unpaid";
+  if(paid>=total)return"fully_paid";
+  return"partially_paid";
+}
+// Service fee: ₦75 flat, deducted only when order is fully paid
+const SERVICE_FEE=75;
+function getServiceFee(order){
+  return getPaymentState(order)==="fully_paid"?SERVICE_FEE:0;
+}
+function getNetEarning(order){
+  const paid=getTotalPaid(order);
+  return Math.max(0,paid-getServiceFee(order));
+}
 function orderStatus(o){return o.status||"In Progress";}
 function isOverdue(o){if(!o.date||orderStatus(o)==="Delivered")return false;return o.date<today();}
 function isDueToday(o){if(!o.date||orderStatus(o)==="Delivered")return false;return o.date===today();}
 function allOrders(customers){
-  if(!customers||!Array.isArray(customers))return[];
   return customers.flatMap(c=>(c.orders||[]).map(o=>({...o,_cname:c.name,_cphone:c.phone,_cid:c.id})));
 }
 function waLink(phone,msg){
@@ -488,7 +504,10 @@ function OrderCard({order,onClick}){
       <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{order.type||"—"}</div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
         <div style={{fontSize:12,color:C.muted,fontWeight:600}}>📅 {fmtDate(order.date)}</div>
-        {bal>0?<div style={{fontSize:14,fontWeight:700,color:C.red}}>{fmt(bal)} due</div>:<div style={{fontSize:14,fontWeight:700,color:C.green}}>Paid ✓</div>}
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {getPaymentState(order)==="partially_paid"&&<div style={{fontSize:10,fontWeight:700,color:"#FF9F0A",background:"rgba(255,159,10,0.1)",padding:"2px 7px",borderRadius:10}}>PARTIAL</div>}
+          {bal>0?<div style={{fontSize:14,fontWeight:700,color:C.red}}>{fmt(bal)} due</div>:<div style={{fontSize:14,fontWeight:700,color:C.green}}>Paid ✓</div>}
+        </div>
       </div>
     </div>
   );
@@ -557,30 +576,17 @@ function AddOrderFlow({open,onClose,customers,setCustomers,prefilledCid,toast}){
     let cust=next.find(c=>c.id===prefilledCid)||next.find(c=>c.name.toLowerCase()===name.trim().toLowerCase());
     if(!cust){cust={id:uid(),name:name.trim(),phone:phone.trim(),measurements:{},orders:[]};next.push(cust);}
     else{if(phone.trim())cust.phone=phone.trim();}
-    cust.orders=[...(cust.orders||[]),order];
+    cust.orders=[order,...(cust.orders||[])];
     setCustomers(next);await db.setCustomers(next);onClose();toast("✅ Order saved!");
   }
   return(
     <Flow open={open} onClose={onClose} title="New Order" action="Save" onAction={save}>
-      <div style={{position:"relative"}}>
-        <Input label="Search or Add Client *" value={name} onChange={e=>onNameChange(e.target.value)} placeholder="Type client name to search…" autoComplete="off" autoFocus/>
-        {name.length>=1&&matches.length===0&&customers.length>0&&(
-          <div style={{fontSize:12,color:C.sub,padding:"6px 4px"}}>No match — a new client will be created</div>
-        )}
-      </div>
+      <Input label="Customer Name *" value={name} onChange={e=>onNameChange(e.target.value)} placeholder="Full name" autoComplete="off"/>
       {matches.length>0&&(
-        <div style={{background:C.s1,border:`1px solid ${C.border2}`,borderRadius:14,overflow:"hidden",boxShadow:"0 4px 20px rgba(0,0,0,0.08)"}}>
-          <div style={{padding:"8px 14px 4px",fontSize:10,fontWeight:700,color:C.sub,textTransform:"uppercase",letterSpacing:"0.5px"}}>Existing Clients</div>
-          {matches.map(cl=>(
-            <div key={cl.id} className="tap" onClick={()=>pickExisting(cl)}
-              style={{padding:"12px 14px",borderTop:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
-              <div style={{width:36,height:36,borderRadius:10,background:C.s3,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:C.text,flexShrink:0}}>{cl.name[0].toUpperCase()}</div>
-              <div>
-                <div style={{fontWeight:700,fontSize:14,color:C.text}}>{cl.name}</div>
-                <div style={{fontSize:12,color:C.sub,marginTop:1}}>{cl.phone||"No phone"} · {(cl.orders||[]).length} order{(cl.orders||[]).length!==1?"s":""}</div>
-              </div>
-            </div>
-          ))}
+        <div style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:11,overflow:"hidden"}}>
+          {matches.map(c=><div key={c.id} className="tap" onClick={()=>pickExisting(c)} style={{padding:"12px 14px",borderBottom:`1px solid ${C.border}`,cursor:"pointer"}}>
+            <div style={{fontWeight:600}}>{c.name}</div><div style={{fontSize:12,color:C.sub}}>{c.phone}</div>
+          </div>)}
         </div>
       )}
       <Input label="Phone Number" value={phone} onChange={e=>setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="080XXXXXXXX"/>
@@ -628,7 +634,17 @@ function OrderDetailFlow({open,onClose,orderId,customers,setCustomers,toast,tail
   }
   async function recordPay(){
     const amt=parseFloat(payAmt);if(!amt||amt<=0){toast("⚠️ Enter an amount");return;}
-    await updateOrder({paid:(parseFloat(order.paid)||0)+amt});setPayAmt("");toast("✅ Payment recorded");
+    if(amt>bal){toast("⚠️ Amount exceeds balance of "+fmt(bal));return;}
+    const newPaid=(parseFloat(order.paid)||0)+amt;
+    // Add to installment history
+    const installment={id:uid(),amount:amt,date:new Date().toISOString(),method:"cash"};
+    const history=[...(order.installmentHistory||[]),installment];
+    await updateOrder({paid:newPaid,installmentHistory:history});
+    // Write to payments audit table
+    await db.recordPayment({orderId:order.id,amount:amt,method:"cash"});
+    setPayAmt("");
+    const state=getPaymentState({...order,paid:newPaid});
+    toast(state==="fully_paid"?"✅ Fully paid! BOSS fee: "+fmt(SERVICE_FEE):"✅ Payment recorded — "+fmt(getBalance({...order,paid:newPaid}))+" remaining");
   }
   async function deleteOrder(){
     const next=customers.map(c=>({...c,orders:(c.orders||[]).filter(o=>o.id!==orderId)}));
@@ -645,18 +661,21 @@ function OrderDetailFlow({open,onClose,orderId,customers,setCustomers,toast,tail
     else{toast("Link: "+url);}
   }
 
-  // Paystack: collect balance via card
+  // Collect payment via Paystack popup (card).
+  // No subaccountCode — money goes to BOSS Paystack balance,
+  // credited to tailor wallet by webhook.
   function collectOnline(){
     if(bal<=0){toast("No balance to collect");return;}
     openPaystackPopup({
       email:`${(customer.phone||"boss").replace(/\D/g,"")}@boss.app`,
       amount:bal,name:customer.name,phone:customer.phone,
       ref:`BOSS_${order.id}_${Date.now()}`,
-
       onSuccess:async(ref)=>{
-        await updateOrder({paid:(parseFloat(order.paid)||0)+bal,paystackRef:ref});
+        const installment={id:uid(),amount:bal,date:new Date().toISOString(),method:"paystack",ref};
+        const history=[...(order.installmentHistory||[]),installment];
+        await updateOrder({paid:(parseFloat(order.paid)||0)+bal,paystackRef:ref,installmentHistory:history});
         await db.recordPayment({orderId:order.id,amount:bal,method:"paystack",paystackRef:ref});
-        toast("✅ Payment confirmed! ₦"+bal.toLocaleString("en-NG"));
+        toast("✅ Payment confirmed! "+fmt(bal));
       },
       onClose:()=>toast("Payment cancelled"),
     });
@@ -677,12 +696,14 @@ function OrderDetailFlow({open,onClose,orderId,customers,setCustomers,toast,tail
         <Row label="Cloth Type"  value={order.type||"—"}/>
         <Row label="Delivery"    value={fmtDate(order.date)}/>
         <Row label="Total Price" value={fmt(order.price)}/>
-        <Row label="Total Price"  value={fmt(order.price||0)}/>
-        <Row label="Deposit Paid" value={fmt(parseFloat(order.deposit)||0)} valueStyle={{color:C.green}}/>
-        {(parseFloat(order.paid)||0)>0&&<Row label="Extra Paid"  value={fmt(parseFloat(order.paid)||0)} valueStyle={{color:C.green}}/>}
-        <Row label="Total Paid"  value={fmt(paid)} valueStyle={{color:C.green,fontWeight:900}}/>
-        <Row label="Balance Due" value={bal>0?fmt(bal):"Fully Paid ✓"} valueStyle={{color:bal>0?C.red:C.green,fontWeight:900}}/>
-        <Row label="Status" value={bal<=0?"✅ Fully Paid":paid>0?"🔄 Partially Paid":"⏳ Unpaid"} valueStyle={{color:bal<=0?C.green:paid>0?"#FF9F0A":C.sub,fontSize:13}}/>
+        <Row label="Paid So Far" value={fmt(paid)} valueStyle={{color:C.green}}/>
+        <Row label="Balance Due" value={bal>0?fmt(bal):"Fully Paid ✓"} valueStyle={{color:bal>0?C.red:C.green}}/>
+        <Row label="Payment Status" value={
+          getPaymentState(order)==="fully_paid"?"✅ Fully Paid":
+          getPaymentState(order)==="partially_paid"?"🔶 Partial — "+Math.round((getTotalPaid(order)/order.price)*100)+"%":
+          "⬜ Unpaid"
+        } valueStyle={{fontWeight:700,color:getPaymentState(order)==="fully_paid"?C.green:getPaymentState(order)==="partially_paid"?"#FF9F0A":C.red}}/>
+        {getPaymentState(order)==="fully_paid"&&<Row label="BOSS Service Fee" value={"₦"+SERVICE_FEE} valueStyle={{color:C.sub,fontSize:13}}/>}
         {order.notes&&<Row label="Notes" value={order.notes} valueStyle={{fontSize:13,fontWeight:500,color:C.sub}}/>}
       </div>
 
@@ -695,7 +716,7 @@ function OrderDetailFlow({open,onClose,orderId,customers,setCustomers,toast,tail
             {invoiceUrl(order.id)}
           </div>
           <div style={{fontSize:11,color:C.muted||C.sub,marginTop:6,lineHeight:1.5}}>
-            Customer sees your shop name, full order breakdown, and a Pay button. Money goes directly to your bank.
+            Customer sees your shop name, full order breakdown, and payment options. Customer sees your shop name, full order breakdown, and can pay their balance online.
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -704,31 +725,15 @@ function OrderDetailFlow({open,onClose,orderId,customers,setCustomers,toast,tail
         </div>
       </div>
 
-      {/* ── Collect payment — virtual account transfer ── */}
-      {bal>0&&tailor?.virtual_account_number&&(
+      {/* ── Collect full balance online (direct popup) ── */}
+      {bal>0&&(
         <div>
           <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Collect Payment Now</SectionLabel>
-          <div style={{background:"rgba(0,102,204,0.06)",border:"1px solid rgba(0,102,204,0.18)",borderRadius:14,padding:"14px 16px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.accent,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10}}>🏦 Ask Customer to Transfer</div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div style={{fontSize:13,color:C.sub}}>Bank</div>
-              <div style={{fontSize:13,fontWeight:700,color:C.text}}>{tailor?.virtual_bank_name||"—"}</div>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div style={{fontSize:13,color:C.sub}}>Account No.</div>
-              <div style={{fontSize:16,fontWeight:900,color:C.text,letterSpacing:"1.5px"}}>{tailor?.virtual_account_number||"—"}</div>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div style={{fontSize:13,color:C.sub}}>Account Name</div>
-              <div style={{fontSize:13,fontWeight:700,color:C.text}}>{tailor?.virtual_account_name||tailor?.shop||"—"}</div>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontSize:13,color:C.sub}}>Amount</div>
-              <div style={{fontSize:16,fontWeight:900,color:C.red}}>{fmt(bal)}</div>
-            </div>
-            <Btn variant="primary" onClick={collectOnline} style={{background:"#0EA5E9",color:"#fff",marginBottom:0}}>
-              💳 Open Paystack — Collect {fmt(bal)}
-            </Btn>
+          <Btn variant="primary" onClick={collectOnline} style={{background:"#0EA5E9",color:"#fff"}}>
+            💳 Open Paystack Here — Collect {fmt(bal)}
+          </Btn>
+          <div style={{fontSize:11,color:C.sub,textAlign:"center",marginTop:8,lineHeight:1.5}}>
+            Use this if the customer is with you in person or on a call. Opens the Paystack popup directly on this device.
           </div>
         </div>
       )}
@@ -749,6 +754,38 @@ function OrderDetailFlow({open,onClose,orderId,customers,setCustomers,toast,tail
           <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,alignItems:"end"}}>
             <Input value={payAmt} onChange={e=>setPayAmt(e.target.value)} type="number" inputMode="numeric" placeholder="Amount (₦)" label="Amount"/>
             <Btn variant="green" onClick={recordPay} style={{width:"auto",padding:"13px 20px"}}>Record ✓</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* Installment History */}
+      {(order.installmentHistory||[]).length>0&&(
+        <div>
+          <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Payment History</SectionLabel>
+          <div style={{...S.card,display:"flex",flexDirection:"column",gap:0}}>
+            {/* Initial deposit */}
+            {(parseFloat(order.deposit)||0)>0&&(
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>Initial Deposit</div>
+                  <div style={{fontSize:11,color:C.sub}}>At booking</div>
+                </div>
+                <div style={{fontSize:14,fontWeight:800,color:C.green}}>{fmt(order.deposit)}</div>
+              </div>
+            )}
+            {(order.installmentHistory||[]).map((inst,i)=>(
+              <div key={inst.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>Payment {i+1}</div>
+                  <div style={{fontSize:11,color:C.sub}}>{inst.method==="cash"?"Cash":inst.method} · {fmtDate(inst.date?.slice(0,10))}</div>
+                </div>
+                <div style={{fontSize:14,fontWeight:800,color:C.green}}>{fmt(inst.amount)}</div>
+              </div>
+            ))}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0"}}>
+              <div style={{fontSize:13,fontWeight:800,color:C.text}}>Total Paid</div>
+              <div style={{fontSize:15,fontWeight:900,color:C.green}}>{fmt(getTotalPaid(order))}</div>
+            </div>
           </div>
         </div>
       )}
@@ -1397,38 +1434,6 @@ function SetupScreen({onComplete}){
 }
 
 // ─────────────────────────────────────────
-// ERROR BOUNDARY — catches silent crashes
-// ─────────────────────────────────────────
-class ErrorBoundary extends React.Component {
-  constructor(props){ super(props); this.state={hasError:false,error:null}; }
-  static getDerivedStateFromError(error){ return{hasError:true,error}; }
-  componentDidCatch(error,info){ console.error("BOSS Error:",error,info); }
-  render(){
-    if(this.state.hasError){
-      return(
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"60px 32px",textAlign:"center",height:"100%",gap:16,fontFamily:"'Plus Jakarta Sans',sans-serif",background:C.bg}}>
-          <div style={{fontSize:48}}>⚠️</div>
-          <div style={{fontSize:18,fontWeight:800,color:C.text}}>Something went wrong</div>
-          <div style={{fontSize:14,color:C.sub,lineHeight:1.6,maxWidth:280}}>
-            BOSS hit an unexpected error. Your data is safe — tap below to reload.
-          </div>
-          <button onClick={()=>window.location.reload()} style={{...S.btn,background:C.text,color:"#fff",maxWidth:220,marginTop:8}}>
-            Reload App
-          </button>
-          {process.env.NODE_ENV==="development"&&this.state.error&&(
-            <details style={{fontSize:10,color:C.muted,maxWidth:"100%",overflow:"auto",textAlign:"left",padding:12,background:C.s2,borderRadius:10,border:`1px solid ${C.border}`}}>
-              <summary style={{cursor:"pointer",marginBottom:6}}>Error details</summary>
-              <pre style={{whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{String(this.state.error)}</pre>
-            </details>
-          )}
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-// ─────────────────────────────────────────
 // SPLASH SCREEN
 // ─────────────────────────────────────────
 function SplashScreen(){
@@ -1445,29 +1450,52 @@ function SplashScreen(){
 }
 
 // ─────────────────────────────────────────
-// WALLET TAB  (Earnings + cashflow inside)
+// WALLET TAB
+// Shows: BOSS Wallet balance + Virtual account + earnings
+// Per master doc: money stays in BOSS wallet, tailor withdraws
+// at their convenience. Only virtual account is shown, not real bank.
 // ─────────────────────────────────────────
 function WalletTab({customers,tailor}){
   const orders=allOrders(customers);
   const now=new Date();
+  const thisMonth=orders.filter(o=>{
+    if(!o.createdAt)return false;
+    const d=new Date(o.createdAt);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+  });
   const totalRevenue=orders.reduce((s,o)=>s+(parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0),0);
+  const monthRevenue=thisMonth.reduce((s,o)=>s+(parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0),0);
   const outstanding=orders.reduce((s,o)=>s+getBalance(o),0);
   const delivered=orders.filter(o=>orderStatus(o)==="Delivered").length;
+  const walletBalance=parseFloat(tailor?.wallet_balance)||0;
+  const hasVA=!!(tailor?.virtual_account_number&&tailor?.virtual_account_status==="active");
 
-  // All payment transactions — sorted newest first
-  const transactions=[...orders]
-    .filter(o=>(parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0)>0)
-    .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))
-    .slice(0,50);
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const label=d.toLocaleString("default",{month:"short"});
+    const rev=orders.filter(o=>{
+      if(!o.createdAt)return false;
+      const od=new Date(o.createdAt);return od.getMonth()===d.getMonth()&&od.getFullYear()===d.getFullYear();
+    }).reduce((s,o)=>s+(parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0),0);
+    months.push({label,rev});
+  }
+  const maxRev=Math.max(...months.map(m=>m.rev),1);
 
-  const hasVirtualAccount=!!(tailor?.virtual_account_number||tailor?.account_number);
-
-  function copyAccount(){
-    const num=tailor?.virtual_account_number||tailor?.account_number||"";
-    const bank=tailor?.virtual_bank_name||tailor?.bank_name||"";
-    const name=tailor?.virtual_account_name||tailor?.account_name||"";
-    const text=`${name}\n${num}\n${bank}`;
-    navigator.clipboard?.writeText(text).catch(()=>{});
+  function copyVA(){
+    const num=tailor?.virtual_account_number||"";
+    const bank=tailor?.virtual_bank_name||"";
+    const name=tailor?.virtual_account_name||"";
+    if(!num)return;
+    const text=`Bank: ${bank}\nAccount Number: ${num}\nAccount Name: ${name}`;
+    navigator.clipboard?.writeText(text);
+  }
+  function shareVAWA(){
+    const num=tailor?.virtual_account_number||"";
+    const bank=tailor?.virtual_bank_name||"";
+    const name=tailor?.virtual_account_name||"";
+    if(!num)return;
+    const msg=`Hello! Here are my payment details:\n\n🏦 Bank: *${bank}*\n🔢 Account: *${num}*\n👤 Name: *${name}*\n\nTransfer your payment to this account. Thank you! 🙏\n_Powered by BOSS_`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
   }
 
   return(
@@ -1477,101 +1505,168 @@ function WalletTab({customers,tailor}){
         <div style={{fontSize:30,fontWeight:900,letterSpacing:"-1px",color:C.text}}>Wallet</div>
       </div>
 
-      {/* ── Hero balance card ── */}
+      {/* ── BOSS Wallet Balance (primary hero) ── */}
       <div style={{padding:"16px 20px 0"}}>
         <div style={{background:"linear-gradient(135deg,#1C1C1E,#2C2C2E)",borderRadius:24,padding:"24px 20px",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
-          <div style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:6}}>Total Collected</div>
-          <div style={{fontSize:40,fontWeight:900,letterSpacing:"-2px",color:"#fff",lineHeight:1}}>{fmt(totalRevenue)}</div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,0.35)",marginTop:6}}>from {delivered} completed orders</div>
+          <div style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.45)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:6}}>
+            BOSS Wallet Balance
+          </div>
+          <div style={{fontSize:40,fontWeight:900,letterSpacing:"-2px",color:"#fff",lineHeight:1}}>
+            {fmt(walletBalance)}
+          </div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,0.35)",marginTop:6,lineHeight:1.5}}>
+            Payments received · Available to withdraw
+          </div>
 
-          {/* Money In / Money Out */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:20}}>
-            <div style={{background:"rgba(52,199,89,0.15)",borderRadius:14,padding:"14px",border:"1px solid rgba(52,199,89,0.25)"}}>
-              <div style={{fontSize:10,fontWeight:700,color:"rgba(52,199,89,0.7)",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}}>💚 Money In</div>
-              <div style={{fontSize:20,fontWeight:900,color:C.green}}>{fmt(totalRevenue)}</div>
-              <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",marginTop:2}}>Total received</div>
+          {/* Withdraw button — Phase 2 placeholder */}
+          <button
+            style={{marginTop:16,padding:"12px 20px",borderRadius:12,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.08)",color:"rgba(255,255,255,0.6)",fontSize:13,fontWeight:700,cursor:"default",fontFamily:"inherit",width:"100%",letterSpacing:"-0.1px"}}
+            onClick={()=>alert("Withdrawal to your bank account is coming soon!\n\nYou will be able to transfer your wallet balance to any Nigerian bank account directly from BOSS.")}>
+            💸 Withdraw to Bank — Coming Soon
+          </button>
+
+          {/* Earnings split */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:16}}>
+            <div style={{background:"rgba(255,255,255,0.06)",borderRadius:14,padding:"12px 14px"}}>
+              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}}>This Month</div>
+              <div style={{fontSize:20,fontWeight:900,color:C.green}}>{fmt(monthRevenue)}</div>
             </div>
-            <div style={{background:outstanding?"rgba(255,59,48,0.15)":"rgba(255,255,255,0.06)",borderRadius:14,padding:"14px",border:outstanding?"1px solid rgba(255,59,48,0.25)":"none"}}>
-              <div style={{fontSize:10,fontWeight:700,color:outstanding?"rgba(255,59,48,0.8)":"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}}>❤️ Outstanding</div>
-              <div style={{fontSize:20,fontWeight:900,color:outstanding?C.red:"rgba(255,255,255,0.5)"}}>{fmt(outstanding)}</div>
-              <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",marginTop:2}}>Pending collection</div>
+            <div style={{background:outstanding?"rgba(255,59,48,0.15)":"rgba(255,255,255,0.06)",borderRadius:14,padding:"12px 14px",border:outstanding?"1px solid rgba(255,59,48,0.25)":"none"}}>
+              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}}>Outstanding</div>
+              <div style={{fontSize:20,fontWeight:900,color:outstanding?C.red:"rgba(255,255,255,0.4)"}}>{fmt(outstanding)}</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Virtual Account / Deposit Details ── */}
-      <div style={{padding:"16px 20px 0"}}>
-        {hasVirtualAccount?(
-          <div style={{...S.card,background:"rgba(0,102,204,0.04)",border:"1px solid rgba(0,102,204,0.15)"}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.accent,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:12}}>🏦 Your Payment Account</div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div style={{fontSize:13,color:C.sub}}>Bank</div>
-              <div style={{fontSize:14,fontWeight:700,color:C.text}}>{tailor?.virtual_bank_name||tailor?.bank_name||"—"}</div>
+      {/* ── Virtual Account card ── */}
+      <SectionLabel>Business Account Number</SectionLabel>
+      <div style={{padding:"0 20px"}}>
+        {hasVA?(
+          <div style={{...S.card}}>
+            {/* Account number display */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:C.sub,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}}>
+                  {tailor?.virtual_bank_name||"Wema Bank"}
+                </div>
+                <div style={{fontSize:26,fontWeight:900,letterSpacing:"2.5px",color:C.text,fontFamily:"monospace, monospace"}}>
+                  {tailor?.virtual_account_number||"—"}
+                </div>
+                <div style={{fontSize:13,color:C.sub,marginTop:4,fontWeight:600}}>
+                  {tailor?.virtual_account_name||tailor?.shop||"—"}
+                </div>
+              </div>
+              <div style={{background:C.greenDim||"rgba(52,199,89,0.1)",border:"1px solid rgba(52,199,89,0.25)",borderRadius:20,padding:"4px 10px",fontSize:10,fontWeight:800,color:C.green,textTransform:"uppercase",letterSpacing:"0.4px",flexShrink:0}}>
+                Active
+              </div>
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div style={{fontSize:13,color:C.sub}}>Account No.</div>
-              <div style={{fontSize:18,fontWeight:900,color:C.text,letterSpacing:"2px"}}>{tailor?.virtual_account_number||tailor?.account_number||"—"}</div>
+
+            {/* Instruction */}
+            <div style={{background:"rgba(0,102,204,0.06)",border:"1px solid rgba(0,102,204,0.12)",borderRadius:12,padding:"12px 14px",fontSize:12,color:C.sub,lineHeight:1.6,marginBottom:14}}>
+              📲 <strong style={{color:C.text}}>Share this account number with your customers.</strong> When they transfer money here, it appears in your BOSS wallet balance automatically. No confirmation needed.
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <div style={{fontSize:13,color:C.sub}}>Account Name</div>
-              <div style={{fontSize:13,fontWeight:700,color:C.text}}>{tailor?.virtual_account_name||tailor?.account_name||"—"}</div>
-            </div>
+
+            {/* Share actions */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <Btn variant="accent" onClick={copyAccount}>📋 Copy Details</Btn>
-              <Btn variant="secondary" onClick={()=>{
-                const num=tailor?.virtual_account_number||tailor?.account_number||"";
-                const bank=tailor?.virtual_bank_name||tailor?.bank_name||"";
-                const name=tailor?.virtual_account_name||tailor?.account_name||"";
-                const msg=`💳 Pay me via bank transfer:\n\nBank: ${bank}\nAccount: ${num}\nName: ${name}\n\nPowered by BOSS`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
-              }}>📤 Share on WhatsApp</Btn>
+              <Btn variant="outline" onClick={copyVA}>📋 Copy Details</Btn>
+              <Btn variant="wa" onClick={shareVAWA}><span>💬</span>Share on WhatsApp</Btn>
             </div>
           </div>
         ):(
-          <div style={{...S.card,textAlign:"center",padding:"24px 20px"}}>
-            <div style={{fontSize:32,marginBottom:10}}>🏦</div>
-            <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:6}}>No payment account yet</div>
-            <div style={{fontSize:13,color:C.sub,marginBottom:16}}>Set up your virtual account in your <strong>Profile</strong> tab to receive bank transfers from clients</div>
+          <div style={{...S.card,background:"rgba(255,159,10,0.06)",border:"1px solid rgba(255,159,10,0.2)"}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#FF9F0A",marginBottom:6}}>🏦 No Account Number Yet</div>
+            <div style={{fontSize:13,color:C.sub,lineHeight:1.6,marginBottom:14}}>
+              Set up your virtual account in <strong style={{color:C.text}}>Settings → Financial Identity</strong> to get a dedicated bank account number for your business.
+            </div>
+            <div style={{fontSize:12,color:"#FF9F0A",fontWeight:600}}>Settings → Financial Identity →</div>
           </div>
         )}
       </div>
 
-      {/* ── Transaction History ── */}
-      <SectionLabel>Transaction History</SectionLabel>
+      {/* ── All-time revenue ── */}
+      <SectionLabel>All-Time Revenue</SectionLabel>
+      <div style={{padding:"0 20px",display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:C.sub,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}}>Net Earnings</div>
+            <div style={{fontSize:28,fontWeight:900,color:C.text}}>{fmt(totalRevenue)}</div>
+            <div style={{fontSize:11,color:C.sub,marginTop:3}}>After BOSS fees</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:11,color:C.sub,marginBottom:4}}>Orders Delivered</div>
+            <div style={{fontSize:22,fontWeight:900,color:C.text}}>{delivered}</div>
+          </div>
+        </div>
+        {totalFees>0&&(
+          <div style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(0,0,0,0.02)"}}>
+            <div style={{fontSize:13,color:C.sub}}>Gross collected</div>
+            <div style={{fontSize:14,fontWeight:700,color:C.sub}}>{fmt(totalGross)}</div>
+          </div>
+        )}
+        {totalFees>0&&(
+          <div style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(0,0,0,0.02)"}}>
+            <div>
+              <div style={{fontSize:13,color:C.sub}}>BOSS service fees</div>
+              <div style={{fontSize:11,color:C.muted}}>₦{SERVICE_FEE} per completed order</div>
+            </div>
+            <div style={{fontSize:14,fontWeight:700,color:C.sub}}>-{fmt(totalFees)}</div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Bar chart ── */}
+      <SectionLabel>Revenue — Last 6 Months</SectionLabel>
+      <div style={{padding:"0 20px"}}>
+        <div style={{...S.card,display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:6,height:130,padding:"16px 16px 0"}}>
+          {months.map(m=>(
+            <div key={m.label} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,height:"100%",justifyContent:"flex-end"}}>
+              {m.rev>0&&<div style={{fontSize:8,fontWeight:700,color:C.sub}}>{fmt(m.rev).replace("₦","")}</div>}
+              <div style={{width:"100%",background:C.accent,opacity:m.rev>0?0.85:0.12,borderRadius:"4px 4px 0 0",height:`${Math.round((m.rev/maxRev)*70)+4}px`,minHeight:4,transition:"height 0.5s ease"}}/>
+              <div style={{fontSize:10,fontWeight:600,color:C.sub,paddingBottom:8}}>{m.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Cashflow list ── */}
+      <SectionLabel>All Orders</SectionLabel>
       <div style={{padding:"0 20px",display:"flex",flexDirection:"column",gap:8}}>
-        {transactions.length===0
-          ?<EmptyState icon="💳" title="No transactions yet" sub="Payments will appear here once you record orders"/>
-          :transactions.map(o=>{
-            const received=(parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0);
-            const balance=getBalance(o);
-            return(
-              <div key={o.id} style={{...S.card,display:"flex",alignItems:"center",gap:14}}>
-                <div style={{width:42,height:42,borderRadius:12,background:balance>0?"rgba(255,59,48,0.08)":"rgba(52,199,89,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
-                  {balance>0?"💳":"✅"}
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:700,fontSize:14,color:C.text}}>{o._cname}</div>
-                  <div style={{fontSize:12,color:C.sub,marginTop:2}}>{o.type||"Order"} · {fmtDate(o.createdAt?.slice(0,10)||o.date)}</div>
-                </div>
-                <div style={{textAlign:"right",flexShrink:0}}>
-                  <div style={{fontWeight:800,fontSize:15,color:C.green}}>+{fmt(received)}</div>
-                  {balance>0&&<div style={{fontSize:11,color:C.red,marginTop:2}}>{fmt(balance)} due</div>}
-                </div>
+        {orders.length===0
+          ?<EmptyState icon="💳" title="No orders yet" sub="Add orders to see your earnings"/>
+          :[...orders].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,40).map(o=>(
+            <div key={o.id} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontWeight:700,fontSize:14,color:C.text}}>{o._cname}</div>
+                <div style={{fontSize:12,color:C.sub,marginTop:1}}>{o.type||"—"} · {fmtDate(o.createdAt?.slice(0,10)||o.date)}</div>
               </div>
-            );
-          })}
+              <div style={{textAlign:"right"}}>
+                <div style={{fontWeight:800,fontSize:15,color:C.green}}>{fmt((parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0))}</div>
+                {getBalance(o)>0&&<div style={{fontSize:11,color:C.red,marginTop:2}}>{fmt(getBalance(o))} due</div>}
+              </div>
+            </div>
+          ))}
       </div>
     </div>
   );
 }
 
-
 // ─────────────────────────────────────────
-// ─────────────────────────────────────────
-// PROFILE TAB — Control Center
+// SETTINGS TAB — Full Control Center
 // Sections: Profile · Security · Financial Identity · Data & Backup · Tools
 // ─────────────────────────────────────────
+const NG_BANKS=[
+  {name:"Access Bank",code:"044"},{name:"Fidelity Bank",code:"070"},
+  {name:"First Bank of Nigeria",code:"011"},{name:"First City Monument Bank",code:"214"},
+  {name:"Guaranty Trust Bank",code:"058"},{name:"Heritage Bank",code:"030"},
+  {name:"Keystone Bank",code:"082"},{name:"Polaris Bank",code:"076"},
+  {name:"Stanbic IBTC Bank",code:"221"},{name:"Sterling Bank",code:"232"},
+  {name:"Union Bank",code:"032"},{name:"United Bank for Africa",code:"033"},
+  {name:"Unity Bank",code:"215"},{name:"Wema Bank",code:"035"},
+  {name:"Zenith Bank",code:"057"},{name:"Kuda Bank",code:"090267"},
+  {name:"Opay",code:"100004"},{name:"Palmpay",code:"100033"},
+  {name:"Moniepoint MFB",code:"090405"},{name:"Carbon",code:"565"},
+];
 
 function SettingsTab({tailor,customers,setTailor}){
   const[shop,setShop]=useState(tailor?.shop||"");
@@ -1579,9 +1674,10 @@ function SettingsTab({tailor,customers,setTailor}){
   const[city,setCity]=useState(tailor?.city||"");
   const[saved,setSaved]=useState(false);
 
-  // Financial Identity — Virtual Account only
-  const[vaStatus,setVaStatus]=useState(tailor?.virtual_account_number?"connected":"idle");
+  // Financial Identity — Virtual Account only (master doc: DVA, no subaccounts)
+  const[vaStatus,setVaStatus]=useState(tailor?.virtual_account_status==="active"?"connected":"idle");
   const[vaMsg,setVaMsg]=useState("");
+  const[vaLoading,setVaLoading]=useState(false);
 
   // Security
   const[newPw,setNewPw]=useState("");
@@ -1590,7 +1686,7 @@ function SettingsTab({tailor,customers,setTailor}){
 
   // Data & Backup
   const[restoreMsg,setRestoreMsg]=useState("");
-  const restoreRef=useRef(null);
+  const restoreRef=React.useRef(null);
 
   // Tools accordion
   const[toolsOpen,setToolsOpen]=useState(false);
@@ -1600,28 +1696,34 @@ function SettingsTab({tailor,customers,setTailor}){
     await db.setTailor(t);setTailor(t);setSaved(true);setTimeout(()=>setSaved(false),2200);
   }
 
-
-
-  async function connectVirtualAccount(){
-    if(!shop.trim()){setVaMsg("Please save your shop name first.");return;}
-    setVaStatus("saving");setVaMsg("Creating your virtual account…");
+  // Correct virtual account setup — no bank verify step needed.
+  // The VA is issued by Paystack to the tailor's BUSINESS NAME.
+  // Money lands in BOSS wallet; tailor withdraws at convenience.
+  async function setupVirtualAccount(){
+    if(!tailor?.shop&&!shop.trim()){setVaMsg("Save your shop name first.");return;}
+    setVaLoading(true);setVaMsg("Setting up your virtual account…");
     try{
       const res=await fetch("/api/paystack-virtual-account",{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({shop_name:tailor?.shop||shop.trim(),phone:tailor?.phone||phone.trim()}),
+        body:JSON.stringify({
+          business_name:(tailor?.shop||shop).trim(),
+          phone:tailor?.phone||phone||"",
+        }),
       });
       const data=await res.json();
-      if(data.error){setVaMsg(data.error);setVaStatus("error");return;}
+      if(data.error){setVaMsg("❌ "+data.error);setVaLoading(false);return;}
       const updated={...(tailor||{}),
-        virtual_account_number:data.virtual_account_number,
-        virtual_bank_name:data.virtual_bank_name,
-        virtual_account_name:data.virtual_account_name||tailor?.shop||shop.trim(),
-        virtual_account_status:"active",
-        paystack_customer_code:data.customer_code||"",
+        virtual_account_number: data.virtual_account_number,
+        virtual_bank_name:      data.virtual_bank_name,
+        virtual_account_name:   data.virtual_account_name,
+        virtual_account_status: "active",
+        paystack_customer_code: data.customer_code,  // always saved
       };
       await db.setTailor(updated);setTailor(updated);
-      setVaStatus("connected");setVaMsg("✅ Virtual account created. Customers can now pay directly via bank transfer.");
-    }catch{setVaMsg("Error connecting. Try again.");setVaStatus("error");}
+      setVaStatus("connected");
+      setVaMsg("✅ Virtual account ready. Share it with customers to receive payments.");
+    }catch(e){setVaMsg("❌ Network error. Check your connection and try again.");}
+    setVaLoading(false);
   }
 
   async function handlePasswordReset(){
@@ -1660,17 +1762,28 @@ function SettingsTab({tailor,customers,setTailor}){
   }
 
   async function copyVirtualAccount(){
-    const num=tailor?.virtual_account_number||tailor?.account_number||"";
-    const bank=tailor?.virtual_bank_name||tailor?.bank_name||"";
-    const name=tailor?.virtual_account_name||tailor?.account_name||"";
+    const num  = tailor?.virtual_account_number||"";
+    const bank = tailor?.virtual_bank_name||"";
+    const name = tailor?.virtual_account_name||"";
+    if(!num){setVaMsg("No virtual account yet.");return;}
+    const text=`Bank: ${bank}\nAccount Number: ${num}\nAccount Name: ${name}`;
     try{
-      await navigator.clipboard.writeText(`Bank: ${bank}\nAccount: ${num}\nName: ${name}`);
-      setVaMsg("Copied!");setTimeout(()=>setVaMsg(""),2000);
-    }catch{setVaMsg("Copy failed — long-press to copy manually.");}
+      await navigator.clipboard.writeText(text);
+      setVaMsg("✅ Copied!");setTimeout(()=>setVaMsg(""),2500);
+    }catch{setVaMsg("Long-press the details to copy manually.");}
+  }
+
+  async function shareVirtualAccountWA(){
+    const num  = tailor?.virtual_account_number||"";
+    const bank = tailor?.virtual_bank_name||"";
+    const name = tailor?.virtual_account_name||"";
+    if(!num)return;
+    const msg=`Hello! Here are my payment details:\n\n🏦 Bank: *${bank}*\n🔢 Account: *${num}*\n👤 Name: *${name}*\n\nPlease transfer your payment directly to this account. Thank you! 🙏\n_Powered by BOSS_`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
   }
 
   const ts=computeTrustScore(customers);
-  const hasVirtualAccount=!!(tailor?.virtual_account_number||tailor?.account_number);
+  const hasVirtualAccount=!!(tailor?.virtual_account_number&&tailor?.virtual_account_status==="active");
 
   const sectionHead=(icon,label)=>(
     <div style={{display:"flex",alignItems:"center",gap:10,padding:"20px 20px 8px"}}>
@@ -1684,8 +1797,8 @@ function SettingsTab({tailor,customers,setTailor}){
 
       {/* Header */}
       <div style={{padding:"24px 20px 0"}}>
-        <div style={{fontSize:13,fontWeight:600,color:C.sub,marginBottom:2}}>My Account</div>
-        <div style={{fontSize:30,fontWeight:900,letterSpacing:"-1px",color:C.text}}>Profile</div>
+        <div style={{fontSize:13,fontWeight:600,color:C.sub,marginBottom:2}}>Control Center</div>
+        <div style={{fontSize:30,fontWeight:900,letterSpacing:"-1px",color:C.text}}>Settings</div>
       </div>
 
       {/* BOSS Trust Score */}
@@ -1727,63 +1840,98 @@ function SettingsTab({tailor,customers,setTailor}){
               style={{padding:"11px",borderRadius:12,border:`1px solid ${C.border2}`,background:C.s2,fontSize:13,fontWeight:700,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>🍎 Apple</button>
           </div>
         </div>
-        <button className="tap" onClick={async()=>{
-            try{await db.signOut();}catch{}
-            // Clear all local state to prevent stale data on next login
-            ["boss_session","boss_tailor","boss_customers"].forEach(k=>{try{localStorage.removeItem(k);}catch{}});
-            window.location.href="/";
-          }}
-          style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,border:"1.5px solid rgba(255,59,48,0.25)",cursor:"pointer",background:"rgba(255,59,48,0.06)",color:"#FF3B30",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          🚪 Log Out of BOSS
+        <button className="tap" onClick={async()=>{await db.signOut();window.location.reload();}}
+          style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,border:"none",cursor:"pointer",background:"rgba(255,59,48,0.08)",color:"#FF3B30",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          🚪 Log Out
         </button>
       </div>
 
       {/* ── 3. FINANCIAL IDENTITY — Virtual Account ── */}
       {sectionHead("🏦","Financial Identity")}
       <div style={{padding:"0 20px",display:"flex",flexDirection:"column",gap:12}}>
+
         {hasVirtualAccount?(
-          <div style={{...S.card,background:"rgba(0,102,204,0.04)",border:"1px solid rgba(0,102,204,0.15)"}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.accent,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:12}}>✅ Virtual Account Active</div>
-            <div style={{display:"flex",flexDirection:"column",gap:0}}>
-              {[
-                {l:"Bank",v:tailor?.virtual_bank_name||"—"},
-                {l:"Account Number",v:tailor?.virtual_account_number||"—",mono:true},
-                {l:"Account Name",v:tailor?.virtual_account_name||tailor?.shop||"—"},
-              ].map(r=>(
-                <div key={r.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
-                  <div style={{fontSize:12,color:C.sub,fontWeight:600}}>{r.l}</div>
-                  <div style={{fontSize:r.mono?17:13,fontWeight:r.mono?900:700,color:C.text,letterSpacing:r.mono?"2px":"0px"}}>{r.v}</div>
-                </div>
-              ))}
+          // ── CONNECTED STATE ──────────────────────────────────────
+          <div style={{...S.card,display:"flex",flexDirection:"column",gap:0}}>
+            {/* Status bar */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:800,color:C.green}}>✅ Virtual Account Active</div>
+              <button className="tap" onClick={()=>{setVaStatus("idle");setVaMsg("");}}
+                style={{background:"none",border:"none",fontSize:12,color:C.sub,cursor:"pointer",fontFamily:"inherit",padding:"4px 8px",borderRadius:8,background:C.s2}}>
+                Change
+              </button>
             </div>
-            {vaMsg&&<div style={{fontSize:13,color:vaMsg.startsWith("✅")?C.green:C.red,marginTop:8,fontWeight:500}}>{vaMsg}</div>}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:14}}>
-              <Btn variant="outline" onClick={copyVirtualAccount}>{vaMsg&&!vaMsg.startsWith("✅")?"Error":"📋 Copy Details"}</Btn>
-              <Btn variant="outline" onClick={()=>{
-                const num=tailor?.virtual_account_number||"";
-                const bank=tailor?.virtual_bank_name||"";
-                const name=tailor?.virtual_account_name||tailor?.shop||"";
-                const msg=`💳 Pay me via bank transfer:\n\nBank: ${bank}\nAccount No: ${num}\nAccount Name: ${name}\n\nPowered by BOSS`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
-              }}>📤 Share</Btn>
+
+            {/* Account details — large and clear for easy sharing */}
+            <div style={{background:"linear-gradient(135deg,#1C1C1E,#2C2C2E)",borderRadius:16,padding:"20px",marginBottom:14}}>
+              <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:12}}>
+                Customers transfer to this account
+              </div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:4}}>Bank</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#fff",marginBottom:12}}>
+                {tailor?.virtual_bank_name||"Wema Bank"}
+              </div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:4}}>Account Number</div>
+              <div style={{fontSize:28,fontWeight:900,letterSpacing:"3px",color:"#fff",marginBottom:12,fontFamily:"monospace, monospace"}}>
+                {tailor?.virtual_account_number||"—"}
+              </div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:4}}>Account Name</div>
+              <div style={{fontSize:15,fontWeight:700,color:"rgba(255,255,255,0.85)"}}>
+                {tailor?.virtual_account_name||tailor?.shop||"—"}
+              </div>
+            </div>
+
+            {/* Wallet balance */}
+            <div style={{background:C.s2,borderRadius:14,padding:"14px 16px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:C.sub,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:3}}>BOSS Wallet Balance</div>
+                <div style={{fontSize:22,fontWeight:900,color:C.text}}>{fmt(tailor?.wallet_balance||0)}</div>
+                <div style={{fontSize:11,color:C.sub,marginTop:2}}>Payments received, ready to withdraw</div>
+              </div>
+              <div style={{fontSize:28,opacity:0.3}}>💰</div>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <Btn variant="outline" onClick={copyVirtualAccount}>{vaMsg&&vaMsg.startsWith("✅")?"✅ Copied!":"📋 Copy Details"}</Btn>
+              <Btn variant="wa" onClick={shareVirtualAccountWA}><span>💬</span>Share on WhatsApp</Btn>
+            </div>
+            {vaMsg&&!vaMsg.startsWith("✅")&&(
+              <div style={{fontSize:12,color:C.sub,marginTop:6,textAlign:"center"}}>{vaMsg}</div>
+            )}
+
+            {/* Informational note */}
+            <div style={{marginTop:12,padding:"12px 14px",background:"rgba(0,102,204,0.06)",border:"1px solid rgba(0,102,204,0.15)",borderRadius:12,fontSize:12,color:C.sub,lineHeight:1.6}}>
+              💡 When a customer transfers to this account, the amount automatically appears in your BOSS wallet balance. You can withdraw to your bank at any time.
             </div>
           </div>
+
         ):(
+          // ── NOT CONNECTED STATE ──────────────────────────────────
           <>
-            <div style={{background:"rgba(0,102,204,0.06)",border:"1px solid rgba(0,102,204,0.15)",borderRadius:14,padding:"14px 16px"}}>
-              <div style={{fontSize:13,fontWeight:700,color:C.text,marginBottom:6}}>🏦 Get Your Virtual Account</div>
-              <div style={{fontSize:12,color:C.sub,lineHeight:1.7}}>
-                BOSS gives you a <strong style={{color:C.accent}}>dedicated bank account</strong> — your own account number that customers can transfer money to directly. BOSS never holds your funds.
-              </div>
-              <div style={{marginTop:10,padding:"10px 12px",background:"rgba(52,199,89,0.08)",borderRadius:10,border:"1px solid rgba(52,199,89,0.2)"}}>
-                <div style={{fontSize:12,fontWeight:700,color:C.green}}>Your shop name is used as the account name</div>
-                <div style={{fontSize:11,color:C.sub,marginTop:3}}>Make sure your shop name is saved above before creating.</div>
+            <div style={{...S.card,background:"rgba(0,102,204,0.04)",border:"1px solid rgba(0,102,204,0.15)"}}>
+              <div style={{fontSize:14,fontWeight:700,color:C.accent,marginBottom:8}}>🏦 Get Your Business Account Number</div>
+              <div style={{fontSize:13,color:C.sub,lineHeight:1.6}}>
+                BOSS will create a <strong style={{color:C.text}}>dedicated bank account number</strong> for your business. 
+                Share it with customers — they transfer money directly, and it appears in your BOSS wallet automatically.
+                <br/><br/>
+                <strong style={{color:C.text}}>You withdraw to your personal bank whenever you want.</strong>
               </div>
             </div>
-            {vaMsg&&<div style={{fontSize:13,color:vaMsg.startsWith("✅")?C.green:C.red,fontWeight:500,padding:"4px 0"}}>{vaMsg}</div>}
-            <Btn variant="primary" onClick={connectVirtualAccount} disabled={vaStatus==="saving"}>
-              {vaStatus==="saving"?"⏳ Creating Account…":"✅ Create My Virtual Account"}
+
+            {vaMsg&&(
+              <div style={{fontSize:13,color:vaMsg.startsWith("❌")?C.red:vaMsg.startsWith("✅")?C.green:C.sub,fontWeight:500,padding:"8px 0",lineHeight:1.5}}>
+                {vaMsg}
+              </div>
+            )}
+
+            <Btn variant="primary" onClick={setupVirtualAccount} disabled={vaLoading}>
+              {vaLoading?"Setting up…":"🏦 Activate My Business Account"}
             </Btn>
+
+            <div style={{fontSize:11,color:C.sub,textAlign:"center",lineHeight:1.6}}>
+              Free · Instant · Powered by Paystack
+            </div>
           </>
         )}
       </div>
@@ -1956,7 +2104,7 @@ export default function BOSSApp(){
   const IconHome=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
   const IconClients=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
   const IconWallet=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
-  const IconProfile=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>;
+  const IconSettings=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
 
   const NAV_LEFT=[
     {id:"today",    icon:<IconHome/>,     label:"Today"   },
@@ -1964,31 +2112,20 @@ export default function BOSSApp(){
   ];
   const NAV_RIGHT=[
     {id:"wallet",   icon:<IconWallet/>,   label:"Wallet"  },
-    {id:"settings", icon:<IconProfile/>,  label:"Profile" },
+    {id:"settings", icon:<IconSettings/>, label:"Settings"},
   ];
 
   return(
     <>
       <GlobalStyles/>
-      <div id="boss-root" style={{
-        height:"100svh",
-        display:"flex",
-        flexDirection:"column",
-        backgroundColor:C.bg,
-        overflow:"hidden",
-        position:"relative",
-        // Fallback for browsers that don't support svh
-        minHeight:"-webkit-fill-available",
-      }}>
+      <div id="boss-root" style={{height:"100svh",display:"flex",flexDirection:"column",backgroundColor:C.bg,overflow:"hidden",position:"relative"}}>
 
         {/* ── SCROLLABLE CONTENT ── */}
-        <div className="scrollable" style={{flex:"1 1 0",minHeight:0,paddingBottom:140,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-          <ErrorBoundary>
-            {tab==="today"    &&<TodayTab     customers={customers} tailor={tailor} onAddOrder={()=>setActionSheetOpen(true)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)}/>}
-            {tab==="customers"&&<CustomersTab customers={customers} onOpenCustomer={openCustomerDetail}/>}
-            {tab==="wallet"   &&<WalletTab    customers={customers} tailor={tailor}/>}
-            {tab==="settings" &&<SettingsTab  tailor={tailor} customers={customers} setTailor={setTailor}/>}
-          </ErrorBoundary>
+        <div className="scrollable" style={{flex:1,paddingBottom:140}}>
+          {tab==="today"    &&<TodayTab     customers={customers} tailor={tailor} onAddOrder={()=>setActionSheetOpen(true)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)}/>}
+          {tab==="customers"&&<CustomersTab customers={customers} onOpenCustomer={openCustomerDetail}/>}
+          {tab==="wallet"   &&<WalletTab    customers={customers} tailor={tailor}/>}
+          {tab==="settings" &&<SettingsTab  tailor={tailor} customers={customers} setTailor={setTailor}/>}
         </div>
 
         {/* ── BOTTOM NAV — exact reference design ── */}

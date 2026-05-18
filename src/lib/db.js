@@ -105,7 +105,7 @@ export const db = {
     if (!client) return ls("boss_tailor", null);
     const { data: { user } } = await client.auth.getUser();
     if (!user) return ls("boss_tailor", null);
-    const { data } = await client.from("tailors").select("*").eq("user_id", user.id).single();
+    const { data } = await client.from("tailors").select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,virtual_account_number,virtual_bank_name,virtual_account_name,virtual_account_status,paystack_customer_code,bos_score,bos_score_updated_at,wallet_balance").eq("user_id", user.id).single();
     return data || ls("boss_tailor", null);
   },
 
@@ -115,21 +115,28 @@ export const db = {
     if (!client) return;
     const { data: { user } } = await client.auth.getUser();
     if (!user) return;
-    await client.from("tailors").upsert({
+    // Build the upsert payload — only include defined fields so we never
+    // accidentally null-out existing data with an undefined spread.
+    const payload = {
       user_id: user.id,
-      shop:    profile.shop    || "",
-      phone:   profile.phone   || "",
-      city:    profile.city    || "",
-      ...(profile.bank_name              !== undefined && { bank_name:              profile.bank_name }),
-      ...(profile.bank_code              !== undefined && { bank_code:              profile.bank_code }),
-      ...(profile.account_number         !== undefined && { account_number:         profile.account_number }),
-      ...(profile.account_name           !== undefined && { account_name:           profile.account_name }),
-      ...(profile.virtual_account_number !== undefined && { virtual_account_number: profile.virtual_account_number }),
-      ...(profile.virtual_bank_name      !== undefined && { virtual_bank_name:      profile.virtual_bank_name }),
-      ...(profile.virtual_account_name   !== undefined && { virtual_account_name:   profile.virtual_account_name }),
-      ...(profile.virtual_account_status !== undefined && { virtual_account_status: profile.virtual_account_status }),
-      ...(profile.paystack_customer_code !== undefined && { paystack_customer_code: profile.paystack_customer_code }),
-    }, { onConflict: "user_id" });
+      shop:    profile.shop  || "",
+      phone:   profile.phone || "",
+      city:    profile.city  || "",
+    };
+    // Real bank details (used for future withdrawal / transfer recipient)
+    if (profile.bank_name    !== undefined) payload.bank_name    = profile.bank_name    || null;
+    if (profile.bank_code    !== undefined) payload.bank_code    = profile.bank_code    || null;
+    if (profile.account_number !== undefined) payload.account_number = profile.account_number || null;
+    if (profile.account_name !== undefined) payload.account_name = profile.account_name || null;
+    // Virtual account fields (Paystack Dedicated Virtual Account)
+    if (profile.virtual_account_number  !== undefined) payload.virtual_account_number  = profile.virtual_account_number  || null;
+    if (profile.virtual_bank_name       !== undefined) payload.virtual_bank_name       = profile.virtual_bank_name       || null;
+    if (profile.virtual_account_name    !== undefined) payload.virtual_account_name    = profile.virtual_account_name    || null;
+    if (profile.virtual_account_status  !== undefined) payload.virtual_account_status  = profile.virtual_account_status  || "inactive";
+    if (profile.paystack_customer_code  !== undefined) payload.paystack_customer_code  = profile.paystack_customer_code  || null;
+    // BOSS wallet balance (stored on tailors row, updated by webhook)
+    if (profile.wallet_balance          !== undefined) payload.wallet_balance          = profile.wallet_balance          ?? 0;
+    await client.from("tailors").upsert(payload, { onConflict: "user_id" });
   },
 
   // ── Customers & Orders ───────────────────────────────────────────
@@ -151,6 +158,7 @@ export const db = {
         deposit: o.deposit || 0, paid: o.paid || 0,
         date: o.delivery_date || "", status: o.status || "In Progress",
         notes: o.notes || "", createdAt: o.created_at,
+        installmentHistory: o.installment_history || [],
       })),
     }));
   },
@@ -166,20 +174,20 @@ export const db = {
     for (const c of customers) {
       await client.from("customers").upsert({
         id: c.id, tailor_id: tailor.id, name: c.name,
-        phone: c.phone || "", measurements: c.measurements || {}, notes: c.notes || "",
+        phone: c.phone || "", gender: c.gender || "female", measurements: c.measurements || {}, notes: c.notes || "",
       }, { onConflict: "id" });
       for (const o of (c.orders || [])) {
         await client.from("orders").upsert({
           id: o.id, customer_id: c.id, tailor_id: tailor.id,
           type: o.type || "", price: o.price || 0, deposit: o.deposit || 0,
           paid: o.paid || 0, delivery_date: o.date || null,
-          status: o.status || "In Progress", notes: o.notes || "",
+          status: o.status || "In Progress", notes: o.notes || "", installment_history: o.installmentHistory || [],
         }, { onConflict: "id" });
       }
     }
   },
 
-  async recordPayment({ orderId, amount, method, paystackRef }) {
+  async recordPayment({ orderId, amount, method, paystackRef, virtualAccountNumber, senderName, transferCode }) {
     const client = await getBrowserClient();
     if (!client) return;
     const { data: { user } } = await client.auth.getUser();
@@ -187,9 +195,38 @@ export const db = {
     const { data: tailor } = await client.from("tailors").select("id").eq("user_id", user.id).single();
     if (!tailor) return;
     await client.from("payments").insert({
-      order_id: orderId, tailor_id: tailor.id,
-      amount, method: method || "cash", paystack_ref: paystackRef || null,
+      order_id:               orderId               || null,
+      tailor_id:              tailor.id,
+      amount,
+      method:                 method                || "cash",
+      paystack_ref:           paystackRef           || null,
+      virtual_account_number: virtualAccountNumber  || null,
+      sender_name:            senderName            || null,
+      transfer_code:          transferCode          || null,
     });
+  },
+
+  // ── Update wallet balance (called after webhook confirms payment) ─
+  async updateWalletBalance(delta) {
+    const client = await getBrowserClient();
+    if (!client) return;
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return;
+    const { data: tailor } = await client.from("tailors").select("id,wallet_balance").eq("user_id", user.id).single();
+    if (!tailor) return;
+    const newBalance = Math.max(0, (parseFloat(tailor.wallet_balance) || 0) + delta);
+    await client.from("tailors").update({ wallet_balance: newBalance }).eq("id", tailor.id);
+    // Update localStorage cache
+    const cached = ls("boss_tailor", {});
+    lsSet("boss_tailor", { ...cached, wallet_balance: newBalance });
+    return newBalance;
+  },
+
+  // ── Delete a single order (used by OrderDetailFlow) ──────────────
+  async deleteOrder(orderId) {
+    const client = await getBrowserClient();
+    if (!client) return;
+    await client.from("orders").delete().eq("id", orderId);
   },
 };
 
