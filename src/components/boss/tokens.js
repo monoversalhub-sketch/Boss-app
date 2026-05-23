@@ -1,0 +1,150 @@
+// src/components/boss/tokens.js
+// ─────────────────────────────────────────────────────────────────
+//  T-09: Design tokens, constants, and global styles
+//  Extracted from BOSSApp.jsx to reduce file size and improve
+//  tree-shakability. Import what you need.
+// ─────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────
+// APP DATA CONSTANTS
+// ─────────────────────────────────────────
+export const CLOTH_TYPES = [
+  "Senator","Kaftan","Agbada","Gown","Buba & Skirt",
+  "Suit","Dress","Trousers & Shirt","Ankara Set","Jalabiya","Other",
+];
+export const MEAS_FIELDS = [
+  { k:"chest",    l:"Chest"    },{ k:"waist",   l:"Waist"   },
+  { k:"hip",      l:"Hip"      },{ k:"shoulder",l:"Shoulder"},
+  { k:"sleeve",   l:"Sleeve"   },{ k:"inseam",  l:"Inseam"  },
+  { k:"length",   l:"Length"   },{ k:"neck",    l:"Neck"    },
+];
+// U-23: 3 statuses (removed "Pending" — tailors start work immediately)
+export const STATUSES = ["In Progress","Ready","Delivered"];
+
+export const SERVICE_FEE = 75; // ₦75 per completed order (BOSS platform fee)
+export const VAT_RATE    = 0.075; // Nigerian VAT 7.5%
+
+export const NG_BANKS = [
+  {name:"Access Bank",code:"044"},{name:"Fidelity Bank",code:"070"},
+  {name:"First Bank of Nigeria",code:"011"},{name:"First City Monument Bank",code:"214"},
+  {name:"Guaranty Trust Bank",code:"058"},{name:"Heritage Bank",code:"030"},
+  {name:"Keystone Bank",code:"082"},{name:"Polaris Bank",code:"076"},
+  {name:"Stanbic IBTC Bank",code:"221"},{name:"Sterling Bank",code:"232"},
+  {name:"Union Bank",code:"032"},{name:"United Bank for Africa",code:"033"},
+  {name:"Unity Bank",code:"215"},{name:"Wema Bank",code:"035"},
+  {name:"Zenith Bank",code:"057"},{name:"Kuda Bank",code:"090267"},
+  {name:"Opay",code:"100004"},{name:"Palmpay",code:"100033"},
+  {name:"Moniepoint MFB",code:"090405"},{name:"Carbon",code:"565"},
+];
+
+export const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// ─────────────────────────────────────────
+// APP URL — builds public invoice links
+// ─────────────────────────────────────────
+export const APP_URL =
+  (typeof process !== "undefined" &&
+   process.env?.NEXT_PUBLIC_APP_URL &&
+   process.env.NEXT_PUBLIC_APP_URL !== "undefined"
+    ? process.env.NEXT_PUBLIC_APP_URL
+    : null) ||
+  (typeof window !== "undefined" ? window.location.origin : "https://boss-app-nine.vercel.app");
+
+// ─────────────────────────────────────────
+// DESIGN TOKENS
+// ─────────────────────────────────────────
+export const C = {
+  bg:"#F5F5F7", s1:"#FFFFFF", s2:"#F4F4F5", s3:"#E4E4E7", s4:"#D4D4D8",
+  accent:"#0066CC",
+  // gold/goldDim/goldGlow REMOVED — all UI uses C.accent (correct token)
+  red:"#FF3B30",   redDim:"rgba(255,59,48,0.08)",
+  green:"#34C759", greenDim:"rgba(52,199,89,0.08)",
+  amber:"#FF9F0A", amberDim:"rgba(255,159,10,0.08)",
+  text:"#111111", sub:"#8E8E93", muted:"#A1A1AA", subLight:"#A1A1AA",
+  border:"#E5E5EA", border2:"#E4E4E7",
+  dark:"#1A1A1A",
+};
+
+export const S = {
+  card: {
+    backgroundColor:C.s1,
+    borderRadius:20,
+    padding:20,
+    boxShadow:"0 4px 12px rgba(0,0,0,0.03)",
+    border:"1px solid #E5E5EA",
+    boxSizing:"border-box",
+  },
+  input: {
+    width:"100%",
+    padding:"16px",
+    backgroundColor:"#F4F4F5",
+    border:"1px solid #E4E4E7",
+    borderRadius:12,
+    fontSize:15,
+    fontWeight:500,
+    color:C.text,
+    outline:"none",
+    WebkitAppearance:"none",
+    fontFamily:"inherit",
+    boxSizing:"border-box",
+  },
+  label: {
+    fontSize:12,
+    fontWeight:700,
+    color:"#A1A1AA",
+    display:"block",
+    marginBottom:8,
+    letterSpacing:"0.2px",
+  },
+  btn: {
+    width:"100%",
+    padding:"16px",
+    borderRadius:12,
+    fontSize:15,
+    fontWeight:700,
+    border:"none",
+    cursor:"pointer",
+    letterSpacing:"-0.1px",
+    transition:"transform 0.12s,opacity 0.12s",
+    fontFamily:"inherit",
+    display:"flex",
+    alignItems:"center",
+    justifyContent:"center",
+    gap:8,
+  },
+};
+
+// ─────────────────────────────────────────
+// GLOBAL CSS STRING
+// ─────────────────────────────────────────
+export const GLOBAL_CSS = `
+  @keyframes bossIn  { from{opacity:0;transform:scale(0.5) rotate(-6deg)} to{opacity:1;transform:scale(1) rotate(0)} }
+  @keyframes fadeUp  { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
+  @keyframes fillBar { from{width:0} to{width:100%} }
+  @keyframes pulse   { 0%,100%{opacity:0.4;transform:scale(1)} 50%{opacity:0.8;transform:scale(1.05)} }
+  @keyframes slideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:none} }
+  @keyframes toast   { 0%{opacity:0;transform:translateX(-50%) translateY(6px)} 15%{opacity:1;transform:translateX(-50%) translateY(0)} 80%{opacity:1} 100%{opacity:0;transform:translateX(-50%) translateY(6px)} }
+  @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+
+  html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:#F5F5F7}
+  #__next,#boss-root{height:100%;display:flex;flex-direction:column;overflow:hidden}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+  ::-webkit-scrollbar{width:0}
+  input,select,textarea,button{font-family:'Plus Jakarta Sans',sans-serif}
+  body{font-family:'Plus Jakarta Sans',sans-serif;background:#F5F5F7;color:#1C1C1E}
+
+  .anim-boss  {animation:bossIn  0.6s cubic-bezier(0.34,1.56,0.64,1) both}
+  .anim-up1   {animation:fadeUp  0.5s 0.3s both;opacity:0}
+  .anim-up2   {animation:fadeUp  0.5s 0.5s both;opacity:0}
+  .anim-up3   {animation:fadeUp  0.5s 0.7s both;opacity:0}
+  .anim-fill  {animation:fillBar 2.2s 0.8s ease-in-out forwards}
+  .anim-slide {animation:slideUp 0.35s cubic-bezier(0.32,0.72,0,1) both}
+  .anim-toast {animation:toast   3s ease forwards}
+  .scrollable {overflow-y:auto;-webkit-overflow-scrolling:touch;height:100%}
+  .tap{transition:transform 0.12s,opacity 0.12s;cursor:pointer}
+  .tap:active{transform:scale(0.97);opacity:0.9}
+
+  .pill-active{background:#1C1C1E!important;color:#fff!important}
+  .pill-inactive{background:#EBEBEB!important;color:#8E8E93!important}
+`;
