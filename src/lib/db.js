@@ -32,21 +32,21 @@ async function getBrowserClient() {
   return _browserClient;
 }
 
-  // ── Sync status callback (registered by BOSSApp.jsx) ───────────────
-  let _syncCallback = null;
+// ── Sync status callback (registered by BOSSApp.jsx) ───────────────
+let _syncCallback = null;
 
-  // ── Auth via API routes (server proxies to Supabase) ─────────────
-  async function authFetch(path, body = null, extraHeaders = {}) {
-    const res = await fetch(path, {
-      method: body ? "POST" : "GET",
-      headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...extraHeaders },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return res.json();
-  }
+// ── Auth via API routes (server proxies to Supabase) ─────────────
+async function authFetch(path, body = null, extraHeaders = {}) {
+  const res = await fetch(path, {
+    method: body ? "POST" : "GET",
+    headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...extraHeaders },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res.json();
+}
 
-  // ── Recompute and persist BOSS Trust Score ────────────────────────
-  async function updateBosScore(tailorId) {
+// ── Recompute and persist BOSS Trust Score ────────────────────────
+async function updateBosScore(tailorId) {
     try {
       const client = await getBrowserClient();
       const { data: orders } = await client
@@ -159,7 +159,6 @@ async function getBrowserClient() {
     lsSet("boss_session", null);
     lsSet("boss_tailor", null);
     lsSet("boss_customers", null);
-    // MISSING-10: x-boss-request header for CSRF protection on logout
     await authFetch("/api/auth/logout", {}, { "x-boss-request": "1" });
   },
 
@@ -294,7 +293,7 @@ async function getBrowserClient() {
   // Use these for status changes, payment recording, measurements.
   // Only writes the fields that actually changed.
   async updateOrder(orderId, patch) {
-    // Update localStorage cache
+    // Update localStorage cache optimistically
     const cached = ls("boss_customers", []);
     const updated = cached.map(c => ({
       ...c,
@@ -321,12 +320,14 @@ async function getBrowserClient() {
       }
     } catch (e) {
       console.error("[db.updateOrder]", e);
+      // Rollback localStorage to pre-mutation state
+      lsSet("boss_customers", cached);
       _syncCallback?.("error");
     }
   },
 
   async updateCustomer(customerId, patch) {
-    // Update localStorage cache
+    // Update localStorage cache optimistically
     const cached = ls("boss_customers", []);
     const updated = cached.map(c =>
       c.id === customerId ? { ...c, ...patch } : c
@@ -347,6 +348,8 @@ async function getBrowserClient() {
       }
     } catch (e) {
       console.error("[db.updateCustomer]", e);
+      // Rollback localStorage to pre-mutation state
+      lsSet("boss_customers", cached);
       _syncCallback?.("error");
     }
   },
@@ -384,6 +387,7 @@ async function getBrowserClient() {
           })
           .catch(compErr => console.warn("[db.recordPayment] compensation delete network error — orphan row:", insertedId, compErr));
       }
+      throw e; // rethrow so caller's catch fires for snapshot rollback
     }
   },
 

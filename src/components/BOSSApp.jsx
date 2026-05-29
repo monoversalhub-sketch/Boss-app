@@ -19,6 +19,10 @@ import { SplashScreen, AuthScreen, SetupScreen } from "./boss/tabs";
 import { TodayTab, CustomersTab, EarningsTab, ProfileTab } from "./boss/tabs";
 import { AddOrderFlow, OrderDetailFlow, CustomerDetailFlow, RemindersFlow, AddClientFlow } from "./boss/flows";
 
+// ── Constants & pure helpers (defined outside component) ─────────────
+const PRIORITY = ["syncing", "error", "offline", "connected", "saved", "idle"];
+const rank = s => PRIORITY.indexOf(s);
+
 // ── Nav icons — defined outside component to avoid recreation on every render
 const IconHome    = ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
 const IconClients = ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
@@ -89,10 +93,15 @@ function BOSSApp(){
   function openCustomerDetail(cid){setCustomerDetailId(cid);}
   async function handleSetupComplete(t){setTailorState(t);setCustomersState([]);setScreen("app");}
   async function handleAuthSuccess(){
-    const t=await db.getTailor();
-    const c=await db.getCustomers();
-    setTailorState(t);setCustomersState(c||[]);
-    setScreen(t?"app":"setup");
+    try{
+      const t=await db.getTailor();
+      const c=await db.getCustomers();
+      setTailorState(t);setCustomersState(c||[]);
+      setScreen(t?"app":"setup");
+    }catch(e){
+      console.error("[BOSS] handleAuthSuccess error:",e);
+      toast("Connection error — pull down to retry");
+    }
   }
 
   const[actionSheetOpen,setActionSheetOpen]=useState(false);
@@ -109,9 +118,11 @@ function BOSSApp(){
   const reportConnected=useCallback(()=>{clearTimeout(networkTimerRef.current);setNetStatus("connected");networkTimerRef.current=setTimeout(()=>setNetStatus("idle"),1500);},[]);
   const reportOffline=useCallback(()=>{clearTimeout(syncTimerRef.current);clearTimeout(networkTimerRef.current);setNetStatus("offline");},[]);
 
-  const PRIORITY=["syncing","error","offline","connected","saved","idle"];
-  const rank=s=>PRIORITY.indexOf(s);
-  const statusDisplay=[syncStatus,netStatus==="offline"?"offline":netStatus].reduce((best,c)=>c==="idle"?best:rank(c)<rank(best)?c:best,"idle");
+  const statusDisplay = useMemo(() =>
+    [syncStatus, netStatus === "offline" ? "offline" : netStatus]
+      .reduce((best, c) => c === "idle" ? best : rank(c) < rank(best) ? c : best, "idle"),
+    [syncStatus, netStatus],
+  );
 
   // Register sync callback with db, and track browser network state
   // Empty dep array is correct — refs and useCallback fns are stable
