@@ -2,7 +2,7 @@
 // src/components/boss/flows.jsx — Full-screen flows
 // AddOrderFlow, OrderDetailFlow, CustomerDetailFlow,
 // RemindersFlow, AddClientFlow
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { C, S, CLOTH_TYPES, STATUSES, MEAS_FIELDS } from "./tokens";
 import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, allOrders, orderStatus, waLink, buildReceiptText, buildReminderMsg, buildInvoiceLinkMsg, invoiceUrl } from "./helpers";
 import { useBOSS } from "./context";
@@ -20,20 +20,21 @@ export function AddOrderFlow({open,onClose,prefilledCid}){
   const[deposit,setDeposit]=useState("");const[date,setDate]=useState("");
   const[notes,setNotes]=useState("");const[matches,setMatches]=useState([]);
   const[showCalc,setShowCalc]=useState(false);
-  const[isSaving,setIsSaving]=useState(false); // FIX-6: guard against double-tap duplicates
+  const[isSaving,setIsSaving]=useState(false);
+  const savingRef=useRef(false); // FIX-6: synchronous guard against double-tap duplicates
   // Auto-receipt state
   const[receiptPrompt,setReceiptPrompt]=useState(null); // {order, customer}
   useEffect(()=>{
     if(open){const p=customers.find(c=>c.id===prefilledCid);
-      setName(p?.name||"");setPhone(p?.phone||"");setType("");setPrice("");setDeposit("");setDate("");setNotes("");setMatches([]);setShowCalc(false);setIsSaving(false);}
+      setName(p?.name||"");setPhone(p?.phone||"");setType("");setPrice("");setDeposit("");setDate("");setNotes("");setMatches([]);setShowCalc(false);setIsSaving(false);savingRef.current=false;}
   },[open,prefilledCid]);
   function onNameChange(v){setName(v);if(v.length<1){setMatches([]);return;}setMatches(customers.filter(c=>c.name.toLowerCase().includes(v.toLowerCase())).slice(0,5));}
   function pickExisting(c){setName(c.name);setPhone(c.phone||"");setMatches([]);}
   async function save(){
-    if(isSaving) return; // FIX-6: block double-tap
+    if(savingRef.current) return; // FIX-6: block double-tap with synchronous ref
     if(!name.trim()){toast("⚠️ Enter customer name");return;}
     if(!date){toast("⚠️ Set a delivery date");return;}
-    setIsSaving(true);
+    savingRef.current=true;setIsSaving(true);
     try{
       const order={id:uid(),type,price:parseFloat(price)||0,deposit:parseFloat(deposit)||0,paid:0,date,notes,status:"In Progress",createdAt:new Date().toISOString()};
       const next=[...customers];
@@ -74,7 +75,7 @@ export function AddOrderFlow({open,onClose,prefilledCid}){
       console.error("[AddOrderFlow save]",e);
       toast("❌ Could not save. Try again.");
     }finally{
-      setIsSaving(false);
+      savingRef.current=false;setIsSaving(false);
     }
   }
 
@@ -82,12 +83,7 @@ export function AddOrderFlow({open,onClose,prefilledCid}){
     if(!receiptPrompt)return;
     const{order,customer}=receiptPrompt;
     const shop=tailor?.shop||"BOSS Shop";
-    const va=tailor?.virtual_account_number?{
-      number:tailor.virtual_account_number,
-      bank:tailor.virtual_bank_name||"Wema Bank",
-      name:tailor.virtual_account_name||shop,
-    }:null;
-    const msg=buildReceiptText(order,customer,shop,va);
+    const msg=buildReceiptText(order,customer,shop,null);
     window.open(waLink(customer.phone,msg),"_blank");
     setReceiptPrompt(null);
     onClose();toast("✅ Order saved + receipt sent!");
@@ -433,6 +429,7 @@ export function CustomerDetailFlow({open,onClose,customerId,onAddOrder,onOpenOrd
   const[editName,setEditName]=useState("");
   const[editPhone,setEditPhone]=useState("");
   const[saving,setSaving]=useState(false);
+  const saveEditRef=useRef(false); // FIX-6: prevent double-tap
   const[confirmDel,setConfirmDel]=useState(false);
   const[deleting,setDeleting]=useState(false);
 
@@ -448,14 +445,22 @@ export function CustomerDetailFlow({open,onClose,customerId,onAddOrder,onOpenOrd
   const outstanding=orders.reduce((s,o)=>s+getBalance(o),0);
 
   async function saveEdit(){
+    if(saveEditRef.current) return;
     if(!editName.trim()){toast("⚠️ Name cannot be empty");return;}
-    setSaving(true);
-    const patch={name:editName.trim(),phone:editPhone.trim()};
-    const next=customers.map(c=>c.id===customerId?{...c,...patch}:c);
-    setCustomers(next);
-    await db.updateCustomer(customerId,patch);
-    setSaving(false);setEditing(false);
-    toast("✅ Customer updated");
+    saveEditRef.current=true;setSaving(true);
+    try{
+      const patch={name:editName.trim(),phone:editPhone.trim()};
+      const next=customers.map(c=>c.id===customerId?{...c,...patch}:c);
+      setCustomers(next);
+      await db.updateCustomer(customerId,patch);
+      setEditing(false);
+      toast("✅ Customer updated");
+    }catch(e){
+      console.error("[CustomerDetailFlow saveEdit]",e);
+      toast("❌ Update failed. Try again.");
+    }finally{
+      saveEditRef.current=false;setSaving(false);
+    }
   }
 
   async function deleteCustomer(){
@@ -621,14 +626,15 @@ export function AddClientFlow({open,onClose,onDone}){
   const[phone,setPhone]=useState("");
   const[gender,setGender]=useState("female");
   const[meas,setMeas]=useState({});
-  const[isSaving,setIsSaving]=useState(false); // FIX-6: prevent double-tap duplicates
+  const[isSaving,setIsSaving]=useState(false);
+  const savingRef=useRef(false); // FIX-6: synchronous guard against double-tap duplicates
 
-  useEffect(()=>{if(open){setName("");setPhone("");setGender("female");setMeas({});setIsSaving(false);}},[open]);
+  useEffect(()=>{if(open){setName("");setPhone("");setGender("female");setMeas({});setIsSaving(false);savingRef.current=false;}},[open]);
 
   async function save(){
-    if(isSaving) return;
+    if(savingRef.current) return;
     if(!name.trim()){toast("⚠️ Enter client name");return;}
-    setIsSaving(true);
+    savingRef.current=true;setIsSaving(true);
     try{
       const c={id:uid(),name:name.trim(),phone:phone.trim(),gender,measurements:meas,orders:[],createdAt:new Date().toISOString()};
       const next=[c,...customers];
@@ -647,7 +653,7 @@ export function AddClientFlow({open,onClose,onDone}){
       console.error("[AddClientFlow save]",e);
       toast("❌ Could not save. Try again.");
     }finally{
-      setIsSaving(false);
+      savingRef.current=false;setIsSaving(false);
     }
   }
 

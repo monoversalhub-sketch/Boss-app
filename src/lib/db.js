@@ -32,21 +32,106 @@ async function getBrowserClient() {
   return _browserClient;
 }
 
-// ── Auth via API routes (server proxies to Supabase) ─────────────
-async function authFetch(path, body = null, extraHeaders = {}) {
-  const res = await fetch(path, {
-    method: body ? "POST" : "GET",
-    headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...extraHeaders },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return res.json();
-}
+  // ── Sync status callback (registered by BOSSApp.jsx) ───────────────
+  let _syncCallback = null;
 
-// ── Public API ────────────────────────────────────────────────────
-export const db = {
+  // ── Auth via API routes (server proxies to Supabase) ─────────────
+  async function authFetch(path, body = null, extraHeaders = {}) {
+    const res = await fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...extraHeaders },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return res.json();
+  }
+
+  // ── Recompute and persist BOSS Trust Score ────────────────────────
+  async function updateBosScore(tailorId) {
+    try {
+      const client = await getBrowserClient();
+      const { data: orders } = await client
+        .from("orders")
+        .select("id, price, deposit, paid, status, delivery_date, customer_id")
+        .eq("tailor_id", tailorId);
+
+      if (!orders?.length) {
+        await client.from("tailors")
+          .update({ bos_score: 0, bos_score_updated_at: new Date().toISOString() })
+          .eq("id", tailorId);
+        return;
+      }
+
+      const total          = orders.length;
+      const delivered      = orders.filter(o => o.status === "Delivered").length;
+      const completionRate = total > 0 ? delivered / total : 0;
+
+      const ordersByCustomer = {};
+      orders.forEach(o => {
+        ordersByCustomer[o.customer_id] = (ordersByCustomer[o.customer_id] || 0) + 1;
+      });
+      const uniqueCustomers = Object.keys(ordersByCustomer).length;
+      const repeatCustomers = Object.values(ordersByCustomer).filter(c => c > 1).length;
+      const repeatRate      = uniqueCustomers > 0 ? repeatCustomers / uniqueCustomers : 0;
+
+      const fullyPaid      = orders.filter(o =>
+        o.status === "Delivered" &&
+        ((parseFloat(o.price) || 0) - (parseFloat(o.deposit) || 0) - (parseFloat(o.paid) || 0)) <= 0
+      ).length;
+      const paymentRate    = delivered > 0 ? fullyPaid / delivered : 0;
+
+      const revenue        = orders.reduce((s, o) => s + (parseFloat(o.deposit) || 0) + (parseFloat(o.paid) || 0), 0);
+      const revenueScore   = Math.min(1, (total > 0 ? revenue / total : 0) / 50000);
+
+      const now            = new Date();
+      const overdue        = orders.filter(o =>
+        o.status !== "Delivered" && o.delivery_date && new Date(o.delivery_date) < now
+      ).length;
+      const penalty        = Math.min(0.3, overdue * 0.05);
+
+      const raw   = (completionRate * 30) + (repeatRate * 25) + (paymentRate * 25) + (revenueScore * 20) - (penalty * 100);
+      const score = Math.max(0, Math.min(100, Math.round(raw)));
+
+      await client.from("tailors")
+        .update({ bos_score: score, bos_score_updated_at: new Date().toISOString() })
+        .eq("id", tailorId);
+
+      client.from("bos_score_history").insert({
+        tailor_id:       tailorId,
+        score,
+        computed_at:     new Date().toISOString(),
+        order_count:     total,
+        completion_rate: Math.round(completionRate * 100),
+        repeat_rate:     Math.round(repeatRate * 100),
+        payment_rate:    Math.round(paymentRate * 100),
+        overdue_count:   overdue,
+      }).then(({ error: histErr }) => {
+        if (histErr) console.warn("[db.updateBosScore] bos_score_history insert (non-fatal):", histErr.message);
+      });
+
+      console.log("[db.updateBosScore] BOSS Score:", score, "for tailor", tailorId);
+    } catch (err) {
+      console.error("[db.updateBosScore] error:", err);
+      throw err; // propagate to caller's catch block so _syncCallback("error") fires
+    }
+  }
+
+  // ── Public API ────────────────────────────────────────────────────
+  export const db = {
+
+    setSyncCallback(fn) { _syncCallback = fn; },
 
   // ── Auth ─────────────────────────────────────────────────────────
-  async signUpWithPassword(email, password) {
+    async signInWithGoogle() {
+      const client = await getBrowserClient();
+      const { data, error } = await client.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) return { error: { message: error.message } };
+      return { data, error: null };
+    },
+
+    async signUpWithPassword(email, password) {
     const data = await authFetch("/api/auth/signup", { email, password });
     if (data.error) return { error: { message: data.error } };
     return { data: { session: data.session, needsConfirmation: data.needsConfirmation }, error: null };
@@ -86,7 +171,7 @@ export const db = {
       if (authError || !authData?.user) return null;
       const { data } = await client
         .from("tailors")
-        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,virtual_account_number,virtual_bank_name,virtual_account_name,virtual_account_status,paystack_customer_code,bos_score,bos_score_updated_at,wallet_balance")
+        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at")
         .eq("user_id", authData.user.id)
         .single();
       if (data) lsSet("boss_tailor", data);
@@ -114,15 +199,13 @@ export const db = {
       if (profile.bank_code            !== undefined) payload.bank_code            = profile.bank_code            || null;
       if (profile.account_number       !== undefined) payload.account_number       = profile.account_number       || null;
       if (profile.account_name         !== undefined) payload.account_name         = profile.account_name         || null;
-      if (profile.virtual_account_number  !== undefined) payload.virtual_account_number  = profile.virtual_account_number  || null;
-      if (profile.virtual_bank_name       !== undefined) payload.virtual_bank_name       = profile.virtual_bank_name       || null;
-      if (profile.virtual_account_name    !== undefined) payload.virtual_account_name    = profile.virtual_account_name    || null;
-      if (profile.virtual_account_status  !== undefined) payload.virtual_account_status  = profile.virtual_account_status  || "inactive";
-      if (profile.paystack_customer_code  !== undefined) payload.paystack_customer_code  = profile.paystack_customer_code  || null;
-      if (profile.wallet_balance          !== undefined) payload.wallet_balance          = profile.wallet_balance          ?? 0;
+
+      _syncCallback?.("syncing");
       await client.from("tailors").upsert(payload, { onConflict: "user_id" });
+      _syncCallback?.("saved");
     } catch (e) {
       console.error("[db.setTailor]", e);
+      _syncCallback?.("error");
     }
   },
 
@@ -189,6 +272,7 @@ export const db = {
           installment_history: o.installmentHistory || [],
         }))
       );
+      _syncCallback?.("syncing");
       if (customerPayloads.length > 0) {
         const { error: custErr } = await client.from("customers").upsert(customerPayloads, { onConflict: "id" });
         if (custErr) throw custErr;
@@ -197,9 +281,11 @@ export const db = {
         const { error: ordErr } = await client.from("orders").upsert(orderPayloads, { onConflict: "id" });
         if (ordErr) throw ordErr;
       }
+      _syncCallback?.("saved");
       return { ok: true };
     } catch (e) {
       console.error("[db.setCustomers]", e);
+      _syncCallback?.("error");
       return { ok: false, error: e };
     }
   },
@@ -228,10 +314,14 @@ export const db = {
       if (patch.notes              !== undefined) dbPatch.notes              = patch.notes;
       if (patch.date               !== undefined) dbPatch.delivery_date      = patch.date;
       if (Object.keys(dbPatch).length > 0) {
-        await client.from("orders").update(dbPatch).eq("id", orderId);
+        _syncCallback?.("syncing");
+        const { error } = await client.from("orders").update(dbPatch).eq("id", orderId);
+        if (error) throw error;
+        _syncCallback?.("saved");
       }
     } catch (e) {
       console.error("[db.updateOrder]", e);
+      _syncCallback?.("error");
     }
   },
 
@@ -250,95 +340,63 @@ export const db = {
       if (patch.measurements !== undefined) dbPatch.measurements = patch.measurements;
       if (patch.notes        !== undefined) dbPatch.notes        = patch.notes;
       if (Object.keys(dbPatch).length > 0) {
-        await client.from("customers").update(dbPatch).eq("id", customerId);
+        _syncCallback?.("syncing");
+        const { error } = await client.from("customers").update(dbPatch).eq("id", customerId);
+        if (error) throw error;
+        _syncCallback?.("saved");
       }
     } catch (e) {
       console.error("[db.updateCustomer]", e);
+      _syncCallback?.("error");
     }
   },
 
-  async recordPayment({ orderId, amount, method, paystackRef, virtualAccountNumber, senderName, transferCode }) {
+  async recordPayment({ orderId, amount, method, paystackRef, senderName }) {
+    let client;
+    let insertedId = null;
     try {
-      const client = await getBrowserClient();
+      client = await getBrowserClient();
       const { data: authData } = await client.auth.getUser();
       if (!authData?.user) return;
       const { data: tailor } = await client.from("tailors").select("id").eq("user_id", authData.user.id).single();
       if (!tailor) return;
-      await client.from("payments").insert({
-        order_id:               orderId               || null,
-        tailor_id:              tailor.id,
+      _syncCallback?.("syncing");
+      const { data, error } = await client.from("payments").insert({
+        order_id:     orderId     || null,
+        tailor_id:    tailor.id,
         amount,
-        method:                 method                || "cash",
-        paystack_ref:           paystackRef           || null,
-        virtual_account_number: virtualAccountNumber  || null,
-        sender_name:            senderName            || null,
-        transfer_code:          transferCode          || null,
-      });
+        method:       method      || "cash",
+        paystack_ref: paystackRef || null,
+        sender_name:  senderName  || null,
+      }).select("id").single();
+      if (error) throw error;
+      insertedId = data.id;
+      await updateBosScore(tailor.id);
+      _syncCallback?.("saved");
     } catch (e) {
       console.error("[db.recordPayment]", e);
+      _syncCallback?.("error");
+      // Compensation: best-effort delete of orphan payment row
+      if (insertedId && client) {
+        client.from("payments").delete().eq("id", insertedId)
+          .then(({ error: compErr }) => {
+            if (compErr) console.warn("[db.recordPayment] compensation delete failed — orphan row:", insertedId, compErr);
+          })
+          .catch(compErr => console.warn("[db.recordPayment] compensation delete network error — orphan row:", insertedId, compErr));
+      }
     }
   },
 
   async deleteOrder(orderId) {
     try {
       const client = await getBrowserClient();
-      await client.from("orders").delete().eq("id", orderId);
+      _syncCallback?.("syncing");
+      const { error } = await client.from("orders").delete().eq("id", orderId);
+      if (error) throw error;
+      _syncCallback?.("saved");
     } catch (e) {
       console.error("[db.deleteOrder]", e);
-    }
-  },
-
-  async updateWalletBalance(delta) {
-    try {
-      const client = await getBrowserClient();
-      const { data: authData } = await client.auth.getUser();
-      if (!authData?.user) return;
-      const { data: tailor } = await client.from("tailors").select("id,wallet_balance").eq("user_id", authData.user.id).single();
-      if (!tailor) return;
-      const newBalance = Math.max(0, (parseFloat(tailor.wallet_balance) || 0) + delta);
-      await client.from("tailors").update({ wallet_balance: newBalance }).eq("id", tailor.id);
-      const cached = ls("boss_tailor", {});
-      lsSet("boss_tailor", { ...cached, wallet_balance: newBalance });
-      return newBalance;
-    } catch (e) {
-      console.error("[db.updateWalletBalance]", e);
-    }
-  },
-  // MISSING-02: Unmatched payments — transfers received but not auto-matched to an order
-  async getUnmatchedPayments() {
-    try {
-      const client = await getBrowserClient();
-      const { data: authData } = await client.auth.getUser();
-      if (!authData?.user) return [];
-      const { data: tailor } = await client.from("tailors").select("id").eq("user_id", authData.user.id).single();
-      if (!tailor) return [];
-      const { data } = await client
-        .from("payments")
-        .select("id, amount, sender_name, recorded_at, method, virtual_account_number")
-        .eq("tailor_id", tailor.id)
-        .is("order_id", null)
-        .neq("method", "withdrawal")
-        .order("recorded_at", { ascending: false });
-      return data || [];
-    } catch (e) {
-      console.error("[db.getUnmatchedPayments]", e);
-      return [];
-    }
-  },
-
-  async matchPaymentToOrder(paymentId, orderId, amount) {
-    try {
-      const client = await getBrowserClient();
-      const { error: pErr } = await client.from("payments").update({ order_id: orderId }).eq("id", paymentId);
-      if (pErr) throw pErr;
-      const { data: order } = await client.from("orders").select("paid").eq("id", orderId).single();
-      const newPaid = (parseFloat(order?.paid) || 0) + amount;
-      const { error: oErr } = await client.from("orders").update({ paid: newPaid }).eq("id", orderId);
-      if (oErr) throw oErr;
-      return { ok: true };
-    } catch (e) {
-      console.error("[db.matchPaymentToOrder]", e);
-      return { ok: false, error: e };
+      _syncCallback?.("error");
     }
   },
 
@@ -356,15 +414,18 @@ export const db = {
   async addCustomer(customer, tailorId) {
     try {
       const client = await getBrowserClient();
+      _syncCallback?.("syncing");
       const { error } = await client.from("customers").insert({
         id: customer.id, tailor_id: tailorId, name: customer.name,
         phone: customer.phone || "", gender: customer.gender || "female",
         measurements: customer.measurements || {}, notes: customer.notes || "",
       });
       if (error) throw error;
+      _syncCallback?.("saved");
       return { ok: true };
     } catch (e) {
       console.error("[db.addCustomer]", e);
+      _syncCallback?.("error");
       return { ok: false, error: e };
     }
   },
@@ -372,6 +433,7 @@ export const db = {
   async addOrder(order, customerId, tailorId) {
     try {
       const client = await getBrowserClient();
+      _syncCallback?.("syncing");
       const { error } = await client.from("orders").insert({
         id: order.id, customer_id: customerId, tailor_id: tailorId,
         type: order.type || "", price: order.price || 0, deposit: order.deposit || 0,
@@ -380,9 +442,11 @@ export const db = {
         installment_history: order.installmentHistory || [],
       });
       if (error) throw error;
+      _syncCallback?.("saved");
       return { ok: true };
     } catch (e) {
       console.error("[db.addOrder]", e);
+      _syncCallback?.("error");
       return { ok: false, error: e };
     }
   },

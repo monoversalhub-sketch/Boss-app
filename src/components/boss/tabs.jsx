@@ -1,10 +1,10 @@
 "use client";
 // src/components/boss/tabs.jsx — Tab screens
-// SmartPricingCalculator, TodayTab, CustomersTab, WalletTab,
+// SmartPricingCalculator, TodayTab, CustomersTab, EarningsTab,
 // ProfileTab, AuthScreen, SetupScreen, SplashScreen
 import { useState, useEffect, useMemo, useId, useRef, useCallback } from "react";
 import { C, S, CLOTH_TYPES, NG_BANKS, SERVICE_FEE, VAT_RATE } from "./tokens";
-import { uid, fmt, fmtDate, getBalance, getTotalPaid, getNetEarning, getServiceFee, getPaymentState, allOrders, orderStatus, isOverdue, isDueToday, waLink, buildReminderMsg, invoiceUrl, computeTrustScore } from "./helpers";
+import { uid, fmt, fmtDate, getBalance, getTotalPaid, getNetEarning, getServiceFee, getPaymentState, allOrders, orderStatus, isOverdue, isDueToday, waLink, buildReminderMsg, invoiceUrl, computeTrustScore, computeEarnings } from "./helpers";
 import { useBOSS } from "./context";
 import { Btn, Input, Select, Textarea, Sheet, SectionLabel, EmptyState, SkeletonCard } from "./ui";
 import { TrustScoreCard, TrustScoreSheet, TodayMoneyCard, OrderCard } from "./cards";
@@ -291,9 +291,6 @@ export function CustomersTab({onOpenCustomer}){
 // AUTH SCREEN — Email + OAuth
 // ─────────────────────────────────────────
 export function AuthScreen({onAuthSuccess}){
-  const[mode,setMode]=useState("login"); // login | signup | forgot | verify | forgot-sent
-  const[email,setEmail]=useState("");
-  const[password,setPassword]=useState("");
   const[loading,setLoading]=useState(false);
   const[err,setErr]=useState("");
 
@@ -303,136 +300,74 @@ export function AuthScreen({onAuthSuccess}){
     });
   },[]);
 
-  async function handleLogin(){
-    if(!email.trim()||!password.trim()){setErr("Enter your email and password.");return;}
+  async function handleGoogle(){
     setLoading(true);setErr("");
     try{
-      const{data,error}=await db.signInWithPassword(email.trim(),password.trim());
-      if(error){setErr(error.message);setLoading(false);return;}
-      onAuthSuccess({email:email.trim()});
-    }catch{setErr("Something went wrong. Try again.");setLoading(false);}
+      const{error}=await db.signInWithGoogle();
+      if(error){setErr(error.message);setLoading(false);}
+    }catch{
+      setErr("Could not connect to Google. Try again.");
+      setLoading(false);
+    }
   }
-
-  async function handleSignup(){
-    if(!email.trim()||!password.trim()){setErr("Enter your email and password.");return;}
-    if(password.length<8){setErr("Password must be at least 8 characters.");return;}
-    setLoading(true);setErr("");
-    try{
-      const{data,error}=await db.signUpWithPassword(email.trim(),password.trim());
-      if(error){
-        if(error.message?.includes("already")){setMode("login");setErr("Account exists — log in instead.");}
-        else setErr(error.message);
-        setLoading(false);return;
-      }
-      if(data?.session) onAuthSuccess({email:email.trim()});
-      else{setMode("verify");setLoading(false);}
-    }catch{setErr("Something went wrong. Try again.");setLoading(false);}
-  }
-
-  async function handleForgot(){
-    if(!email.trim()){setErr("Enter your email address first.");return;}
-    setLoading(true);setErr("");
-    try{
-      await fetch("/api/auth/forgot-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email.trim()})});
-      setMode("forgot-sent");
-    }catch{setErr("Could not send reset link. Try again.");}
-    setLoading(false);
-  }
-
-  const logoBlock=(
-    <div style={{textAlign:"center",marginBottom:32}}>
-      <div style={{width:72,height:72,background:C.text,borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,fontWeight:900,color:"#fff",margin:"0 auto 14px",boxShadow:"0 8px 30px rgba(0,0,0,0.15)"}}>B</div>
-      <div style={{fontSize:28,fontWeight:900,letterSpacing:"-0.8px",color:C.text}}>BOSS</div>
-      <div style={{fontSize:12,color:C.sub,marginTop:4,letterSpacing:"1px",textTransform:"uppercase"}}>Build Trust. Grow Faster.</div>
-    </div>
-  );
-
-  // ── verify email ──
-  if(mode==="verify") return(
-    <div style={{height:"100%",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-      {logoBlock}
-      <div style={{fontSize:48,marginBottom:12}}>📧</div>
-      <div style={{fontSize:22,fontWeight:900,color:C.text,marginBottom:8,textAlign:"center"}}>Check your email</div>
-      <div style={{fontSize:14,color:C.sub,textAlign:"center",lineHeight:1.6,marginBottom:28,maxWidth:300}}>
-        We sent a link to <strong>{email}</strong>. Tap it to verify, then come back to log in.
-      </div>
-      <button className="tap" onClick={()=>setMode("login")} style={{...S.btn,background:C.text,color:"#fff",width:"auto",padding:"14px 32px"}}>Back to Login</button>
-    </div>
-  );
-
-  // ── reset link sent ──
-  if(mode==="forgot-sent") return(
-    <div style={{height:"100%",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-      {logoBlock}
-      <div style={{fontSize:48,marginBottom:12}}>🔑</div>
-      <div style={{fontSize:22,fontWeight:900,color:C.text,marginBottom:8,textAlign:"center"}}>Reset link sent</div>
-      <div style={{fontSize:14,color:C.sub,textAlign:"center",lineHeight:1.6,marginBottom:28,maxWidth:300}}>
-        Check <strong>{email}</strong> for a password reset link. It expires in 1 hour.
-      </div>
-      <button className="tap" onClick={()=>setMode("login")} style={{...S.btn,background:C.text,color:"#fff",width:"auto",padding:"14px 32px"}}>Back to Login</button>
-    </div>
-  );
 
   return(
-    <div style={{height:"100%",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Plus Jakarta Sans',sans-serif",overflowY:"auto"}}>
-      <div style={{width:"100%",maxWidth:400,paddingTop:32,paddingBottom:40}}>
-        {logoBlock}
-
-        <div style={{fontSize:20,fontWeight:800,color:C.text,marginBottom:18,letterSpacing:"-0.3px"}}>
-          {mode==="login"?"Welcome back 👋":mode==="forgot"?"Reset password":"Create account"}
+    <div style={{
+      height:"100%",background:C.bg,
+      display:"flex",flexDirection:"column",
+      alignItems:"center",justifyContent:"center",
+      padding:32,fontFamily:"'Plus Jakarta Sans',sans-serif"
+    }}>
+      {/* Logo */}
+      <div style={{textAlign:"center",marginBottom:48}}>
+        <div style={{
+          width:80,height:80,background:C.text,borderRadius:24,
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:40,fontWeight:900,color:"#fff",
+          margin:"0 auto 16px",boxShadow:"0 8px 30px rgba(0,0,0,0.15)"
+        }}>B</div>
+        <div style={{fontSize:32,fontWeight:900,letterSpacing:"-1px",color:C.text}}>BOSS</div>
+        <div style={{fontSize:13,color:C.sub,marginTop:6,letterSpacing:"1px",textTransform:"uppercase"}}>
+          Build Trust. Grow Faster.
         </div>
+      </div>
 
-        {/* Form card */}
-        <div style={{background:C.s1,borderRadius:24,padding:24,boxShadow:"0 2px 20px rgba(0,0,0,0.08)",display:"flex",flexDirection:"column",gap:14}}>
-          <Input label="Email address" value={email} onChange={e=>{setEmail(e.target.value);setErr("");}} type="email" placeholder="you@example.com" autoComplete="email"/>
-          {mode!=="forgot"&&(
-            <Input label="Password" value={password} onChange={e=>{setPassword(e.target.value);setErr("");}} type="password"
-              placeholder={mode==="login"?"Your password":"Min. 6 characters"}
-              autoComplete={mode==="login"?"current-password":"new-password"}/>
-          )}
-          {err&&<div style={{fontSize:13,color:C.red,fontWeight:500}}>{err}</div>}
-          <button className="tap"
-            onClick={mode==="login"?handleLogin:mode==="signup"?handleSignup:handleForgot}
-            disabled={loading}
-            style={{...S.btn,background:C.text,color:"#fff",opacity:loading?0.6:1}}>
-            {loading?"…":mode==="login"?"Log In →":mode==="signup"?"Create Account →":"Send Reset Link →"}
-          </button>
-          {mode==="login"&&(
-            <button className="tap" onClick={()=>{setMode("forgot");setErr("");}}
-              style={{background:"none",border:"none",fontSize:13,color:C.accent,fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"2px 0",textAlign:"center"}}>
-              Forgot password?
-            </button>
-          )}
+      {/* Google button */}
+      <button
+        className="tap"
+        onClick={handleGoogle}
+        disabled={loading}
+        style={{
+          ...S.btn,
+          background:"#fff",
+          color:"#1C1C1E",
+          border:"1.5px solid #E5E5EA",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          gap:12,fontSize:16,fontWeight:700,
+          opacity:loading?0.6:1,
+          boxShadow:"0 2px 12px rgba(0,0,0,0.08)",
+          maxWidth:320,width:"100%",
+        }}>
+        <svg width="20" height="20" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.7 2.5 30.2 0 24 0 14.7 0 6.7 5.4 2.9 13.3l7.8 6C12.4 13 17.8 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17z"/>
+          <path fill="#FBBC05" d="M10.7 28.7A14.6 14.6 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.5 10.8l8.2-6.1z"/>
+          <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.5-5.8c-2.1 1.4-4.7 2.3-7.7 2.3-6.2 0-11.5-4.2-13.3-9.8l-8.2 6.1C6.6 42.5 14.7 48 24 48z"/>
+          <path fill="none" d="M0 0h48v48H0z"/>
+        </svg>
+        {loading?"Connecting…":"Continue with Google"}
+      </button>
+
+      {/* Error */}
+      {err&&(
+        <div style={{marginTop:16,fontSize:13,color:C.red,fontWeight:500,textAlign:"center",maxWidth:280}}>
+          {err}
         </div>
+      )}
 
-        {/* Divider */}
-        {mode!=="forgot"&&(<>
-          <div style={{display:"flex",alignItems:"center",gap:10,margin:"20px 0"}}>
-            <div style={{flex:1,height:1,background:C.border2}}/>
-            <div style={{fontSize:12,color:C.muted,fontWeight:600}}>or</div>
-            <div style={{flex:1,height:1,background:C.border2}}/>
-          </div>
-
-          {/* Google + Apple OAuth */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
-            <button className="tap" onClick={()=>setErr("Google sign-in coming soon.")}
-              style={{padding:"13px",borderRadius:14,border:`1px solid ${C.border2}`,background:C.s1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:14,color:C.text}}>
-              <span style={{fontSize:18}}>🇬</span> Google
-            </button>
-            <button className="tap" onClick={()=>setErr("Apple sign-in coming soon.")}
-              style={{padding:"13px",borderRadius:14,border:`1px solid ${C.border2}`,background:C.s1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:14,color:C.text}}>
-              <span style={{fontSize:18}}>🍎</span> Apple
-            </button>
-          </div>
-        </>)}
-
-        {/* Switch mode */}
-        <div style={{textAlign:"center",marginBottom:12}}>
-          <button className="tap" onClick={()=>{setMode(mode==="login"?"signup":mode==="signup"?"login":"login");setErr("");}}
-            style={{background:"none",border:"none",fontSize:14,color:C.accent,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-            {mode==="login"?"New to BOSS? Create account":mode==="signup"?"Already have an account? Log in":"Back to Login"}
-          </button>
-        </div>
+      {/* Footer note */}
+      <div style={{position:"absolute",bottom:32,fontSize:11,color:C.muted,textAlign:"center",padding:"0 32px",lineHeight:1.6}}>
+        By continuing you agree to BOSS terms of service.{"\n"}Your Google account is used only for sign-in.
       </div>
     </div>
   );
@@ -604,304 +539,11 @@ export function SplashScreen(){
 // Per master doc: money stays in BOSS wallet, tailor withdraws
 // at their convenience. Only virtual account is shown, not real bank.
 // ─────────────────────────────────────────
-export function WalletTab({tailor}){
-  const{customers,toast}=useBOSS();
-  // MISSING-02: Unmatched payments — transfers that didn't auto-match to an order
-  const[unmatchedPayments,setUnmatchedPayments]=useState([]);
-  const[matchSheet,setMatchSheet]=useState(null); // payment to assign
-  const[matchLoading,setMatchLoading]=useState(false);
 
-  useEffect(()=>{
-    db.getUnmatchedPayments().then(setUnmatchedPayments).catch(()=>{});
-  },[tailor?.wallet_balance]); // re-fetch when wallet changes (payment arrived)
-
-  async function assignPayment(payment,order){
-    setMatchLoading(true);
-    const result=await db.matchPaymentToOrder(payment.id,order.id,payment.amount);
-    if(result.ok){
-      setUnmatchedPayments(prev=>prev.filter(p=>p.id!==payment.id));
-      setMatchSheet(null);
-      toast("✅ Payment matched to order");
-    } else {
-      toast("❌ Could not match payment. Try again.");
-    }
-    setMatchLoading(false);
-  }
-
-  // T-10: memoize all derived financial values — customers array can be large
-  const orders        = useMemo(()=>allOrders(customers),[customers]);
-  const now           = new Date();
-  const thisMonth     = useMemo(()=>orders.filter(o=>{
-    if(!o.createdAt)return false;
-    const d=new Date(o.createdAt);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
-  }),[orders]);
-  const totalRevenue  = useMemo(()=>orders.reduce((s,o)=>s+(parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0),0),[orders]);
-  const monthRevenue  = useMemo(()=>thisMonth.reduce((s,o)=>s+(parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0),0),[thisMonth]);
-  const outstanding   = useMemo(()=>orders.reduce((s,o)=>s+getBalance(o),0),[orders]);
-  const delivered     = useMemo(()=>orders.filter(o=>orderStatus(o)==="Delivered").length,[orders]);
-  // BUG-1 FIX: totalFees + totalGross were referenced in JSX but never declared — ReferenceError crash
-  const totalFees  = useMemo(()=>orders.reduce((s,o)=>s+getServiceFee(o),0),[orders]);
-  const totalGross = useMemo(()=>orders.reduce((s,o)=>s+getTotalPaid(o),0),[orders]);
-  const walletBalance=parseFloat(tailor?.wallet_balance)||0;
-  const hasVA=!!(tailor?.virtual_account_number&&tailor?.virtual_account_status==="active");
-
-  const months=[];
-  for(let i=5;i>=0;i--){
-    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    const label=d.toLocaleString("default",{month:"short"});
-    const rev=orders.filter(o=>{
-      if(!o.createdAt)return false;
-      const od=new Date(o.createdAt);return od.getMonth()===d.getMonth()&&od.getFullYear()===d.getFullYear();
-    }).reduce((s,o)=>s+(parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0),0);
-    months.push({label,rev});
-  }
-  const maxRev=Math.max(...months.map(m=>m.rev),1);
-
-  function copyVA(){
-    const num=tailor?.virtual_account_number||"";
-    const bank=tailor?.virtual_bank_name||"";
-    const name=tailor?.virtual_account_name||"";
-    if(!num)return;
-    const text=`Bank: ${bank}\nAccount Number: ${num}\nAccount Name: ${name}`;
-    navigator.clipboard?.writeText(text);
-  }
-  function shareVAWA(){
-    const num=tailor?.virtual_account_number||"";
-    const bank=tailor?.virtual_bank_name||"";
-    const name=tailor?.virtual_account_name||"";
-    if(!num)return;
-    // PAY-04: Offer BOTH payment options — bank transfer AND card via invoice.
-    // Card payments pass Paystack's fee to the customer (dashboard toggle).
-    // Bank transfers deduct Paystack's 1% from BOSS margin.
-    // Giving both options protects BOSS revenue while giving customer choice.
-    const msg=[
-      `Hello! Here are my payment details 🙏`,
-      ``,
-      `🏦 *Bank Transfer* (reflects instantly):`,
-      `Bank: *${bank}*`,
-      `Account: *${num}*`,
-      `Name: *${name}*`,
-      ``,
-      `_Powered by BOSS — Build Trust. Grow Faster._`,
-    ].join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
-  }
-
-  return(
-    <div className="scrollable" style={{flex:1,paddingBottom:100}}>
-      <div style={{padding:"24px 20px 0"}}>
-        <div style={{fontSize:13,fontWeight:600,color:C.sub,marginBottom:2}}>Overview</div>
-        <div style={{fontSize:30,fontWeight:900,letterSpacing:"-1px",color:C.text}}>Wallet</div>
-      </div>
-
-      {/* ── BOSS Wallet Balance (primary hero) ── */}
-      <div style={{padding:"16px 20px 0"}}>
-        <div style={{background:"linear-gradient(135deg,#1C1C1E,#2C2C2E)",borderRadius:24,padding:"24px 20px",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}}>
-          <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.45)",textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:6}}>
-            BOSS Wallet Balance
-          </div>
-          <div style={{fontSize:40,fontWeight:900,letterSpacing:"-2px",color:"#fff",lineHeight:1}}>
-            {fmt(walletBalance)}
-          </div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,0.35)",marginTop:6,lineHeight:1.5}}>
-            Payments received · Available to withdraw
-          </div>
-
-          {/* Withdraw — honest beta-era manual process, no alert() */}
-          <div style={{marginTop:16,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:14,padding:"14px 16px"}}>
-            <div style={{fontSize:13,fontWeight:800,color:"rgba(255,255,255,0.85)",marginBottom:6}}>💸 Withdraw to Bank</div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",lineHeight:1.6,marginBottom:10}}>
-              Withdrawals are processed manually during beta. WhatsApp us to request a transfer — we&apos;ll process it within 24 hours.
-            </div>
-            <a href="https://wa.me/2348000000000?text=Hi%20BOSS%20Support%2C%20I%20want%20to%20withdraw%20my%20wallet%20balance."
-              target="_blank" rel="noopener noreferrer"
-              style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"11px 16px",borderRadius:12,background:"rgba(37,211,102,0.15)",border:"1px solid rgba(37,211,102,0.25)",color:"#25D366",fontWeight:700,fontSize:13,fontFamily:"inherit",textDecoration:"none"}}>
-              💬 WhatsApp Support to Withdraw
-            </a>
-          </div>
-
-          {/* Earnings split */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:16}}>
-            <div style={{background:"rgba(255,255,255,0.06)",borderRadius:14,padding:"12px 14px"}}>
-              <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.4px",marginBottom:4}}>This Month</div>
-              <div style={{fontSize:20,fontWeight:900,color:C.green}}>{fmt(monthRevenue)}</div>
-            </div>
-            <div style={{background:outstanding?"rgba(255,59,48,0.15)":"rgba(255,255,255,0.06)",borderRadius:14,padding:"12px 14px",border:outstanding?"1px solid rgba(255,59,48,0.25)":"none"}}>
-              <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.4px",marginBottom:4}}>Outstanding</div>
-              <div style={{fontSize:20,fontWeight:900,color:outstanding?C.red:"rgba(255,255,255,0.4)"}}>{fmt(outstanding)}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Virtual Account card ── */}
-      <SectionLabel>Business Account Number</SectionLabel>
-      <div style={{padding:"0 20px"}}>
-        {hasVA?(
-          <div style={{...S.card}}>
-            {/* Account number display */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:C.sub,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}}>
-                  {tailor?.virtual_bank_name||"Wema Bank"}
-                </div>
-                <div style={{fontSize:26,fontWeight:900,letterSpacing:"2.5px",color:C.text,fontFamily:"monospace, monospace"}}>
-                  {tailor?.virtual_account_number||"—"}
-                </div>
-                <div style={{fontSize:13,color:C.sub,marginTop:4,fontWeight:600}}>
-                  {tailor?.virtual_account_name||tailor?.shop||"—"}
-                </div>
-              </div>
-              <div style={{background:C.greenDim||"rgba(52,199,89,0.1)",border:"1px solid rgba(52,199,89,0.25)",borderRadius:20,padding:"4px 10px",fontSize:12,fontWeight:800,color:C.green,textTransform:"uppercase",letterSpacing:"0.4px",flexShrink:0}}>
-                Active
-              </div>
-            </div>
-
-            {/* Instruction */}
-            <div style={{background:"rgba(0,102,204,0.06)",border:"1px solid rgba(0,102,204,0.12)",borderRadius:12,padding:"12px 14px",fontSize:12,color:C.sub,lineHeight:1.6,marginBottom:14}}>
-              📲 <strong style={{color:C.text}}>Share this account number with your customers.</strong> When they transfer money here, it appears in your BOSS wallet balance automatically. No confirmation needed.
-            </div>
-
-            {/* Share actions */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <Btn variant="outline" onClick={copyVA}>📋 Copy Details</Btn>
-              <Btn variant="wa" onClick={shareVAWA}><span>💬</span>Share on WhatsApp</Btn>
-            </div>
-          </div>
-        ):(
-          <div style={{...S.card,background:"rgba(255,159,10,0.06)",border:"1px solid rgba(255,159,10,0.2)"}}>
-            <div style={{fontSize:14,fontWeight:700,color:"#FF9F0A",marginBottom:6}}>🏦 No Account Number Yet</div>
-            <div style={{fontSize:13,color:C.sub,lineHeight:1.6,marginBottom:14}}>
-              Set up your virtual account in <strong style={{color:C.text}}>Profile → Financial Identity</strong> to get a dedicated bank account number for your business.
-            </div>
-            <div style={{fontSize:12,color:"#FF9F0A",fontWeight:600}}>Profile → Financial Identity →</div>
-          </div>
-        )}
-      </div>
-
-      {/* ── All-time revenue ── */}
-      {/* ── MISSING-02: Unmatched Payments Banner ── */}
-      {unmatchedPayments.length>0&&(
-        <div style={{padding:"0 20px",marginBottom:0}}>
-          <div style={{background:"rgba(255,159,10,0.06)",border:"2px solid rgba(255,159,10,0.3)",borderRadius:20,padding:20}}>
-            <div style={{fontSize:13,fontWeight:800,color:"#FF9F0A",marginBottom:6}}>
-              ⚠️ {unmatchedPayments.length} Unmatched Payment{unmatchedPayments.length>1?"s":""}
-            </div>
-            <div style={{fontSize:12,color:C.sub,lineHeight:1.6,marginBottom:12}}>
-              These transfers arrived but couldn't be matched to an order automatically. Tap to assign each one.
-            </div>
-            {unmatchedPayments.map(p=>(
-              <button key={p.id} onClick={()=>setMatchSheet(p)} style={{
-                width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",
-                padding:"12px 14px",background:C.s2,border:"1px solid "+C.border,
-                borderRadius:14,marginBottom:8,cursor:"pointer",fontFamily:"inherit",textAlign:"left",
-              }}>
-                <div>
-                  <div style={{fontSize:14,fontWeight:800,color:C.text}}>{fmt(p.amount)}</div>
-                  <div style={{fontSize:11,color:C.sub,marginTop:1}}>{p.sender_name||"Unknown sender"}</div>
-                </div>
-                <div style={{fontSize:12,color:"#FF9F0A",fontWeight:700}}>Assign →</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Match Payment Sheet ── */}
-      {matchSheet&&(
-        <div style={{position:"fixed",inset:0,zIndex:500,display:"flex",alignItems:"flex-end"}}>
-          <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)"}} onClick={()=>setMatchSheet(null)}/>
-          <div className="anim-slide" style={{position:"relative",zIndex:1,background:C.s1,borderRadius:"28px 28px 0 0",padding:"24px 20px 48px",width:"100%",maxHeight:"80vh",overflowY:"auto"}}>
-            <div style={{width:40,height:4,background:C.s3,borderRadius:4,margin:"0 auto 16px"}}/>
-            <div style={{fontSize:16,fontWeight:800,color:C.text,marginBottom:4}}>Assign {fmt(matchSheet.amount)}</div>
-            <div style={{fontSize:12,color:C.sub,marginBottom:16}}>From: {matchSheet.sender_name||"Unknown"} — tap the order this payment belongs to</div>
-            {allOrders(customers).filter(o=>getBalance(o)>0).slice(0,20).map(o=>(
-              <button key={o.id} onClick={()=>assignPayment(matchSheet,o)} disabled={matchLoading} style={{
-                width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",
-                padding:"14px",background:C.s2,border:"1px solid "+C.border,
-                borderRadius:14,marginBottom:8,cursor:"pointer",fontFamily:"inherit",opacity:matchLoading?0.5:1,textAlign:"left",
-              }}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>{o._cname}</div>
-                  <div style={{fontSize:12,color:C.sub,marginTop:2}}>{o.type||"—"} · Balance: {fmt(getBalance(o))}</div>
-                </div>
-                <div style={{fontSize:12,color:"#0066CC",fontWeight:700}}>Match</div>
-              </button>
-            ))}
-            <button onClick={()=>setMatchSheet(null)} style={{width:"100%",padding:14,background:"transparent",border:"1px solid "+C.border,borderRadius:14,color:C.sub,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>Cancel</button>
-          </div>
-        </div>
-      )}
-
-      <SectionLabel>All-Time Revenue</SectionLabel>
-      <div style={{padding:"0 20px",display:"flex",flexDirection:"column",gap:10}}>
-        <div style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontSize:12,fontWeight:700,color:C.sub,textTransform:"uppercase",letterSpacing:"0.4px",marginBottom:4}}>Net Earnings</div>
-            <div style={{fontSize:28,fontWeight:900,color:C.text}}>{fmt(totalRevenue)}</div>
-            <div style={{fontSize:12,color:C.sub,marginTop:3}}>After BOSS fees</div>
-          </div>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontSize:12,color:C.sub,marginBottom:4}}>Orders Delivered</div>
-            <div style={{fontSize:22,fontWeight:900,color:C.text}}>{delivered}</div>
-          </div>
-        </div>
-        {totalFees>0&&(
-          <div style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(0,0,0,0.02)"}}>
-            <div style={{fontSize:13,color:C.sub}}>Gross collected</div>
-            <div style={{fontSize:14,fontWeight:700,color:C.sub}}>{fmt(totalGross)}</div>
-          </div>
-        )}
-        {totalFees>0&&(
-          <div style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(0,0,0,0.02)"}}>
-            <div>
-              <div style={{fontSize:13,color:C.sub}}>BOSS service fees</div>
-              <div style={{fontSize:12,color:C.muted}}>₦{SERVICE_FEE} per completed order</div>
-            </div>
-            <div style={{fontSize:14,fontWeight:700,color:C.sub}}>-{fmt(totalFees)}</div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Bar chart ── */}
-      <SectionLabel>Revenue — Last 6 Months</SectionLabel>
-      <div style={{padding:"0 20px"}}>
-        <div style={{...S.card,display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:6,height:130,padding:"16px 16px 0"}}>
-          {months.map(m=>(
-            <div key={m.label} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,height:"100%",justifyContent:"flex-end"}}>
-              {m.rev>0&&<div style={{fontSize:12,fontWeight:600,color:C.sub}}>{fmt(m.rev).replace("₦","")}</div>}
-              <div style={{width:"100%",background:C.accent,opacity:m.rev>0?0.85:0.12,borderRadius:"4px 4px 0 0",height:`${Math.round((m.rev/maxRev)*70)+4}px`,minHeight:4,transition:"height 0.5s ease"}}/>
-              <div style={{fontSize:12,fontWeight:600,color:C.sub,paddingBottom:8}}>{m.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Cashflow list ── */}
-      <SectionLabel>All Orders</SectionLabel>
-      <div style={{padding:"0 20px",display:"flex",flexDirection:"column",gap:8}}>
-        {orders.length===0
-          ?<EmptyState icon="💰" title="Your earnings will show up here." sub="Every paid order lands in your wallet automatically."/>
-          :[...orders].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,40).map(o=>(
-            <div key={o.id} style={{...S.card,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div>
-                <div style={{fontWeight:700,fontSize:14,color:C.text}}>{o._cname}</div>
-                <div style={{fontSize:12,color:C.sub,marginTop:1}}>{o.type||"—"} · {fmtDate(o.createdAt?.slice(0,10)||o.date)}</div>
-              </div>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontWeight:800,fontSize:15,color:C.green}}>{fmt((parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0))}</div>
-                {getBalance(o)>0&&<div style={{fontSize:12,color:C.red,marginTop:2}}>{fmt(getBalance(o))} due</div>}
-              </div>
-            </div>
-          ))}
-      </div>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────
 // SETTINGS TAB — Full Control Center
-// Sections: Profile · Security · Financial Identity · Data & Backup · Tools
+// Sections: Profile · Security · Data & Backup · Tools
 // ─────────────────────────────────────────
 export function ProfileTab(){
   const{tailor,setTailor,customers}=useBOSS();
@@ -910,13 +552,6 @@ export function ProfileTab(){
   const[phone,setPhone]=useState(tailor?.phone||"");
   const[city,setCity]=useState(tailor?.city||"");
   const[saved,setSaved]=useState(false);
-
-  // Financial Identity — Virtual Account
-  const[vaLoading,setVaLoading]=useState(false);
-  const[vaMsg,setVaMsg]=useState("");
-  const[deactivateConfirm,setDeactivateConfirm]=useState(false);
-  const[deactivating,setDeactivating]=useState(false);
-  const[requeryMsg,setRequeryMsg]=useState("");
 
   // Security
   const[newPw,setNewPw]=useState("");
@@ -930,82 +565,15 @@ export function ProfileTab(){
   // T-04 / S-09: All bare setTimeout state-setters replaced with useEffect+cleanup.
   // Prevents "setState on unmounted component" when ProfileTab is navigated away from.
   useEffect(()=>{if(!saved)return;const id=setTimeout(()=>setSaved(false),2200);return()=>clearTimeout(id);},[saved]);
-  useEffect(()=>{if(!requeryMsg)return;const id=setTimeout(()=>setRequeryMsg(""),5000);return()=>clearTimeout(id);},[requeryMsg]);
-  useEffect(()=>{if(!vaMsg)return;const id=setTimeout(()=>setVaMsg(""),2500);return()=>clearTimeout(id);},[vaMsg]);
 
   const ts=computeTrustScore(customers);
   const orders=useMemo(()=>allOrders(customers),[customers]);
-  const hasVA=!!(tailor?.virtual_account_number&&tailor?.virtual_account_status==="active");
 
   async function saveProfile(){
     const t={...(tailor||{}),shop:shop.trim(),phone:phone.trim(),city:city.trim()};
     await db.setTailor(t);setTailor(t);setSaved(true);
   }
 
-  async function setupVirtualAccount(){
-    if(!tailor?.shop&&!shop.trim()){setVaMsg("Save your shop name first.");return;}
-    setVaLoading(true);setVaMsg("Setting up your virtual account…");
-    try{
-      const res=await fetch("/api/paystack-virtual-account",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({business_name:(tailor?.shop||shop).trim(),phone:tailor?.phone||phone||""}),
-      });
-      const data=await res.json();
-      if(data.error){setVaMsg("❌ "+data.error);setVaLoading(false);return;}
-      const updated={...(tailor||{}),
-        paystack_dva_id:        data.dva_id||null,
-        virtual_account_number: data.virtual_account_number,
-        virtual_bank_name:      data.virtual_bank_name,
-        virtual_account_name:   data.virtual_account_name,
-        virtual_account_status: "active",
-        paystack_customer_code: data.customer_code,
-      };
-      await db.setTailor(updated);setTailor(updated);
-      setVaMsg("✅ Virtual account ready! Share it with customers to receive payments.");
-    }catch{setVaMsg("❌ Network error. Check your connection and try again.");}
-    setVaLoading(false);
-  }
-
-  async function clearVALocally(){
-    const cleared={...(tailor||{}),paystack_dva_id:null,virtual_account_number:null,virtual_bank_name:null,virtual_account_name:null,virtual_account_status:"inactive"};
-    await db.setTailor(cleared);setTailor(cleared);
-  }
-  async function deactivateVirtualAccount(){
-    setDeactivating(true);
-    try{
-      if(tailor?.paystack_dva_id){
-        const res=await fetch("/api/paystack-deactivate-virtual-account",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({dva_id:tailor.paystack_dva_id})});
-        const data=await res.json();
-        if(!data.ok){setVaMsg("❌ "+(data.error||"Could not deactivate. Try again."));setDeactivating(false);setDeactivateConfirm(false);return;}
-      }
-      await clearVALocally();
-      setVaMsg("Account deactivated. You can now create a new one.");
-    }catch{setVaMsg("❌ Network error. Try again.");}
-    setDeactivating(false);setDeactivateConfirm(false);
-  }
-  async function requeryVA(){
-    if(!tailor?.virtual_account_number)return;
-    setRequeryMsg("Checking for missing payments…");
-    try{
-      const slug=tailor?.virtual_bank_name?.toLowerCase().includes("titan")?"titan-paystack-bank":"wema-bank";
-      const res=await fetch("/api/paystack-requery-virtual-account",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account_number:tailor.virtual_account_number,provider_slug:slug})});
-      const data=await res.json();
-      setRequeryMsg(data.message||"Requery triggered. Check your wallet in a moment.");
-    }catch{setRequeryMsg("Requery failed. Try again.");}
-  }
-  async function copyVirtualAccount(){
-    const num=tailor?.virtual_account_number||"";const bank=tailor?.virtual_bank_name||"";const name=tailor?.virtual_account_name||"";
-    if(!num){setVaMsg("No virtual account yet.");return;}
-    const text=`Bank: ${bank}\nAccount Number: ${num}\nAccount Name: ${name}`;
-    try{await navigator.clipboard.writeText(text);setVaMsg("✅ Copied!");}
-    catch{setVaMsg("Long-press the details to copy manually.");}
-  }
-  async function shareVAWA(){
-    const num=tailor?.virtual_account_number||"";const bank=tailor?.virtual_bank_name||"";const name=tailor?.virtual_account_name||"";
-    if(!num)return;
-    const msg=`Hello! Here are my payment details:\n\n🏦 Bank: *${bank}*\n🔢 Account: *${num}*\n👤 Name: *${name}*\n\nTransfer your payment to this account — it reflects immediately. Thank you! 🙏\n_Powered by BOSS_`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
-  }
   async function handlePasswordReset(){
     if(!newPw||newPw.length<8){setPwMsg("Password must be at least 8 characters.");return;}
     setPwLoading(true);setPwMsg("");
@@ -1202,68 +770,7 @@ export function ProfileTab(){
         </div>
       </div>
 
-      {/* BLOCK 3 — FINANCIAL IDENTITY CARD */}
-      <div style={{padding:"16px 20px 0"}}>
-        {hasVA?(
-          <div style={{background:"linear-gradient(135deg,#1C1C1E,#2C2C2E)",borderRadius:20,padding:"20px",boxShadow:"0 6px 24px rgba(0,0,0,0.18)"}}>
-            {/* Header */}
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{background:C.greenDim,border:"1px solid rgba(52,199,89,0.3)",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:800,color:C.green,textTransform:"uppercase",letterSpacing:"0.4px"}}>
-                  ✅ Active
-                </div>
-              </div>
-              <div style={{display:"flex",gap:8}}>
-                <button className="tap" onClick={copyVirtualAccount} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",color:"rgba(255,255,255,0.8)",borderRadius:10,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{vaMsg==="✅ Copied!"?"✅ Done":"📋 Copy"}</button>
-                <button className="tap" onClick={shareVAWA} style={{background:"rgba(37,211,102,0.15)",border:"1px solid rgba(37,211,102,0.25)",color:"#25D366",borderRadius:10,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>💬 Share</button>
-              </div>
-            </div>
-            {/* Account details */}
-            <div style={{marginBottom:4}}>
-              <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.4px"}}>Bank</div>
-              <div style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:12}}>{tailor?.virtual_bank_name||"Wema Bank"}</div>
-              <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.4px"}}>Account Number</div>
-              <div style={{fontSize:28,fontWeight:900,letterSpacing:"3px",color:"#fff",marginBottom:12,fontFamily:"monospace"}}>{tailor?.virtual_account_number||"—"}</div>
-              <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.4px"}}>Account Name</div>
-              <div style={{fontSize:14,fontWeight:700,color:"rgba(255,255,255,0.85)"}}>{tailor?.virtual_account_name||tailor?.shop||"—"}</div>
-              <div style={{fontSize:11,color:"rgba(255,255,255,0.3)",marginTop:4}}>💡 This is what your customers see when they transfer.</div>
-            </div>
-            {/* Account settings accordion */}
-            <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid rgba(255,255,255,0.08)"}}>
-              {requeryMsg&&<div style={{fontSize:12,color:"rgba(255,255,255,0.6)",marginBottom:10,fontWeight:500}}>{requeryMsg}</div>}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <button className="tap" onClick={requeryVA}
-                  style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.6)",borderRadius:10,padding:"10px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",lineHeight:1.4}}>
-                  🔄 Transfer not showing?
-                </button>
-                <button className="tap" onClick={()=>setDeactivateConfirm(true)}
-                  style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",color:"rgba(255,100,90,0.9)",borderRadius:10,padding:"10px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",lineHeight:1.4}}>
-                  ⚠️ Change number
-                </button>
-              </div>
-            </div>
-          </div>
-        ):(
-          <div style={{...S.card,background:"rgba(0,102,204,0.04)",border:"1px solid rgba(0,102,204,0.15)"}}>
-            <div style={{fontSize:14,fontWeight:700,color:C.accent,marginBottom:8}}>🏦 Get Your Business Account Number</div>
-            <div style={{fontSize:13,color:C.sub,lineHeight:1.6,marginBottom:12}}>
-              BOSS gives you a dedicated bank account number. Customers transfer money directly — it appears in your wallet automatically.
-            </div>
-            <div style={{display:"flex",gap:8,flexDirection:"column",marginBottom:12}}>
-              {["Your own permanent account number","Wema Bank or Titan Trust","Free · Instant · Powered by Paystack"].map(t=>(
-                <div key={t} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:C.text,fontWeight:500}}>
-                  <div style={{width:18,height:18,borderRadius:"50%",background:C.greenDim,border:"1px solid rgba(52,199,89,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:C.green,flexShrink:0}}>✓</div>
-                  {t}
-                </div>
-              ))}
-            </div>
-            {vaMsg&&<div style={{fontSize:13,color:vaMsg.startsWith("❌")?C.red:C.green,fontWeight:500,marginBottom:10,lineHeight:1.5}}>{vaMsg}</div>}
-            <Btn variant="primary" onClick={setupVirtualAccount} disabled={vaLoading}>{vaLoading?"Setting up…":"🏦 Activate My Business Account"}</Btn>
-          </div>
-        )}
-      </div>
-
-      {/* BLOCK 4 — SETTINGS MENU */}
+      {/* BLOCK 3 — SETTINGS MENU */}
       <div style={{padding:"16px 20px 0",display:"flex",flexDirection:"column",gap:8}}>
         {menuItems.map(item=>(
           <button key={item.key} className="tap" onClick={()=>setSection(item.key)}
@@ -1297,32 +804,98 @@ export function ProfileTab(){
         <div style={{fontSize:11,color:C.muted,lineHeight:1.8}}>BOSS · Build Trust. Grow Faster.<br/>© 2025 Monoversal Hub · All rights reserved</div>
       </div>
 
-      {/* DEACTIVATE CONFIRMATION SHEET */}
-      {deactivateConfirm&&(
-        <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",alignItems:"flex-end"}}>
-          <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)"}} onClick={()=>setDeactivateConfirm(false)}/>
-          <div className="anim-slide" style={{width:"100%",background:C.s1,borderTopLeftRadius:28,borderTopRightRadius:28,padding:"24px 20px 40px",position:"relative",zIndex:1}}>
-            <div style={{width:40,height:4,background:C.s3,borderRadius:4,margin:"0 auto 20px"}}/>
-            <div style={{fontSize:18,fontWeight:800,marginBottom:10}}>Deactivate Account?</div>
-            <div style={{fontSize:13,color:C.sub,lineHeight:1.7,marginBottom:20}}>
-              This will permanently stop your current account number (<strong>{tailor?.virtual_account_number}</strong>) from receiving payments.<br/>Customers who have saved this number will need a new one. Your existing wallet balance is not affected.
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              <Btn variant="red" onClick={deactivateVirtualAccount} disabled={deactivating}>{deactivating?"Deactivating…":"Yes, Deactivate & Get New Number"}</Btn>
-              <Btn variant="outline" onClick={()=>setDeactivateConfirm(false)}>Cancel — Keep My Current Number</Btn>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── FINANCIAL IDENTITY SUB-SCREEN (from menu) ──────────────────
-// Renders as section==="financial" inside ProfileTab
-// Handled inline above in the section switch
+// ─────────────────────────────────────────
+// EARNINGS TAB
+// ─────────────────────────────────────────
+export function EarningsTab(){
+  const{customers}=useBOSS();
+  const earnings=useMemo(()=>computeEarnings(customers),[customers]);
+  const { totalCollected, totalOwed, debtors, thisMonth, bestJob, worstJob, totalOrders, paidOrders } = earnings;
+  const orders=useMemo(()=>allOrders(customers),[customers]);
 
+  const now=new Date();
+  const monthLabel=now.toLocaleString("default",{month:"long",year:"numeric"});
 
+  return(
+    <div className="scrollable" style={{padding:16,paddingBottom:40}}>
+      <div style={{fontSize:30,fontWeight:900,letterSpacing:"-1px",color:C.text,marginBottom:20}}>Earnings</div>
+
+      {/* Card 1 — Money Collected */}
+      <div style={{background:C.s1,borderRadius:20,padding:20,marginBottom:12}}>
+        <div style={{fontSize:13,color:C.sub,fontWeight:600,marginBottom:6}}>Money Collected</div>
+        <div style={{fontSize:36,fontWeight:900,color:C.text,letterSpacing:"-1px"}}>{fmt(totalCollected)}</div>
+        <div style={{fontSize:12,color:C.muted,marginTop:4}}>Your total revenue from all orders</div>
+      </div>
+
+      {/* Card 2 — This Month */}
+      <div style={{background:C.s1,borderRadius:20,padding:20,marginBottom:12}}>
+        <div style={{fontSize:13,color:C.sub,fontWeight:600}}>Collected This Month</div>
+        <div style={{fontSize:28,fontWeight:800,color:C.text}}>{fmt(thisMonth)}</div>
+        <div style={{fontSize:12,color:C.muted}}>{monthLabel}</div>
+      </div>
+
+      {/* Card 3 — Still Owed */}
+      <div style={{background:C.s1,borderRadius:20,padding:20,marginBottom:20}}>
+        <div style={{fontSize:13,color:C.sub,fontWeight:600}}>Still Owed to You</div>
+        <div style={{fontSize:28,fontWeight:800,color:totalOwed>0?C.red:C.sub}}>{fmt(totalOwed)}</div>
+        <div style={{fontSize:12,color:C.muted}}>
+          {totalOwed>0?`from ${debtors.length} customer${debtors.length===1?"":"s"}`:"You are all settled up 🎉"}
+        </div>
+      </div>
+
+      {/* Debtors list */}
+      {debtors.length>0&&(
+        <>
+          <SectionLabel>Who Owes You</SectionLabel>
+          {debtors.map(d=>(
+            <div key={d.name} style={{
+              background:C.s2,borderRadius:14,padding:"14px 16px",marginBottom:8,
+              display:"flex",justifyContent:"space-between",alignItems:"center"
+            }}>
+              <div style={{fontSize:15,fontWeight:700,color:C.text}}>{d.name}</div>
+              <div style={{fontSize:15,fontWeight:700,color:C.red}}>{fmt(d.owed)}</div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Best and Worst jobs */}
+      {bestJob&&worstJob&&bestJob.type!==worstJob.type&&(
+        <>
+          <SectionLabel>Your Jobs</SectionLabel>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div style={{background:C.s1,borderRadius:16,padding:16}}>
+              <div style={{fontSize:11,color:C.sub,fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>💪 Best Job</div>
+              <div style={{fontSize:16,fontWeight:800,color:C.text,marginBottom:4}}>{bestJob.type}</div>
+              <div style={{fontSize:14,fontWeight:700,color:C.accent}}>{fmt(bestJob.avg)}</div>
+              <div style={{fontSize:11,color:C.muted}}>avg per order</div>
+            </div>
+            <div style={{background:C.s1,borderRadius:16,padding:16}}>
+              <div style={{fontSize:11,color:C.sub,fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>📉 Lowest Pay</div>
+              <div style={{fontSize:16,fontWeight:800,color:C.text,marginBottom:4}}>{worstJob.type}</div>
+              <div style={{fontSize:14,fontWeight:700,color:C.muted}}>{fmt(worstJob.avg)}</div>
+              <div style={{fontSize:11,color:C.muted}}>avg per order</div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Summary line */}
+      <div style={{fontSize:13,color:C.muted,textAlign:"center",marginTop:16}}>
+        {totalOrders} orders total · {paidOrders} fully paid
+      </div>
+
+      {/* Empty state */}
+      {orders.length===0&&(
+        <EmptyState icon="💰" title="No earnings yet." sub="Add your first order to start tracking your money." />
+      )}
+    </div>
+  );
+}
 
 // ADD CLIENT FLOW  (standalone, separate from order)
 // ─────────────────────────────────────────

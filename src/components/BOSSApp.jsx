@@ -8,21 +8,21 @@
 // boss/ui.jsx       — Btn, Input, Sheet, Flow, Toast, DatePicker…
 // boss/cards.jsx    — TrustScoreCard, OrderCard, StatusStepper…
 // boss/flows.jsx    — AddOrderFlow, OrderDetailFlow, RemindersFlow…
-// boss/tabs.jsx     — TodayTab, WalletTab, ProfileTab, AuthScreen…
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+// boss/tabs.jsx     — TodayTab, EarningsTab, ProfileTab, AuthScreen…
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { db } from "../lib/db";
 
 import { C } from "./boss/tokens";
 import { ErrorBoundary, BOSSContext } from "./boss/context";
 import { GlobalStyles, Toast } from "./boss/ui";
 import { SplashScreen, AuthScreen, SetupScreen } from "./boss/tabs";
-import { TodayTab, CustomersTab, WalletTab, ProfileTab } from "./boss/tabs";
+import { TodayTab, CustomersTab, EarningsTab, ProfileTab } from "./boss/tabs";
 import { AddOrderFlow, OrderDetailFlow, CustomerDetailFlow, RemindersFlow, AddClientFlow } from "./boss/flows";
 
 // ── Nav icons — defined outside component to avoid recreation on every render
 const IconHome    = ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
 const IconClients = ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-const IconWallet  = ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
+const IconEarnings = ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
 const IconProfile = ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
 
 function BOSSApp(){
@@ -76,15 +76,7 @@ function BOSSApp(){
   const setTailor=useCallback(async(t)=>{setTailorState(t);await db.setTailor(t);},[]);
   const setCustomers=useCallback(async(c)=>{
     setCustomersState(c);
-    setSyncStatus("syncing");
-    const result=await db.setCustomers(c);
-    clearTimeout(syncTimerRef.current);
-    if(result?.ok===false){
-      setSyncStatus("offline");
-    } else {
-      setSyncStatus("saved");
-      syncTimerRef.current=setTimeout(()=>setSyncStatus("idle"),2500);
-    }
+    await db.setCustomers(c);
   },[]);
 
   // T-13: memoized context value — child components call useBOSS() to access these
@@ -105,10 +97,41 @@ function BOSSApp(){
 
   const[actionSheetOpen,setActionSheetOpen]=useState(false);
   const[addClientOpen,setAddClientOpen]=useState(false);
-  // MISSING-03: Sync status indicator — shows cloud save state to tailor
-  // States: "idle" | "syncing" | "saved" | "offline"
-  const[syncStatus,setSyncStatus]=useState("idle");
-  const syncTimerRef=React.useRef(null);
+  // MISSING-03: Sync + network status indicator
+  const[syncStatus,setSyncStatus]=useState("idle"); // "syncing"|"saved"|"error"|"idle"
+  const[netStatus,setNetStatus]=useState("idle");   // "connected"|"offline"|"idle"
+  const syncTimerRef=useRef(null);
+  const networkTimerRef=useRef(null);
+
+  const reportSyncing=useCallback(()=>{clearTimeout(syncTimerRef.current);setSyncStatus("syncing");},[]);
+  const reportSaved=useCallback(()=>{clearTimeout(syncTimerRef.current);setSyncStatus("saved");syncTimerRef.current=setTimeout(()=>setSyncStatus("idle"),2500);},[]);
+  const reportError=useCallback(()=>{clearTimeout(syncTimerRef.current);clearTimeout(networkTimerRef.current);setSyncStatus("error");},[]);
+  const reportConnected=useCallback(()=>{clearTimeout(networkTimerRef.current);setNetStatus("connected");networkTimerRef.current=setTimeout(()=>setNetStatus("idle"),1500);},[]);
+  const reportOffline=useCallback(()=>{clearTimeout(syncTimerRef.current);clearTimeout(networkTimerRef.current);setNetStatus("offline");},[]);
+
+  const PRIORITY=["syncing","error","offline","connected","saved","idle"];
+  const rank=s=>PRIORITY.indexOf(s);
+  const statusDisplay=[syncStatus,netStatus==="offline"?"offline":netStatus].reduce((best,c)=>c==="idle"?best:rank(c)<rank(best)?c:best,"idle");
+
+  // Register sync callback with db, and track browser network state
+  // Empty dep array is correct — refs and useCallback fns are stable
+  useEffect(()=>{
+    // Check initial connectivity state before any write
+    if(!navigator.onLine)reportOffline();
+    db.setSyncCallback(s=>{
+      if(s==="syncing")reportSyncing();
+      else if(s==="saved")reportSaved();
+      else if(s==="error")reportError();
+    });
+    window.addEventListener("online",reportConnected);
+    window.addEventListener("offline",reportOffline);
+    return()=>{
+      window.removeEventListener("online",reportConnected);
+      window.removeEventListener("offline",reportOffline);
+      clearTimeout(syncTimerRef.current);
+      clearTimeout(networkTimerRef.current);
+    };
+  },[]);// eslint-disable-line react-hooks/exhaustive-deps
 
   if(screen==="splash")return(
     <><GlobalStyles/>
@@ -131,7 +154,7 @@ function BOSSApp(){
     {id:"customers",icon:<IconClients/>,  label:"Customers"},
   ];
   const NAV_RIGHT=[
-    {id:"wallet",   icon:<IconWallet/>,   label:"Wallet"  },
+    {id:"earnings", icon:<IconEarnings/>, label:"Earnings"},
     {id:"profile",  icon:<IconProfile/>,  label:"Profile"},
   ];
 
@@ -141,21 +164,25 @@ function BOSSApp(){
       <GlobalStyles/>
       <div id="boss-root" style={{height:"100svh",display:"flex",flexDirection:"column",backgroundColor:C.bg,overflow:"hidden",position:"relative"}}>
 
-        {/* ── MISSING-03: Sync Status Pill ── */}
-        {syncStatus!=="idle"&&(
+        {/* ── MISSING-03: Sync + network status indicator ── */}
+        {statusDisplay!=="idle"&&(
           <div style={{
             position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",
             zIndex:100,display:"flex",alignItems:"center",gap:6,
             padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:700,
             backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",
-            whiteSpace:"nowrap",
-            ...(syncStatus==="syncing"?{background:"rgba(0,102,204,0.15)",color:"#0066CC",border:"1px solid rgba(0,102,204,0.25)"}:
-                syncStatus==="saved"  ?{background:"rgba(52,199,89,0.15)",color:"#34C759",border:"1px solid rgba(52,199,89,0.25)"}:
-                                       {background:"rgba(255,159,10,0.15)",color:"#FF9F0A",border:"1px solid rgba(255,159,10,0.3)"}),
+            whiteSpace:"nowrap",transition:"all 0.2s ease",
+            ...(statusDisplay==="syncing"   ?{background:"rgba(99,102,241,0.15)",color:"#6366f1",border:"1px solid rgba(99,102,241,0.25)"}:
+                statusDisplay==="saved"     ?{background:"rgba(16,185,129,0.15)",color:"#10b981",border:"1px solid rgba(16,185,129,0.25)"}:
+                statusDisplay==="connected" ?{background:"rgba(16,185,129,0.15)",color:"#10b981",border:"1px solid rgba(16,185,129,0.25)"}:
+                statusDisplay==="error"     ?{background:"rgba(239,68,68,0.15)",color:"#ef4444",border:"1px solid rgba(239,68,68,0.25)"}:
+                                             {background:"rgba(245,158,11,0.15)",color:"#f59e0b",border:"1px solid rgba(245,158,11,0.3)"}),
           }}>
-            {syncStatus==="syncing"&&"🔄 Saving…"}
-            {syncStatus==="saved"  &&"☁️ Saved"}
-            {syncStatus==="offline"&&"⚠️ Offline — saved on this device only"}
+            {statusDisplay==="syncing"   &&"🔄 Saving…"}
+            {statusDisplay==="saved"     &&"☁️ Saved"}
+            {statusDisplay==="connected" &&"📡 Connected"}
+            {statusDisplay==="error"     &&"⚠️ Sync error"}
+            {statusDisplay==="offline"   &&"⚠️ Offline"}
           </div>
         )}
 
@@ -163,7 +190,7 @@ function BOSSApp(){
         <div className="scrollable" style={{flex:1,paddingBottom:140}}>
           {tab==="today"    &&<TodayTab     tailor={tailor} onAddOrder={()=>setActionSheetOpen(true)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)}/>}
           {tab==="customers"&&<CustomersTab onOpenCustomer={openCustomerDetail}/>}
-          {tab==="wallet"   &&<WalletTab    tailor={tailor}/>}
+          {tab==="earnings" &&<EarningsTab/>}
           {tab==="profile"  &&<ProfileTab/>}
         </div>
 

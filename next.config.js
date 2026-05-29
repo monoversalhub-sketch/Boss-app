@@ -22,9 +22,9 @@ const nextConfig = {
               // fonts.gstatic.com serves the actual font files
               "font-src 'self' data: https://fonts.gstatic.com",
               // Supabase, Paystack API, WhatsApp links
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paystack.co",
-              // Paystack checkout iframe + WhatsApp web
-              "frame-src https://checkout.paystack.com",
+               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paystack.co https://accounts.google.com",
+               // Paystack checkout iframe + WhatsApp web + Google OAuth
+               "frame-src https://checkout.paystack.com https://accounts.google.com",
               // Favicon, logo, avatar images
               "img-src 'self' data: blob: https:",
               // Prevent framing from outside origins

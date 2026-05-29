@@ -29,9 +29,7 @@ export async function GET(request, { params }) {
       delivery_date, status, notes, paystack_ref, created_at,
       customers ( id, name ),
       tailors (
-        id, shop, city,
-        virtual_account_number, virtual_bank_name,
-        virtual_account_name, virtual_account_status
+        id, shop, city
       )
     `)
     .eq("id", orderId)
@@ -69,10 +67,6 @@ export async function GET(request, { params }) {
       shop:                   t.shop                   || "",
       city:                   t.city                   || "",
       // phone intentionally omitted — L-03 / S-05
-      virtual_account_number: t.virtual_account_number || null,
-      virtual_bank_name:      t.virtual_bank_name      || null,
-      virtual_account_name:   t.virtual_account_name   || null,
-      virtual_account_status: t.virtual_account_status || "inactive",
     },
   });
 }
@@ -95,10 +89,6 @@ export async function POST(request) {
     const safeCustomer = { id: customer.id, name: customer.name };
     const safeTailor   = {
       id: tailor.id, shop: tailor.shop, city: tailor.city,
-      virtual_account_number: tailor.virtual_account_number,
-      virtual_bank_name:      tailor.virtual_bank_name,
-      virtual_account_name:   tailor.virtual_account_name,
-      virtual_account_status: tailor.virtual_account_status,
     };
     return Response.json({ order, customer: safeCustomer, tailor: safeTailor });
   } catch {

@@ -172,6 +172,61 @@ export function buildInvoiceLinkMsg(order, customer, shopName) {
 }
 
 // ─────────────────────────────────────────
+// EARNINGS COMPUTATION
+// ─────────────────────────────────────────
+export function computeEarnings(customers) {
+  const orders = allOrders(customers);
+
+  const totalCollected = orders.reduce((sum, o) => sum + getTotalPaid(o), 0);
+
+  const totalOwed = orders.reduce((sum, o) => {
+    const bal = getBalance(o);
+    return sum + (bal > 0 ? bal : 0);
+  }, 0);
+
+  const debtorMap = {};
+  orders.forEach(o => {
+    const bal = getBalance(o);
+    if (bal <= 0) return;
+    const c = (customers || []).find(x => x.id === o.customer_id);
+    if (!c) return;
+    if (!debtorMap[c.id]) debtorMap[c.id] = { name: c.name, owed: 0 };
+    debtorMap[c.id].owed += bal;
+  });
+  const debtors = Object.values(debtorMap).sort((a, b) => b.owed - a.owed);
+
+  const now = new Date();
+  const thisMonth = orders
+    .filter(o => {
+      const d = o.created_at ? new Date(o.created_at) : null;
+      return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    })
+    .reduce((sum, o) => sum + getTotalPaid(o), 0);
+
+  const jobMap = {};
+  orders.forEach(o => {
+    if (!o.type || !(o.price > 0)) return;
+    if (!jobMap[o.type]) jobMap[o.type] = { total: 0, count: 0 };
+    jobMap[o.type].total += o.price;
+    jobMap[o.type].count += 1;
+  });
+  const jobRanking = Object.entries(jobMap)
+    .map(([type, { total, count }]) => ({ type, avg: Math.round(total / count), count }))
+    .sort((a, b) => b.avg - a.avg);
+
+  return {
+    totalCollected,
+    totalOwed,
+    debtors,
+    thisMonth,
+    bestJob:     jobRanking[0] || null,
+    worstJob:    jobRanking[jobRanking.length - 1] || null,
+    totalOrders: orders.length,
+    paidOrders:  orders.filter(o => getBalance(o) <= 0 && getTotalPaid(o) > 0).length,
+  };
+}
+
+// ─────────────────────────────────────────
 // TRUST SCORE ENGINE
 // ─────────────────────────────────────────
 export function computeTrustScore(customers) {
