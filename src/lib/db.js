@@ -223,6 +223,7 @@ async function updateBosScore(tailorId) {
           date: o.delivery_date || "", status: o.status || "In Progress",
           notes: o.notes || "", createdAt: o.created_at,
           installmentHistory: o.installment_history || [],
+          imageUrls: o.image_urls || [],
         })),
       }));
       lsSet("boss_customers", mapped);
@@ -257,6 +258,7 @@ async function updateBosScore(tailorId) {
           paid: o.paid || 0, delivery_date: o.date || null,
           status: o.status || "In Progress", notes: o.notes || "",
           installment_history: o.installmentHistory || [],
+          image_urls: o.imageUrls || [],
         }))
       );
       _syncCallback?.("syncing");
@@ -300,6 +302,7 @@ async function updateBosScore(tailorId) {
       if (patch.installmentHistory !== undefined) dbPatch.installment_history = patch.installmentHistory;
       if (patch.notes              !== undefined) dbPatch.notes              = patch.notes;
       if (patch.date               !== undefined) dbPatch.delivery_date      = patch.date;
+      if (patch.imageUrls !== undefined) dbPatch.image_urls = patch.imageUrls;
       if (Object.keys(dbPatch).length > 0) {
         _syncCallback?.("syncing");
         const { error } = await client.from("orders").update(dbPatch).eq("id", orderId);
@@ -392,6 +395,32 @@ async function updateBosScore(tailorId) {
     }
   },
 
+  // ── Order Style Images (Supabase Storage) ──────────────────────────
+  async uploadOrderImages(tailorId, orderId, files) {
+    const client = await getBrowserClient();
+    const urls = [];
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      const ext = file.name.split(".").pop();
+      const path = `${tailorId}/${orderId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+      const { error } = await client.storage.from("order-images").upload(path, file, { contentType: file.type });
+      if (error) { console.error("[db.uploadOrderImages] upload failed:", path, error); continue; }
+      const { data } = client.storage.from("order-images").getPublicUrl(path);
+      urls.push(data.publicUrl);
+    }
+    return urls;
+  },
+
+  async removeOrderImage(publicUrl) {
+    const client = await getBrowserClient();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const prefix = `${supabaseUrl}/storage/v1/object/public/order-images/`;
+    const path = publicUrl.replace(prefix, "");
+    if (!path || path === publicUrl) return;
+    const { error } = await client.storage.from("order-images").remove([path]);
+    if (error) console.error("[db.removeOrderImage]", error);
+  },
+
   // Get the internal tailor UUID (needed for addCustomer/addOrder targeted writes)
   // Auto-creates the tailors row if missing (defensive guard for existing users
   // who signed up before the auto-profile trigger was added).
@@ -458,6 +487,7 @@ async function updateBosScore(tailorId) {
         paid: order.paid || 0, delivery_date: order.date || null,
         status: order.status || "In Progress", notes: order.notes || "",
         installment_history: order.installmentHistory || [],
+        image_urls: order.imageUrls || [],
       });
       if (error) throw error;
       _syncCallback?.("saved");

@@ -1,6 +1,6 @@
 "use client";
 // src/components/boss/flows/OrderDetailFlow.jsx
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { C, S } from "../tokens";
 import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, waLink, buildReceiptText, buildReminderMsg } from "../helpers";
 import { useBOSS } from "../context";
@@ -12,6 +12,8 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
   const{customers,setCustomers,toast}=useBOSS();
   const[payAmt,setPayAmt]=useState("");
   const[confirmDelete,setConfirmDelete]=useState(false);
+  const[lightboxUrl,setLightboxUrl]=useState(null);
+  const photoInputRef=useRef(null);
   const found=(()=>{for(const c of customers){const o=(c.orders||[]).find(x=>x.id===orderId);if(o)return{order:o,customer:c};}return null;})();
   if(!found)return null;
   const{order,customer}=found;
@@ -82,6 +84,36 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
         } valueStyle={{fontWeight:700,color:getPaymentState(order)==="fully_paid"?C.green:getPaymentState(order)==="partially_paid"?"#FF9F0A":C.red}}/>
         {order.notes&&<Row label="Notes" value={order.notes} valueStyle={{fontSize:13,fontWeight:500,color:C.sub}}/>}
       </div>
+      <div>
+          <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Style Photos</SectionLabel>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:8}}>
+            {(order.imageUrls||[]).map((url,i)=>(
+              <div key={i} className="tap" onClick={()=>setLightboxUrl(url)}
+                style={{aspectRatio:1,borderRadius:12,overflow:"hidden",background:C.s3,cursor:"pointer",position:"relative"}}>
+                <img src={url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              </div>
+            ))}
+            {(order.imageUrls?.length||0) < 5 && (
+              <button onClick={()=>photoInputRef.current?.click()}
+                style={{aspectRatio:1,borderRadius:12,border:`1.5px dashed ${C.border2}`,background:C.s2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
+                +
+              </button>
+            )}
+          </div>
+          <input ref={photoInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={async (e)=>{
+            const files=Array.from(e.target.files||[]); e.target.value="";
+            if(!files.length)return;
+            const tailorId=await db.getTailorId();
+            if(!tailorId)return;
+            const urls=await db.uploadOrderImages(tailorId, order.id, files);
+            if(urls.length){
+              const next=[...(order.imageUrls||[]),...urls].slice(0,5);
+              await updateOrder({imageUrls:next});
+              toast("✅ "+(urls.length===1?"Photo added":"Photos added"));
+            }
+          }}/>
+        </div>
+        </div>
       {vaDetails && (
         <div>
           <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Payment Details for Receipts</SectionLabel>
@@ -151,6 +183,20 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
         🗑 Delete This Order
       </button>
     </Flow>
+    {lightboxUrl&&(
+      <div onClick={()=>setLightboxUrl(null)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,0.92)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <img src={lightboxUrl} alt="" style={{maxWidth:"92%",maxHeight:"92%",borderRadius:12,objectFit:"contain"}}/>
+        <button onClick={(e)=>{e.stopPropagation(); db.removeOrderImage(lightboxUrl).then(()=>{
+          const next=(order.imageUrls||[]).filter(u=>u!==lightboxUrl);
+          updateOrder({imageUrls:next});
+          setLightboxUrl(null);
+          toast("🗑 Photo removed");
+        });}} style={{position:"absolute",bottom:40,left:"50%",transform:"translateX(-50%)",background:"rgba(255,59,48,0.8)",color:"#fff",border:"none",borderRadius:24,padding:"12px 24px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+          🗑 Delete Photo
+        </button>
+        <button onClick={()=>setLightboxUrl(null)} style={{position:"absolute",top:20,right:20,width:40,height:40,borderRadius:"50%",background:"rgba(255,255,255,0.15)",color:"#fff",border:"none",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+      </div>
+    )}
     {confirmDelete&&(
       <div style={{position:"fixed",inset:0,zIndex:400,display:"flex",alignItems:"flex-end"}}>
         <div onClick={()=>setConfirmDelete(false)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(8px)"}}/>

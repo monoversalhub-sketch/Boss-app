@@ -19,14 +19,27 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
   const [receiptPrompt, setReceiptPrompt] = useState(null);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (open) { const p = customers.find(c => c.id === prefilledCid);
-      setName(p?.name || ""); setPhone(p?.phone || ""); setType(""); setPrice(""); setDeposit(""); setDate(""); setNotes(""); setMatches([]); setShowCalc(false); setIsSaving(false); savingRef.current = false; }
+      setName(p?.name || ""); setPhone(p?.phone || ""); setType(""); setPrice(""); setDeposit(""); setDate(""); setNotes(""); setMatches([]); setShowCalc(false); setIsSaving(false); savingRef.current = false; setSelectedImages([]); }
   }, [open, prefilledCid]);
 
   function onNameChange(v) { setName(v); if (v.length < 1) { setMatches([]); return; } setMatches(customers.filter(c => c.name.toLowerCase().includes(v.toLowerCase())).slice(0, 5)); }
   function pickExisting(c) { setName(c.name); setPhone(c.phone || ""); setMatches([]); }
+
+  function handleImageSelect(e) {
+    const files = Array.from(e.target.files || []);
+    const remaining = 5 - selectedImages.length;
+    setSelectedImages(prev => [...prev, ...files.slice(0, remaining)].slice(0, 5));
+    e.target.value = "";
+  }
+
+  function removeSelectedImage(index) {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  }
 
   async function save() {
     if (savingRef.current) return;
@@ -55,6 +68,19 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
         if (ok) { const r = await db.addOrder(order, cust.id, tailorId); if (!r.ok) { ok = false; console.error("[AddOrderFlow] addOrder failed", r.error); } }
         if (!ok) toast("⚠️ Saved locally — sync failed. Check connection.");
       } else { toast("⚠️ Saved locally — not signed in."); }
+
+      if (tailorId && selectedImages.length > 0) {
+        const urls = await db.uploadOrderImages(tailorId, order.id, selectedImages);
+        if (urls.length > 0) {
+          order.imageUrls = urls;
+          await db.updateOrder(order.id, { imageUrls: urls });
+          for (const c of next) {
+            const o = (c.orders || []).find(x => x.id === order.id);
+            if (o) { o.imageUrls = urls; break; }
+          }
+          setCustomers([...next]);
+        }
+      }
 
       const hasPaid = (parseFloat(deposit) || 0) > 0;
       const hasPhone = !!(cust.phone || "").trim();
@@ -147,6 +173,27 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
         </div>
 
         <DatePicker label="Delivery Date *" value={date} onChange={setDate} />
+        <div>
+          <div style={{fontSize:12,fontWeight:700,color:C.sub,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:8}}>Style Photos (max 5)</div>
+          <input ref={fileInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleImageSelect} />
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5, 1fr)",gap:6}}>
+            {selectedImages.map((file, i) => (
+              <div key={i} style={{position:"relative",aspectRatio:1,borderRadius:10,overflow:"hidden",background:C.s3}}>
+                <img src={URL.createObjectURL(file)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} />
+                <button onClick={() => removeSelectedImage(i)}
+                  style={{position:"absolute",top:2,right:2,width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.55)",color:"#fff",border:"none",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  ✕
+                </button>
+              </div>
+            ))}
+            {selectedImages.length < 5 && (
+              <button onClick={() => fileInputRef.current?.click()}
+                style={{aspectRatio:1,borderRadius:10,border:`1.5px dashed ${C.border2}`,background:C.s2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
+                +
+              </button>
+            )}
+          </div>
+        </div>
         <Textarea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Style details, fabric colour, special requests…" />
       </Flow>
 

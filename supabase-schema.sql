@@ -202,3 +202,39 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+
+-- ── ORDER STYLE IMAGES — Storage bucket ──────────────────────────────
+-- Run this block AFTER creating the bucket in the Supabase Dashboard:
+--   Storage → Create bucket → name: "order-images" → Public bucket ✅
+--
+-- Or create it via SQL:
+--   insert into storage.buckets (id, name, public)
+--   values ('order-images', 'order-images', true)
+--   on conflict (id) do nothing;
+--
+-- Policies:
+insert into storage.buckets (id, name, public)
+values ('order-images', 'order-images', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Order images public read" on storage.objects;
+create policy "Order images public read"
+  on storage.objects for select
+  using (bucket_id = 'order-images');
+
+drop policy if EXISTS "Tailors upload own order images" on storage.objects;
+create policy "Tailors upload own order images"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'order-images'
+    and auth.role() = 'authenticated'
+  );
+
+drop policy if exists "Tailors delete own order images" on storage.objects;
+create policy "Tailors delete own order images"
+  on storage.objects for delete
+  using (
+    bucket_id = 'order-images'
+    and auth.role() = 'authenticated'
+  );
