@@ -7,15 +7,14 @@
 --  safely add new columns without breaking existing data.
 -- ─────────────────────────────────────────────────────────────────
 
--- Enable UUID extension
-create extension if not exists "uuid-ossp";
+-- Enable UUID generation (gen_random_uuid is built-in on PG 13+ — no extension needed)
 
 -- ── TAILORS ───────────────────────────────────────────────────────
 -- One row per business / user.
 -- Funds flow: customer pays → webhook credits wallet_balance
 -- Tailor withdraws manually via Settings → Wallet → Withdraw
 create table if not exists tailors (
-  id                        uuid primary key default uuid_generate_v4(),
+  id                        uuid primary key default gen_random_uuid(),
   user_id                   uuid references auth.users(id) on delete cascade unique,
   shop                      text not null,
   phone                     text,
@@ -54,7 +53,7 @@ create table if not exists tailors (
 
 -- ── CUSTOMERS ─────────────────────────────────────────────────────
 create table if not exists customers (
-  id            uuid primary key default uuid_generate_v4(),
+  id            uuid primary key default gen_random_uuid(),
   tailor_id     uuid references tailors(id) on delete cascade not null,
   name          text not null,
   phone         text,
@@ -67,7 +66,7 @@ create index if not exists customers_tailor_idx on customers(tailor_id);
 
 -- ── ORDERS ────────────────────────────────────────────────────────
 create table if not exists orders (
-  id            uuid primary key default uuid_generate_v4(),
+  id            uuid primary key default gen_random_uuid(),
   customer_id   uuid references customers(id) on delete cascade not null,
   tailor_id     uuid references tailors(id) on delete cascade not null,
   type          text,
@@ -90,7 +89,7 @@ create index if not exists orders_status_idx    on orders(status);
 
 -- ── PAYMENTS — full audit trail ───────────────────────────────────
 create table if not exists payments (
-  id                     uuid primary key default uuid_generate_v4(),
+  id                     uuid primary key default gen_random_uuid(),
   order_id               uuid references orders(id) on delete set null,
   tailor_id              uuid references tailors(id) on delete cascade not null,
   amount                 numeric(12,2) not null,
@@ -175,7 +174,7 @@ $$;
 -- to their real bank account. Not implemented in Phase 1 UI but
 -- the table is ready so the schema doesn't need to change later.
 create table if not exists withdrawals (
-  id                uuid primary key default uuid_generate_v4(),
+  id                uuid primary key default gen_random_uuid(),
   tailor_id         uuid references tailors(id) on delete cascade not null,
   amount            numeric(12,2) not null,
   destination_bank  text,
