@@ -42,7 +42,12 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
       else { if (phone.trim()) cust.phone = phone.trim(); }
       cust.orders = [order, ...(cust.orders || [])];
       setCustomers(next);
-      const tailorId = await db.getTailorId();
+      let tailorId = null;
+      for (let i = 0; i < 3; i++) {
+        tailorId = await db.getTailorId();
+        if (tailorId) break;
+        await new Promise(r => setTimeout(r, 800));
+      }
       if (tailorId) {
         let ok = true;
         if (isNewCustomer) { const r = await db.addCustomer(cust, tailorId); if (!r.ok) { ok = false; console.error("[AddOrderFlow] addCustomer failed", r.error); } }

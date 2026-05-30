@@ -14,11 +14,11 @@ export function ProfileTab() {
   const [shop, setShop] = useState(tailor?.shop || "");
   const [phone, setPhone] = useState(tailor?.phone || "");
   const [city, setCity] = useState(tailor?.city || "");
+  const [bankName, setBankName] = useState(tailor?.bank_name || "");
+  const [accountNumber, setAccountNumber] = useState(tailor?.account_number || "");
+  const [accountName, setAccountName] = useState(tailor?.account_name || "");
+  const [cryptoAddress, setCryptoAddress] = useState(tailor?.crypto_address || "");
   const [saved, setSaved] = useState(false);
-
-  const [newPw, setNewPw] = useState("");
-  const [pwMsg, setPwMsg] = useState("");
-  const [pwLoading, setPwLoading] = useState(false);
 
   const [restoreMsg, setRestoreMsg] = useState("");
   const restoreRef = useRef(null);
@@ -29,29 +29,14 @@ export function ProfileTab() {
   const orders = useMemo(() => allOrders(customers), [customers]);
 
   async function saveProfile() {
-    const t = { ...(tailor || {}), shop: shop.trim(), phone: phone.trim(), city: city.trim() };
+    const t = {
+      ...(tailor || {}), shop: shop.trim(), phone: phone.trim(), city: city.trim(),
+      bank_name: bankName.trim() || null,
+      account_number: accountNumber.trim() || null,
+      account_name: accountName.trim() || null,
+      crypto_address: cryptoAddress.trim() || null,
+    };
     await db.setTailor(t); setTailor(t); setSaved(true);
-  }
-
-  async function handlePasswordReset() {
-    if (!newPw || newPw.length < 8) { setPwMsg("Password must be at least 8 characters."); return; }
-    setPwLoading(true); setPwMsg("");
-    try {
-      const session = await db.getSession();
-      const userId = session?.id || session?.user?.id || null;
-      if (!userId) {
-        setPwMsg("Not logged in. Please sign out and log in again.");
-        setPwLoading(false); return;
-      }
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: newPw, userId }),
-      });
-      const data = await res.json();
-      if (data.error) { setPwMsg(data.error); } else { setPwMsg("✅ Password updated successfully."); setNewPw(""); }
-    } catch { setPwMsg("Error updating password. Try again."); }
-    setPwLoading(false);
   }
 
   function exportBackup() {
@@ -94,28 +79,103 @@ export function ProfileTab() {
         <Input label="Shop / Business Name *" value={shop} onChange={e => setShop(e.target.value)} placeholder="e.g. Chidi's Fashion House" />
         <Input label="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} type="tel" placeholder="080XXXXXXXX" />
         <Input label="City" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Lagos" />
+        <div style={{ height: 1, background: C.border, margin: "4px 0" }} />
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.sub }}>💳 Payment Details (appears on customer receipts)</div>
+        <Input label="Bank Name" value={bankName} onChange={e => setBankName(e.target.value)} placeholder="e.g. Access Bank" />
+        <Input label="Account Number (added to customer receipts)" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder="0123456789" />
+        <Input label="Account Name" value={accountName} onChange={e => setAccountName(e.target.value)} placeholder="e.g. CHIDI OKONKWO" />
+        <div style={{ height: 1, background: C.border, margin: "4px 0" }} />
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.sub }}>₿ Crypto Address (appears on receipts)</div>
+        <Input label="Bitcoin / USDT / Crypto Wallet Address" value={cryptoAddress} onChange={e => setCryptoAddress(e.target.value)} placeholder="bc1q... or 0x..." />
         <Btn variant={saved ? "green" : "primary"} onClick={saveProfile}>{saved ? "✅ Saved!" : "Save Changes"}</Btn>
       </div>
     </div>
   );
 
-  if (section === "security") return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <SubHeader title="Security" />
-      <div className="scrollable" style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 80 }}>
-        <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Change Password</div>
-          <Input label="New Password (min. 8 characters)" value={newPw} onChange={e => { setNewPw(e.target.value); setPwMsg(""); }} type="password" placeholder="••••••••" />
-          {pwMsg && <div style={{ fontSize: 13, color: pwMsg.startsWith("✅") ? C.green : C.red, fontWeight: 500 }}>{pwMsg}</div>}
-          <Btn variant="outline" onClick={handlePasswordReset} disabled={pwLoading}>{pwLoading ? "Updating…" : "Update Password"}</Btn>
-        </div>
-        <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Google Account</div>
-          <div style={{ fontSize: 12, color: C.sub }}>You're signed in with Google. Use the same account on any device.</div>
+  if (section === "report") {
+    const allOrdersData = allOrders(customers);
+    const monthlyData = {};
+    const typeData = {};
+    const customerSpend = {};
+    allOrdersData.forEach(o => {
+      const month = (o.createdAt || o.created_at || "").slice(0, 7);
+      if (month) { monthlyData[month] = (monthlyData[month] || 0) + getTotalPaid(o); }
+      if (o.type) { typeData[o.type] = (typeData[o.type] || 0) + getTotalPaid(o); }
+      const cname = o._cname || "Unknown";
+      customerSpend[cname] = (customerSpend[cname] || 0) + getTotalPaid(o);
+    });
+    const top5 = Object.entries(customerSpend).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const inProgress = allOrdersData.filter(o => orderStatus(o) === "In Progress").length;
+    const ready = allOrdersData.filter(o => orderStatus(o) === "Ready").length;
+    const delivered = allOrdersData.filter(o => orderStatus(o) === "Delivered").length;
+    const totalIncome = allOrdersData.reduce((s, o) => s + getTotalPaid(o), 0);
+    const totalOutstanding = allOrdersData.reduce((s, o) => s + getBalance(o), 0);
+
+    function exportCSV() {
+      const rows = [["Date","Customer","Type","Price","Deposit","Paid","Balance","Status"]];
+      allOrdersData.forEach(o => {
+        rows.push([
+          (o.createdAt || o.created_at || "").slice(0, 10),
+          o._cname || "", o.type || "",
+          o.price || 0, o.deposit || 0, getTotalPaid(o), getBalance(o),
+          orderStatus(o),
+        ]);
+      });
+      const csv = rows.map(r => r.join(",")).join("\n");
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `boss-report-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+    }
+
+    return (
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <SubHeader title="Financial Report" />
+        <div className="scrollable" style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 80 }}>
+          <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 13, color: C.sub, fontWeight: 600 }}>Total Income</div>
+            <div style={{ fontSize: 30, fontWeight: 900, color: C.text }}>{fmt(totalIncome)}</div>
+          </div>
+          <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 13, color: C.sub, fontWeight: 600 }}>Still Owed to You</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: totalOutstanding > 0 ? C.red : C.sub }}>{fmt(totalOutstanding)}</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            {[
+              { label: "In Progress", value: inProgress, color: C.accent },
+              { label: "Ready", value: ready, color: C.amber },
+              { label: "Delivered", value: delivered, color: C.green },
+            ].map(s => (
+              <div key={s.label} style={{ ...S.card, padding: 14, textAlign: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 10, color: C.sub, fontWeight: 600, marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          {monthlyData && <div style={{ ...S.card }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>Income by Month</div>
+            {Object.entries(monthlyData).sort().slice(-6).map(([m, amt]) => (
+              <div key={m} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 13, color: C.sub }}>{m}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{fmt(amt)}</div>
+              </div>
+            ))}
+          </div>}
+          {top5.length > 0 && <div style={{ ...S.card }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>Top Customers</div>
+            {top5.map(([name, amt], i) => (
+              <div key={name} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 13, color: C.sub }}>{i + 1}. {name}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{fmt(amt)}</div>
+              </div>
+            ))}
+          </div>}
+          <Btn variant="primary" onClick={exportCSV}>⬇️ Download CSV Report</Btn>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   if (section === "data") return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -159,7 +219,7 @@ export function ProfileTab() {
           {[
             { l: "App Version", v: "BOSS v7.0" },
             { l: "Built by", v: "Monoversal Hub" },
-            { l: "Payment Partner", v: "Paystack" },
+            { l: "Auth", v: "Google OAuth" },
             { l: "CAC/BN", v: "BN 9319562" },
           ].map(r => (
             <div key={r.l} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -178,8 +238,8 @@ export function ProfileTab() {
 
   const initials = (tailor?.shop || "B").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const menuItems = [
-    { icon: "👤", label: "Edit Profile", sub: "Shop name, phone, city", key: "edit" },
-    { icon: "🔐", label: "Security", sub: "Password & login options", key: "security" },
+    { icon: "👤", label: "Edit Profile", sub: "Shop, phone, bank, crypto", key: "edit" },
+    { icon: "📊", label: "Financial Report", sub: "Income, customers, export CSV", key: "report" },
     { icon: "☁️", label: "Data & Backup", sub: "Export, restore your data", key: "data" },
     { icon: "🧮", label: "Smart Pricing", sub: "Calculate your job prices", key: "tools" },
     { icon: "ℹ️", label: "About BOSS", sub: "Version, credits", key: "about" },
@@ -234,12 +294,6 @@ export function ProfileTab() {
           style={{ width: "100%", padding: "15px", borderRadius: 16, fontSize: 15, fontWeight: 700, border: "1.5px solid rgba(255,59,48,0.2)", cursor: "pointer", background: "rgba(255,59,48,0.05)", color: C.red, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           🚪 Sign Out
         </button>
-      </div>
-
-      <div style={{ padding: "14px 20px 0" }}>
-        <div style={{ fontSize: 11, color: C.muted, textAlign: "center", lineHeight: 1.7, padding: "10px 0" }}>
-          BOSS earns ₦75 when you get fully paid — so we only win when you do. 🤝
-        </div>
       </div>
 
       <div style={{ padding: "16px 20px 32px", textAlign: "center" }}>

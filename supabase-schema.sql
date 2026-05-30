@@ -272,6 +272,19 @@ ALTER TABLE tailors ADD COLUMN IF NOT EXISTS phone_verified_at     timestamptz;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_category text DEFAULT 'Other';
 -- Valid values: Traditional, Formal (Men), Formal (Women), Casual, Children, Bridal, Accessories, Other
 
+-- ── CRYPTO ADDRESS (for tailor receipts / invoice page) ──────────────
+ALTER TABLE tailors ADD COLUMN IF NOT EXISTS crypto_address text;
+
+-- ── ORDER STYLE IMAGES (max 5 per order, stored in Supabase Storage) ──
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS image_urls text[] DEFAULT '{}';
+
+-- Fix bos_score_history RLS — add INSERT policy (was missing)
+CREATE POLICY IF NOT EXISTS "Tailors insert own score history"
+  ON bos_score_history FOR INSERT
+  WITH CHECK (tailor_id IN (
+    SELECT id FROM tailors WHERE user_id = auth.uid()
+  ));
+
 -- ── AUTO-PROFILE TRIGGER (run this block separately in SQL Editor) ──
 -- Run this AFTER the schema above to enable auto-creating tailors rows
 -- on new signups. Safe to run multiple times (CREATE OR REPLACE + DROP

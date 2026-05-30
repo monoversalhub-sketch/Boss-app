@@ -26,10 +26,12 @@ export async function GET(request, { params }) {
     .from("orders")
     .select(`
       id, type, price, deposit, paid,
-      delivery_date, status, notes, paystack_ref, created_at,
+      delivery_date, status, notes, created_at,
       customers ( id, name ),
       tailors (
-        id, shop, city
+        id, shop, city, phone,
+        bank_name, account_number, account_name,
+        crypto_address
       )
     `)
     .eq("id", orderId)
@@ -54,7 +56,6 @@ export async function GET(request, { params }) {
       delivery_date: order.delivery_date || null,
       status:        order.status        || "In Progress",
       notes:         order.notes         || "",
-      paystack_ref:  order.paystack_ref  || null,
       created_at:    order.created_at,
     },
     customer: {
@@ -63,10 +64,14 @@ export async function GET(request, { params }) {
       // phone intentionally omitted — L-03 / S-05
     },
     tailor: {
-      id:                     t.id                     || "",
-      shop:                   t.shop                   || "",
-      city:                   t.city                   || "",
-      // phone intentionally omitted — L-03 / S-05
+      id:               t.id               || "",
+      shop:             t.shop             || "",
+      city:             t.city             || "",
+      phone:            t.phone            || "",
+      bank_name:        t.bank_name        || "",
+      account_number:   t.account_number   || "",
+      account_name:     t.account_name     || "",
+      crypto_address:   t.crypto_address   || null,
     },
   });
 }

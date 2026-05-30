@@ -51,15 +51,6 @@ export function SetupScreen({ onComplete }) {
       self_declared_years: yearsInBusiness || null,
     };
     await db.setTailor(t);
-    try {
-      const session = await db.getSession();
-      if (session?.email) {
-        fetch("/api/welcome-email", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: session.email, shopName: t.shop, phone: t.phone, city: t.city }),
-        }).catch(() => { });
-      }
-    } catch { }
     onComplete(t);
   }
 

@@ -1,25 +1,16 @@
 // src/app/invoice/[orderId]/page.js
 // ─────────────────────────────────────────────────────────────────
 //  Public invoice page — no login required.
-//  Accessible via the link the tailor sends on WhatsApp.
-//
-//  Shows:
-//    • BOSS branding
-//    • Tailor's shop name + city (so customer knows who it's from)
-//    • Full order breakdown (item, total, paid, balance)
-//    • "Pay Balance" button (opens Paystack popup)
-//
-//  The order UUID in the URL is unguessable — this is the security.
-//  Anyone with the link can view and pay the invoice.
+//  Accessible via the link the tailor shares with their customer.
+//  Shows a clean receipt document with tailor's payment info.
+//  BOSS does not collect payments — tailors receive directly.
 // ─────────────────────────────────────────────────────────────────
-import PayButton from "./PayButton";
 
-// ── Fetch invoice data server-side ───────────────────────────────
 async function getInvoice(orderId) {
   const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   try {
     const res = await fetch(`${base}/api/invoice/${orderId}`, {
-      cache: "no-store",   // always fresh — payment status changes
+      cache: "no-store",
     });
     if (!res.ok) return null;
     return await res.json();
@@ -28,7 +19,6 @@ async function getInvoice(orderId) {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
 function fmt(n) {
   return "₦" + (parseFloat(n) || 0).toLocaleString("en-NG", {
     minimumFractionDigits: 0,
@@ -45,7 +35,6 @@ function fmtDate(d) {
   } catch { return d; }
 }
 
-// ── Design tokens — matches the app exactly ──────────────────────
 const C = {
   bg:      "#080808",
   s1:      "#101010",
@@ -58,7 +47,6 @@ const C = {
   border2: "#2c2c2c",
 };
 
-// ── Meta for link previews (WhatsApp / iMessage card) ────────────
 export async function generateMetadata({ params }) {
   const data = await getInvoice(params.orderId);
   if (!data) return { title: "Invoice — BOSS" };
@@ -75,11 +63,9 @@ export async function generateMetadata({ params }) {
   };
 }
 
-// ── Page ──────────────────────────────────────────────────────────
 export default async function InvoicePage({ params }) {
   const data = await getInvoice(params.orderId);
 
-  // ── Error state ───────────────────────────────────────────────
   if (!data) {
     return (
       <html lang="en">
@@ -105,12 +91,16 @@ export default async function InvoicePage({ params }) {
   const totalPaid  = order.deposit + order.paid;
   const balance    = Math.max(0, order.price - totalPaid);
   const isPaid     = balance <= 0;
-  const publicKey  = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
 
-  // Status label + color
   const statusColor = order.status === "Delivered" ? C.green
                     : order.status === "Ready"      ? C.gold
                     : C.sub;
+
+  const waPhone = (tailor.phone || "").replace(/\D/g, "");
+  const waNum = waPhone.startsWith("0") ? "234" + waPhone.slice(1)
+              : waPhone.startsWith("234") ? waPhone
+              : "234" + waPhone;
+  const waHref = waNum.length > 10 ? `https://wa.me/${waNum}` : null;
 
   return (
     <html lang="en">
@@ -225,10 +215,8 @@ export default async function InvoicePage({ params }) {
               </div>
             </div>
 
-            {/* Divider */}
             <div style={{ height: 1, background: C.border, margin: "0 0 16px" }}/>
 
-            {/* Order details rows */}
             {[
               { label: "Item",          value: order.type || "Order" },
               { label: "Delivery Date", value: fmtDate(order.delivery_date) },
@@ -277,7 +265,6 @@ export default async function InvoicePage({ params }) {
               </div>
             ))}
 
-            {/* Balance — prominent */}
             <div style={{
               display:        "flex",
               justifyContent: "space-between",
@@ -297,25 +284,68 @@ export default async function InvoicePage({ params }) {
             </div>
           </div>
 
-          {/* ── Pay button (client component) ── */}
-          <PayButton
-            order={order}
-            customer={customer}
-            tailor={tailor}
-            publicKey={publicKey}
-          />
+          {/* ── Payment instructions (bank details) ── */}
+          {!isPaid && (tailor.account_number || tailor.crypto_address) && (
+            <div style={{
+              background:   C.s1,
+              border:       `1px solid ${C.border2}`,
+              borderRadius: 16,
+              padding:      "20px",
+              marginBottom: 20,
+            }}>
+              <div style={{ fontSize: 11, color: C.sub, fontWeight: 600,
+                textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12 }}>
+                To pay {tailor.shop}
+              </div>
+              {tailor.account_number && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 13, color: C.sub }}>Bank: <span style={{ fontWeight: 700, color: "#fff" }}>{tailor.bank_name || "—"}</span></div>
+                  <div style={{ fontSize: 13, color: C.sub }}>Account Number: <span style={{ fontWeight: 700, color: "#fff", fontFamily: "monospace", fontSize: 15 }}>{tailor.account_number}</span></div>
+                  <div style={{ fontSize: 13, color: C.sub }}>Account Name: <span style={{ fontWeight: 700, color: "#fff" }}>{tailor.account_name || "—"}</span></div>
+                </div>
+              )}
+              {tailor.crypto_address && (
+                <div style={{ marginTop: tailor.account_number ? 12 : 0 }}>
+                  <div style={{ fontSize: 13, color: C.sub }}>₿ Crypto Address: <span style={{ fontWeight: 700, color: "#fff", wordBreak: "break-all" }}>{tailor.crypto_address}</span></div>
+                </div>
+              )}
+              <div style={{ marginTop: 14, fontSize: 12, color: C.sub, lineHeight: 1.5 }}>
+                After payment, let {tailor.shop} know via WhatsApp so they can confirm your order.
+              </div>
+            </div>
+          )}
+
+          {/* ── WhatsApp contact button ── */}
+          {waHref && (
+            <a href={waHref} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+              <div style={{
+                background:     "#25D366",
+                color:          "#fff",
+                borderRadius:   14,
+                padding:        "16px 20px",
+                textAlign:      "center",
+                fontWeight:     700,
+                fontSize:       16,
+                letterSpacing:  "-0.3px",
+                marginBottom:   20,
+                display:        "flex",
+                alignItems:     "center",
+                justifyContent: "center",
+                gap:            8,
+              }}>
+                💬 Message {tailor.shop} on WhatsApp
+              </div>
+            </a>
+          )}
 
           {/* ── Footer ── */}
           <div style={{
             textAlign:  "center",
-            marginTop:  32,
+            marginTop:  16,
             fontSize:   12,
             color:      C.sub,
             lineHeight: 1.6,
           }}>
-            <div style={{ marginBottom: 4 }}>
-              🔒 Payments processed securely by Paystack
-            </div>
             <div>
               Powered by{" "}
               <span style={{ color: C.gold, fontWeight: 700 }}>BOSS</span>

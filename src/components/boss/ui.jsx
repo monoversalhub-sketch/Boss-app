@@ -3,7 +3,7 @@
 // Btn, Input, Select, Textarea, SectionLabel, EmptyState,
 // SkeletonCard, Toast, Sheet, Flow, GlobalStyles, DatePicker
 import { useState, useEffect, useId, useMemo } from "react";
-import { C, S, GLOBAL_CSS, MONTHS, SERVICE_FEE } from "./tokens";
+import { C, S, GLOBAL_CSS, MONTHS } from "./tokens";
 
 export function GlobalStyles(){
   useEffect(()=>{

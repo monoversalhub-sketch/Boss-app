@@ -3,7 +3,7 @@
 //  T-09: Pure helper functions extracted from BOSSApp.jsx
 //  All functions here are pure (no React state, no side effects).
 // ─────────────────────────────────────────────────────────────────
-import { APP_URL, SERVICE_FEE } from "./tokens";
+import { APP_URL } from "./tokens";
 
 // ─────────────────────────────────────────
 // PRIMITIVE UTILS
@@ -48,14 +48,6 @@ export function getPaymentState(order) {
   return "partially_paid";
 }
 
-export function getServiceFee(order) {
-  return getPaymentState(order) === "fully_paid" ? SERVICE_FEE : 0;
-}
-
-export function getNetEarning(order) {
-  return Math.max(0, getTotalPaid(order) - getServiceFee(order));
-}
-
 // ─────────────────────────────────────────
 // ORDER STATUS HELPERS
 // ─────────────────────────────────────────
@@ -86,8 +78,8 @@ export function waLink(phone, msg) {
 export function buildReceiptText(order, customer, shopName, vaDetails = null) {
   const paid = getTotalPaid(order);
   const bal  = getBalance(order);
-  const va   = vaDetails; // { number, bank, name }
-  return [
+  const va   = vaDetails; // { number, bank, name, crypto }
+  const lines = [
     `━━━━━━━━━━━━━━━━━━━━━`,
     `🧵 *${shopName}*`,
     `━━━━━━━━━━━━━━━━━━━━━`,
@@ -103,25 +95,33 @@ export function buildReceiptText(order, customer, shopName, vaDetails = null) {
     `Status: ${orderStatus(order)}`,
     order.notes ? `Notes: ${order.notes}` : "",
     ``,
-    ...(bal > 0 && va ? [
+  ];
+  if (bal > 0 && va) {
+    lines.push(
       `━━━━━━━━━━━━━━━━━━━━━`,
       `🏦 *To pay your balance, transfer to:*`,
       `Bank: *${va.bank}*`,
       `Account: *${va.number}*`,
       `Name: *${va.name}*`,
       `Amount: *${fmt(bal)}*`,
-      `It reflects immediately! 🙏`,
-    ] : bal <= 0 ? [`✅ Order is fully paid! Thank you so much 🙏`] : []),
+    );
+    if (va.crypto) lines.push(`₿ *Crypto*: ${va.crypto}`);
+    lines.push(`It reflects immediately! 🙏`);
+  } else if (bal <= 0) {
+    lines.push(`✅ Order is fully paid! Thank you so much 🙏`);
+  }
+  lines.push(
     `━━━━━━━━━━━━━━━━━━━━━`,
     `_Powered by BOSS — Build Trust. Grow Faster._`,
     `━━━━━━━━━━━━━━━━━━━━━`,
-  ].filter(l => l !== undefined && l !== "").join("\n");
+  );
+  return lines.filter(l => l !== undefined && l !== "").join("\n");
 }
 
 export function buildInvoiceMsg(order, customer, shopName, vaDetails = null) {
   const bal  = getBalance(order);
   const va   = vaDetails;
-  return [
+  const lines = [
     `Hello *${customer.name}*! 👋`,
     ``,
     `Here is your order summary from *${shopName}*:`,
@@ -131,39 +131,55 @@ export function buildInvoiceMsg(order, customer, shopName, vaDetails = null) {
     `✅ Paid: ${fmt(getTotalPaid(order))}`,
     `🔴 Balance: *${fmt(bal)}*`,
     ``,
-    ...(bal > 0 && va ? [
+  ];
+  if (bal > 0 && va) {
+    lines.push(
       `To pay, please transfer *${fmt(bal)}* to:`,
       ``,
       `🏦 Bank: *${va.bank}*`,
       `📋 Account: *${va.number}*`,
       `👤 Name: *${va.name}*`,
-      ``,
-      `It reflects immediately! Let us know once you've sent it 🙏`,
-    ] : bal <= 0 ? [`Your order is *fully paid*! Thank you so much 🙏`] : [`Please contact us to arrange payment.`]),
-    ``,
-    `_${shopName} · Powered by BOSS_`,
-  ].filter(l => l !== undefined).join("\n");
+    );
+    if (va.crypto) lines.push(`₿ *Crypto*: ${va.crypto}`);
+    lines.push(``, `It reflects immediately! Let us know once you've sent it 🙏`);
+  } else if (bal <= 0) {
+    lines.push(`Your order is *fully paid*! Thank you so much 🙏`);
+  } else {
+    lines.push(`Please contact us to arrange payment.`);
+  }
+  lines.push(``, `_${shopName} · Powered by BOSS_`);
+  return lines.filter(l => l !== undefined).join("\n");
+}
+
+// Kept for backward compatibility
+export function buildInvoiceLinkMsg(order, customer, shopName) {
+  return buildInvoiceMsg(order, customer, shopName, null);
 }
 
 export function buildReminderMsg(order, customer, shopName, vaDetails = null) {
   const bal  = getBalance(order);
   const va   = vaDetails;
-  return [
+  const lines = [
     `Hi *${customer.name}*! Just checking in from *${shopName}* 😊`,
     ``,
     `Your *${order.type || "order"}* has a balance of *${fmt(bal)}* outstanding.`,
     ``,
-    ...(va ? [
+  ];
+  if (va) {
+    lines.push(
       `To pay, please transfer to:`,
       `🏦 Bank: *${va.bank}*`,
       `🔢 Account: *${va.number}*`,
       `👤 Name: *${va.name}*`,
       `Amount: *${fmt(bal)}*`,
-      ``,
-      `It reflects immediately — let us know once you've sent it! 🙏`,
-    ] : [`Please come to the shop to pay. Thank you! 🙏`]),
-    `_${shopName} · Powered by BOSS_`,
-  ].filter(l => l !== undefined).join("\n");
+    );
+    if (va.crypto) lines.push(`₿ *Crypto*: ${va.crypto}`);
+    lines.push(``, `It reflects immediately — let us know once you've sent it! 🙏`);
+  } else {
+    lines.push(`Please come to the shop to pay. Thank you! 🙏`);
+  }
+  lines.push(`_${shopName} · Powered by BOSS_`);
+  return lines.filter(l => l !== undefined).join("\n");
 }
 
 // Keep buildInvoiceLinkMsg as a deprecated alias pointing to buildInvoiceMsg

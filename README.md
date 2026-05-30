@@ -17,34 +17,42 @@ boss-complete/
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── auth/
-│   │   │   │   ├── login/              ← Email login
-│   │   │   │   ├── signup/             ← Email signup
 │   │   │   │   ├── logout/             ← Sign out
-│   │   │   │   ├── session/            ← Session check
-│   │   │   │   ├── forgot-password/    ← Send reset email
-│   │   │   │   └── reset-password/     ← Update password
-│   │   │   ├── paystack-virtual-account/ ← Create dedicated virtual account
-│   │   │   ├── paystack-verify-account/  ← Verify bank account number
-│   │   │   ├── paystack-webhook/         ← Handle charge.success + transfer.success
-│   │   │   ├── welcome-email/            ← Onboarding email via Resend
-│   │   │   └── invoice/[orderId]/        ← Public invoice page API
-│   │   ├── invoice/[orderId]/    ← Public-facing invoice + pay page
+│   │   │   │   └── session/            ← Session check
+│   │   │   └── invoice/[orderId]/      ← Public invoice page API
+│   │   ├── auth/callback/              ← Google OAuth callback
+│   │   ├── invoice/[orderId]/          ← Public-facing invoice (receipt only)
 │   │   ├── layout.js
-│   │   ├── page.js
-│   │   └── globals.css
+│   │   └── page.js
 │   ├── components/
-│   │   ├── BOSSClient.jsx        ← "use client" SSR-safe wrapper
-│   │   └── BOSSApp.jsx           ← Full app (all screens + logic, inline styles)
+│   │   ├── BOSSApp.jsx                 ← Root orchestration
+│   │   └── boss/
+│   │       ├── AuthScreen.jsx          ← Google OAuth only
+│   │       ├── SetupScreen.jsx         ← New tailor onboarding
+│   │       ├── SplashScreen.jsx        ← Loading splash
+│   │       ├── SmartPricingCalculator.jsx
+│   │       ├── helpers.js              ← Pure functions (fmt, getBalance, computeEarnings…)
+│   │       ├── tokens.js               ← Design tokens (C, S, CLOTH_TYPES…)
+│   │       ├── ui.jsx                  ← Design system (Btn, Input, Flow, Sheet…)
+│   │       ├── context.jsx             ← BOSSContext + ErrorBoundary
+│   │       ├── cards.jsx               ← TrustScoreCard, OrderCard, StatusStepper…
+│   │       ├── index.js                ← Barrel re-exports
+│   │       ├── tabs/
+│   │       │   ├── TodayTab.jsx        ← Today dashboard
+│   │       │   ├── EarningsTab.jsx     ← Financial overview (₦)
+│   │       │   ├── CustomersTab.jsx    ← Customer list
+│   │       │   └── ProfileTab.jsx      ← Settings, report, backup
+│   │       └── flows/
+│   │           ├── AddOrderFlow.jsx    ← New order (with style images coming soon)
+│   │           ├── AddClientFlow.jsx   ← New client
+│   │           ├── OrderDetailFlow.jsx ← Order detail + payments + receipts
+│   │           ├── CustomerDetailFlow.jsx
+│   │           └── RemindersFlow.jsx
 │   └── lib/
-│       ├── db.js                 ← Data layer (Supabase + localStorage fallback)
-│       ├── paystack.js           ← Paystack payment helpers
-│       └── supabase.js           ← Supabase client
+│       └── db.js                       ← Data layer (Supabase + localStorage cache)
 ├── public/
-│   ├── favicon.svg
-│   ├── icon.svg
-│   └── manifest.json
-├── supabase-schema.sql           ← Run once in Supabase SQL editor
-├── .env.local.example            ← Copy → .env.local and fill keys
+├── supabase-schema.sql                 ← Run once in Supabase SQL editor
+├── .env.local.example
 ├── package.json
 └── next.config.js
 ```
@@ -53,41 +61,24 @@ boss-complete/
 
 ## How Payments Work
 
+BOSS does **not** collect payments. The tailor receives money directly.
+
 ```
-Customer wants to pay balance
-          ↓
-Tailor shares invoice link (WhatsApp / copy)
-          ↓
-Customer opens link → sees order breakdown → taps Pay
-          ↓
-   ┌──────────────────────────────────────┐
-   │  Option A: Payment link (Paystack)   │
-   │  charge.success webhook fires        │
-   │  → order.paid updated automatically  │
-   └──────────────────────────────────────┘
-              OR
-   ┌──────────────────────────────────────┐
-   │  Option B: Virtual Account Transfer  │
-   │  Customer sends bank transfer to     │
-   │  tailor's dedicated virtual account  │
-   │  dedicatedaccount.transfer.success   │
-   │  webhook fires                       │
-   │  → auto-matched to order by amount   │
-   │  → order.paid updated automatically  │
-   └──────────────────────────────────────┘
-          ↓
-  BOS Score recomputed + saved to DB
-  Tailor sees updated balance in Wallet tab
+Tailor records a new order:
+  → sets price, deposit, delivery date
+  → shares WhatsApp receipt with payment details (bank account, crypto address)
+  → customer pays via bank transfer, cash, or crypto
+  → tailor records payment in the app manually
 ```
 
-**BOSS never holds funds.** Money goes directly to the tailor's bank account.
+**Payment details on receipts:** The tailor's bank name, account number, and crypto address (if set) are automatically included on WhatsApp receipts and the public invoice page.
 
 ---
 
 ## Navigation Structure
 
 ```
-Today | Clients | [+] | Wallet | Settings
+Today | Customers | [+] | Earnings | Profile
               ↑
          Action Sheet:
          ➕ New Order
@@ -96,25 +87,23 @@ Today | Clients | [+] | Wallet | Settings
 
 ---
 
-## Settings Tab — Control Center
+## Profile Tab — Control Center
 
 | Section | Contents |
 |---|---|
-| 🏪 Profile | Shop name, phone, city |
-| 🔒 Security | Password reset, Google/Apple OAuth (coming soon), logout |
-| 🏦 Financial Identity | Dedicated Virtual Account (Paystack) — copy/share details |
-| ☁️ Data & Backup | JSON export, file restore, Google Drive (coming soon) |
-| 🧰 Tools | Smart Pricing Engine (labour + production costs + margin + VAT) |
+| 👤 Edit Profile | Shop name, phone, city, bank details, crypto address |
+| 📊 Financial Report | Income summary, order breakdown, top customers, CSV export |
+| ☁️ Data & Backup | JSON export, file restore |
+| 🧮 Smart Pricing | Calculate job prices (labour + materials + margin) |
+| ℹ️ About BOSS | Version, credits |
 
 ---
 
 ## Authentication
 
-- Email + password (Supabase Auth)
-- Forgot password → reset link via email
-- Google OAuth (UI ready, enable in Supabase dashboard)
-- Apple OAuth (UI ready, enable in Supabase dashboard)
-- Local/offline mode (localStorage fallback — no account needed)
+- **Google OAuth only** (via Supabase)
+- Email/password authentication has been removed
+- No offline/demo mode — all data syncs to Supabase
 
 ---
 
@@ -133,8 +122,6 @@ Computed from real business activity. Range: 0–100.
 Levels: **New → Building → Growing → Trusted**  
 Credit Readiness: **Low / Medium / High**
 
-Score is recomputed server-side after every webhook event and stored in `tailors.bos_score`.
-
 ---
 
 ## Quick Setup
@@ -144,21 +131,14 @@ Score is recomputed server-side after every webhook event and stored in `tailors
 1. Go to [supabase.com](https://supabase.com) → your project → SQL Editor
 2. Paste the entire `supabase-schema.sql` → click **Run**
 3. Copy your **Project URL** and **anon key** from Settings → API
+4. **Enable Google Auth:** Authentication → Providers → Google → enter Client ID + Secret
+5. **Run the auto-profile trigger** (block at bottom of schema file) to auto-create tailor rows on signup
 
-### 2. Paystack
+### 2. Supabase Storage (for order images)
 
-1. Go to [dashboard.paystack.com](https://dashboard.paystack.com) → Settings → API Keys
-2. Copy your **Public Key** and **Secret Key**
-3. Set Webhook URL: `https://your-app.vercel.app/api/paystack-webhook`
-4. Enable events: `charge.success` + `dedicatedaccount.transfer.success`
+Create a bucket named `order-images` (public read, authenticated write).
 
-### 3. Resend (welcome emails — optional)
-
-1. Go to [resend.com](https://resend.com) → API Keys → create key
-2. Verify your sending domain
-3. Update `FROM_EMAIL` in `src/app/api/welcome-email/route.js`
-
-### 4. Environment Variables
+### 3. Environment Variables
 
 ```bash
 cp .env.local.example .env.local
@@ -170,13 +150,10 @@ Fill in `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=pk_live_xxxxxx
-PAYSTACK_SECRET_KEY=sk_live_xxxxxx
 NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-RESEND_API_KEY=re_xxxxxx
 ```
 
-### 5. Run locally
+### 4. Run locally
 
 ```bash
 npm install
@@ -190,23 +167,12 @@ Open [http://localhost:3000](http://localhost:3000)
 ## Deploy to Vercel
 
 ```bash
-cd /storage/emulated/0/Boss-app
 git add .
 git commit -m "update"
-git push -f origin main
+git push origin main
 ```
 
-Vercel auto-deploys on push.
-
-Add all env variables in Vercel → Project → Settings → Environment Variables.
-
----
-
-## Offline / Demo Mode
-
-No Supabase keys? The app uses **localStorage automatically**.  
-Everything works — orders, clients, measurements — stored in the browser.  
-Perfect for demos and testing without any backend setup.
+Vercel auto-deploys on push. Add all env variables in Vercel → Project → Settings → Environment Variables.
 
 ---
 
@@ -217,9 +183,8 @@ Perfect for demos and testing without any backend setup.
 | Framework | Next.js 14 (App Router) |
 | UI | React 18, inline styles only (no Tailwind, no CSS modules) |
 | Database | Supabase (PostgreSQL + Row Level Security) |
-| Auth | Supabase Email Auth + OAuth |
-| Payments | Paystack Dedicated Virtual Accounts |
-| Email | Resend |
+| Auth | Google OAuth (via Supabase) |
+| Storage | Supabase Storage (order images) |
 | Hosting | Vercel |
 
 ---
@@ -230,11 +195,18 @@ Perfect for demos and testing without any backend setup.
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API | Database |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API | Database |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API | Webhooks (server-only) |
-| `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Paystack → Settings → API Keys | Online payments |
-| `PAYSTACK_SECRET_KEY` | Paystack → Settings → API Keys | Webhook + virtual account creation |
-| `NEXT_PUBLIC_APP_URL` | Your Vercel URL | Invoice links, password reset |
-| `RESEND_API_KEY` | resend.com | Welcome emails (optional) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API | Invoice API (server-only) |
+| `NEXT_PUBLIC_APP_URL` | Your Vercel URL | Invoice links |
+
+---
+
+## New Features
+
+- **Financial Report:** Export a CSV of all orders (income, customers, breakdown) from Profile → Financial Report
+- **Bank on Receipts:** Your bank account number and crypto address automatically appear on WhatsApp receipts and the public invoice page
+- **Crypto Support:** Add a Bitcoin/USDT wallet address in Profile → Edit Profile for receipt inclusion
+- **Style Images (coming soon):** Attach up to 5 reference images per order, stored in Supabase Storage
+- **Clean Invoice Page:** Public invoice shows receipt + tailor's payment details + WhatsApp contact — no Paystack
 
 ---
 

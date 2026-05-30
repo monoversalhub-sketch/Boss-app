@@ -2,11 +2,10 @@
 // src/components/boss/flows/OrderDetailFlow.jsx
 import { useState } from "react";
 import { C, S } from "../tokens";
-import { fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, waLink, buildReceiptText, buildReminderMsg, buildInvoiceLinkMsg, invoiceUrl } from "../helpers";
+import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, waLink, buildReceiptText, buildReminderMsg } from "../helpers";
 import { useBOSS } from "../context";
 import { Btn, Input, Flow, SectionLabel } from "../ui";
 import { StatusStepper, MeasGrid } from "../cards";
-import { openPaystackPopup } from "../../../lib/paystack";
 import { db } from "../../../lib/db";
 
 export function OrderDetailFlow({open,onClose,orderId,tailor}){
@@ -47,38 +46,17 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
     onClose();
     toast("Order deleted");
   }
+  const vaDetails = tailor?.account_number ? {
+    number: tailor.account_number,
+    bank:   tailor.bank_name || "",
+    name:   tailor.account_name || "",
+    crypto: tailor.crypto_address || null,
+  } : null;
+
   function waMsg(msg){window.open(waLink(customer.phone,msg),"_blank");}
   function waReady(){waMsg(`Hello *${customer.name}*! 🎉\n\nYour *${order.type||"order"}* is ready o! You can come pick it up anytime from *${shop}*.\n\nWe can't wait for you to see it! 🙏`);}
-  function waReminder(){waMsg(buildReminderMsg(order,customer,shop));}
-  function waReceipt(){waMsg(buildReceiptText(order,customer,shop,true));}
-  function waInvoiceLink(){waMsg(buildInvoiceLinkMsg(order,customer,shop));}
-  function copyInvoiceLink(){
-    const url=invoiceUrl(order.id);
-    if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast("✅ Invoice link copied!"));}
-    else{toast("Link: "+url);}
-  }
-  function collectOnline(){
-    if(bal<=0){toast("No balance to collect");return;}
-    if(window.innerWidth<768){
-      const url=invoiceUrl(order.id);
-      navigator.clipboard?.writeText(url).catch(()=>{});
-      toast("📋 Invoice link copied — send to customer to pay online");
-      return;
-    }
-    openPaystackPopup({
-      email:`${(customer.phone||"boss").replace(/\D/g,"")}@boss.app`,
-      amount:bal,name:customer.name,phone:customer.phone,
-      ref:`BOSS_${order.id}_${Date.now()}`,
-      onSuccess:async(ref)=>{
-        const installment={id:uid(),amount:bal,date:new Date().toISOString(),method:"paystack",ref};
-        const history=[...(order.installmentHistory||[]),installment];
-        await updateOrder({paid:(parseFloat(order.paid)||0)+bal,paystackRef:ref,installmentHistory:history});
-        await db.recordPayment({orderId:order.id,amount:bal,method:"paystack",paystackRef:ref});
-        toast("✅ Payment confirmed! "+fmt(bal));
-      },
-      onClose:()=>toast("Payment cancelled"),
-    });
-  }
+  function waReminder(){waMsg(buildReminderMsg(order,customer,shop,vaDetails));}
+  function waReceipt(){waMsg(buildReceiptText(order,customer,shop,vaDetails));}
   const Row=({label,value,valueStyle={}})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"11px 0",borderBottom:`1px solid ${C.border}`}}>
       <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{label}</div>
@@ -104,30 +82,14 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
         } valueStyle={{fontWeight:700,color:getPaymentState(order)==="fully_paid"?C.green:getPaymentState(order)==="partially_paid"?"#FF9F0A":C.red}}/>
         {order.notes&&<Row label="Notes" value={order.notes} valueStyle={{fontSize:13,fontWeight:500,color:C.sub}}/>}
       </div>
-      <div>
-        <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Invoice Link</SectionLabel>
-        <div style={{background:C.s2,border:`1px solid ${C.border2}`,borderRadius:12,padding:"14px 16px",marginBottom:10}}>
-          <div style={{fontSize:12,color:C.sub,marginBottom:6,fontWeight:600}}>Public payment link for this order:</div>
-          <div style={{fontSize:12,color:C.accent,wordBreak:"break-all",lineHeight:1.5,fontFamily:"monospace",background:C.s3,padding:"8px 10px",borderRadius:8}}>
-            {invoiceUrl(order.id)}
-          </div>
-          <div style={{fontSize:12,color:C.muted||C.sub,marginTop:6,lineHeight:1.5}}>
-            Customer sees your shop name, full order breakdown, and can pay their balance online.
-          </div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <Btn variant="wa" onClick={waInvoiceLink} style={{fontSize:13}}><span>🔗</span> Send on WhatsApp</Btn>
-          <Btn variant="outline" onClick={copyInvoiceLink} style={{fontSize:13}}>📋 Copy Link</Btn>
-        </div>
-      </div>
-      {bal>0&&(
+      {vaDetails && (
         <div>
-          <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Collect Payment Now</SectionLabel>
-          <Btn variant="primary" onClick={collectOnline} style={{background:"#0EA5E9",color:"#fff"}}>
-            💳 Open Paystack Here — Collect {fmt(bal)}
-          </Btn>
-          <div style={{fontSize:12,color:C.sub,textAlign:"center",marginTop:8,lineHeight:1.5}}>
-            Use this if the customer is with you in person or on a call. Opens the Paystack popup directly on this device.
+          <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Payment Details for Receipts</SectionLabel>
+          <div style={{...S.card,display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Bank: <span style={{fontWeight:700,color:C.text}}>{vaDetails.bank}</span></div>
+            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Account: <span style={{fontWeight:700,color:C.text}}>{vaDetails.number}</span></div>
+            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Name: <span style={{fontWeight:700,color:C.text}}>{vaDetails.name}</span></div>
+            {vaDetails.crypto && <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Crypto: <span style={{fontWeight:700,color:C.text}}>{vaDetails.crypto}</span></div>}
           </div>
         </div>
       )}

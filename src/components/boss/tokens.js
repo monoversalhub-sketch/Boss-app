@@ -21,8 +21,7 @@ export const MEAS_FIELDS = [
 // U-23: 3 statuses (removed "Pending" — tailors start work immediately)
 export const STATUSES = ["In Progress","Ready","Delivered"];
 
-export const SERVICE_FEE = 75; // ₦75 per completed order (BOSS platform fee)
-export const VAT_RATE    = 0.075; // Nigerian VAT 7.5%
+export const VAT_RATE = 0.075; // Nigerian VAT 7.5%
 
 export const NG_BANKS = [
   {name:"Access Bank",code:"044"},{name:"Fidelity Bank",code:"070"},
