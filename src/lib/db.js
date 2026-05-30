@@ -393,14 +393,40 @@ async function updateBosScore(tailorId) {
   },
 
   // Get the internal tailor UUID (needed for addCustomer/addOrder targeted writes)
+  // Auto-creates the tailors row if missing (defensive guard for existing users
+  // who signed up before the auto-profile trigger was added).
   async getTailorId() {
     try {
       const client = await getBrowserClient();
       const { data: authData } = await client.auth.getUser();
       if (!authData?.user) return null;
-      const { data: tailor } = await client.from("tailors").select("id").eq("user_id", authData.user.id).single();
-      return tailor?.id || null;
-    } catch { return null; }
+
+      const { data: tailor } = await client
+        .from("tailors")
+        .select("id")
+        .eq("user_id", authData.user.id)
+        .single();
+
+      if (tailor?.id) return tailor.id;
+
+      // Row missing — auto-create on the fly
+      const { data: created, error: insertError } = await client
+        .from("tailors")
+        .insert({ user_id: authData.user.id, shop: "" })
+        .select("id")
+        .single();
+
+      if (insertError) {
+        console.error("[db.getTailorId] auto-create failed:", insertError);
+        return null;
+      }
+
+      console.log("[db.getTailorId] auto-created tailors row for", authData.user.id);
+      return created.id;
+    } catch (e) {
+      console.error("[db.getTailorId]", e);
+      return null;
+    }
   },
 
   async addCustomer(customer, tailorId) {
