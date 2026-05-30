@@ -253,7 +253,9 @@ CREATE INDEX IF NOT EXISTS bos_score_history_tailor_idx
 
 -- Enable RLS on bos_score_history
 ALTER TABLE bos_score_history ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "Tailors see own score history"
+
+DROP POLICY IF EXISTS "Tailors see own score history" ON bos_score_history;
+CREATE POLICY "Tailors see own score history"
   ON bos_score_history FOR SELECT
   USING (tailor_id IN (
     SELECT id FROM tailors WHERE user_id = auth.uid()
@@ -279,7 +281,8 @@ ALTER TABLE tailors ADD COLUMN IF NOT EXISTS crypto_address text;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS image_urls text[] DEFAULT '{}';
 
 -- Fix bos_score_history RLS — add INSERT policy (was missing)
-CREATE POLICY IF NOT EXISTS "Tailors insert own score history"
+DROP POLICY IF EXISTS "Tailors insert own score history" ON bos_score_history;
+CREATE POLICY "Tailors insert own score history"
   ON bos_score_history FOR INSERT
   WITH CHECK (tailor_id IN (
     SELECT id FROM tailors WHERE user_id = auth.uid()
