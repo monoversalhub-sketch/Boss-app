@@ -7,17 +7,26 @@
 // boss/context.jsx  — ErrorBoundary, BOSSContext, useBOSS
 // boss/ui.jsx       — Btn, Input, Sheet, Flow, Toast, DatePicker…
 // boss/cards.jsx    — TrustScoreCard, OrderCard, StatusStepper…
-// boss/flows.jsx    — AddOrderFlow, OrderDetailFlow, RemindersFlow…
-// boss/tabs.jsx     — TodayTab, EarningsTab, ProfileTab, AuthScreen…
+// boss/flows/       — AddOrderFlow, OrderDetailFlow, RemindersFlow…
+// boss/tabs/        — TodayTab, EarningsTab, CustomersTab, ProfileTab…
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { db } from "../lib/db";
 
 import { C } from "./boss/tokens";
 import { ErrorBoundary, BOSSContext } from "./boss/context";
 import { GlobalStyles, Toast } from "./boss/ui";
-import { SplashScreen, AuthScreen, SetupScreen } from "./boss/tabs";
-import { TodayTab, CustomersTab, EarningsTab, ProfileTab } from "./boss/tabs";
-import { AddOrderFlow, OrderDetailFlow, CustomerDetailFlow, RemindersFlow, AddClientFlow } from "./boss/flows";
+import { SplashScreen } from "./boss/SplashScreen";
+import { AuthScreen } from "./boss/AuthScreen";
+import { SetupScreen } from "./boss/SetupScreen";
+import { CustomersTab } from "./boss/tabs/CustomersTab";
+import { EarningsTab } from "./boss/tabs/EarningsTab";
+import { ProfileTab } from "./boss/tabs/ProfileTab";
+import { TodayTab } from "./boss/tabs/TodayTab";
+import { RemindersFlow } from "./boss/flows/RemindersFlow";
+import { AddClientFlow } from "./boss/flows/AddClientFlow";
+import { CustomerDetailFlow } from "./boss/flows/CustomerDetailFlow";
+import { AddOrderFlow } from "./boss/flows/AddOrderFlow";
+import { OrderDetailFlow } from "./boss/flows/OrderDetailFlow";
 
 // ── Constants & pure helpers (defined outside component) ─────────────
 const PRIORITY = ["syncing", "error", "offline", "connected", "saved", "idle"];

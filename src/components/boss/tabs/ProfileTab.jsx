@@ -1,0 +1,254 @@
+"use client";
+// src/components/boss/ProfileTab.jsx
+import { useState, useEffect, useMemo, useRef } from "react";
+import { C, S } from "../tokens";
+import { allOrders, orderStatus, computeTrustScore } from "../helpers";
+import { useBOSS } from "../context";
+import { Btn, Input } from "../ui";
+import { SmartPricingCalculator } from "../SmartPricingCalculator";
+import { db } from "../../../lib/db";
+
+export function ProfileTab() {
+  const { tailor, setTailor, customers } = useBOSS();
+  const [section, setSection] = useState(null);
+  const [shop, setShop] = useState(tailor?.shop || "");
+  const [phone, setPhone] = useState(tailor?.phone || "");
+  const [city, setCity] = useState(tailor?.city || "");
+  const [saved, setSaved] = useState(false);
+
+  const [newPw, setNewPw] = useState("");
+  const [pwMsg, setPwMsg] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
+
+  const [restoreMsg, setRestoreMsg] = useState("");
+  const restoreRef = useRef(null);
+
+  useEffect(() => { if (!saved) return; const id = setTimeout(() => setSaved(false), 2200); return () => clearTimeout(id); }, [saved]);
+
+  const ts = computeTrustScore(customers);
+  const orders = useMemo(() => allOrders(customers), [customers]);
+
+  async function saveProfile() {
+    const t = { ...(tailor || {}), shop: shop.trim(), phone: phone.trim(), city: city.trim() };
+    await db.setTailor(t); setTailor(t); setSaved(true);
+  }
+
+  async function handlePasswordReset() {
+    if (!newPw || newPw.length < 8) { setPwMsg("Password must be at least 8 characters."); return; }
+    setPwLoading(true); setPwMsg("");
+    try {
+      const session = await db.getSession();
+      const userId = session?.id || session?.user?.id || null;
+      if (!userId) {
+        setPwMsg("Not logged in. Please sign out and log in again.");
+        setPwLoading(false); return;
+      }
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPw, userId }),
+      });
+      const data = await res.json();
+      if (data.error) { setPwMsg(data.error); } else { setPwMsg("✅ Password updated successfully."); setNewPw(""); }
+    } catch { setPwMsg("Error updating password. Try again."); }
+    setPwLoading(false);
+  }
+
+  function exportBackup() {
+    const data = { tailor, customers, exportedAt: new Date().toISOString(), version: "boss-v7" };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `boss-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+  }
+
+  function handleRestoreFile(e) {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.customers) { await db.setCustomers(data.customers); }
+        if (data.tailor) { await db.setTailor(data.tailor); setTailor(data.tailor); }
+        setRestoreMsg("✅ Data restored successfully. Refresh to see changes.");
+      } catch { setRestoreMsg("❌ Invalid backup file."); }
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleSignOut() {
+    await db.signOut();
+    window.location.reload();
+  }
+
+  const SubHeader = ({ title }) => (
+    <div style={{ height: 64, display: "flex", alignItems: "center", padding: "0 20px", gap: 14, flexShrink: 0, borderBottom: `1px solid ${C.border}`, backgroundColor: C.s1 }}>
+      <button className="tap" onClick={() => setSection(null)}
+        style={{ width: 38, height: 38, backgroundColor: C.s2, border: "none", borderRadius: 12, fontSize: 20, cursor: "pointer", color: C.text, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>←</button>
+      <div style={{ flex: 1, fontSize: 17, fontWeight: 800, color: C.text }}>{title}</div>
+    </div>
+  );
+
+  if (section === "edit") return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <SubHeader title="Edit Profile" />
+      <div className="scrollable" style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 14, paddingBottom: 80 }}>
+        <Input label="Shop / Business Name *" value={shop} onChange={e => setShop(e.target.value)} placeholder="e.g. Chidi's Fashion House" />
+        <Input label="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} type="tel" placeholder="080XXXXXXXX" />
+        <Input label="City" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Lagos" />
+        <Btn variant={saved ? "green" : "primary"} onClick={saveProfile}>{saved ? "✅ Saved!" : "Save Changes"}</Btn>
+      </div>
+    </div>
+  );
+
+  if (section === "security") return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <SubHeader title="Security" />
+      <div className="scrollable" style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 80 }}>
+        <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Change Password</div>
+          <Input label="New Password (min. 8 characters)" value={newPw} onChange={e => { setNewPw(e.target.value); setPwMsg(""); }} type="password" placeholder="••••••••" />
+          {pwMsg && <div style={{ fontSize: 13, color: pwMsg.startsWith("✅") ? C.green : C.red, fontWeight: 500 }}>{pwMsg}</div>}
+          <Btn variant="outline" onClick={handlePasswordReset} disabled={pwLoading}>{pwLoading ? "Updating…" : "Update Password"}</Btn>
+        </div>
+        <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Login Options</div>
+          <div style={{ fontSize: 12, color: C.sub }}>More sign-in methods coming soon.</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <button className="tap" style={{ padding: "11px", borderRadius: 12, border: `1px solid ${C.border}`, background: C.s2, fontSize: 13, fontWeight: 700, color: C.sub, cursor: "pointer", fontFamily: "inherit" }}>🇬 Google</button>
+            <button className="tap" style={{ padding: "11px", borderRadius: 12, border: `1px solid ${C.border}`, background: C.s2, fontSize: 13, fontWeight: 700, color: C.sub, cursor: "pointer", fontFamily: "inherit" }}>🍎 Apple</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (section === "data") return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <SubHeader title="Data & Backup" />
+      <div className="scrollable" style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 80 }}>
+        <div style={{ ...S.card }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>Export Backup</div>
+          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6, marginBottom: 12 }}>Download all your customers, orders, measurements, and settings as a JSON file. Save to Google Drive or WhatsApp Saved Messages.</div>
+          <Btn variant="primary" onClick={exportBackup}>⬇️ Download Backup File</Btn>
+        </div>
+        <div style={{ ...S.card }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>Restore from Backup</div>
+          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6, marginBottom: 12 }}>Upload a previously downloaded BOSS backup file to restore your data.</div>
+          <input ref={restoreRef} type="file" accept=".json" onChange={handleRestoreFile} style={{ display: "none" }} />
+          <Btn variant="outline" onClick={() => restoreRef.current?.click()}>📂 Choose Backup File</Btn>
+          {restoreMsg && <div style={{ fontSize: 13, color: restoreMsg.startsWith("✅") ? C.green : C.red, marginTop: 8, fontWeight: 500 }}>{restoreMsg}</div>}
+        </div>
+        <div style={{ ...S.card, background: "rgba(255,159,10,0.06)", border: "1px solid rgba(255,159,10,0.2)" }}>
+          <div style={{ fontSize: 12, color: "#FF9F0A", fontWeight: 700 }}>💡 Auto-backup to Google Drive coming soon</div>
+          <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>We'll automatically back up your data to Google Drive daily.</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (section === "tools") return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <SubHeader title="Smart Pricing Calculator" />
+      <div className="scrollable" style={{ flex: 1, padding: "20px", paddingBottom: 80 }}>
+        <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 16 }}>Calculate the right price for any job — labour, materials, and your profit margin.</div>
+        <SmartPricingCalculator compact={false} onUsePrice={() => { }} />
+      </div>
+    </div>
+  );
+
+  if (section === "about") return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <SubHeader title="About BOSS" />
+      <div className="scrollable" style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 80 }}>
+        <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 10 }}>
+          {[
+            { l: "App Version", v: "BOSS v7.0" },
+            { l: "Built by", v: "Monoversal Hub" },
+            { l: "Payment Partner", v: "Paystack" },
+            { l: "CAC/BN", v: "BN 9319562" },
+          ].map(r => (
+            <div key={r.l} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 13, color: C.sub, fontWeight: 500 }}>{r.l}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{r.v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ ...S.card, background: "rgba(0,102,204,0.04)", border: "1px solid rgba(0,102,204,0.15)" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.accent, marginBottom: 4 }}>BOSS — Build Trust. Grow Faster.</div>
+          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.7 }}>A lightweight trust and operations system for informal African businesses. Made in Nigeria 🇳🇬 for tailors, artisans, and service providers.</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const initials = (tailor?.shop || "B").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const menuItems = [
+    { icon: "👤", label: "Edit Profile", sub: "Shop name, phone, city", key: "edit" },
+    { icon: "🔐", label: "Security", sub: "Password & login options", key: "security" },
+    { icon: "☁️", label: "Data & Backup", sub: "Export, restore your data", key: "data" },
+    { icon: "🧮", label: "Smart Pricing", sub: "Calculate your job prices", key: "tools" },
+    { icon: "ℹ️", label: "About BOSS", sub: "Version, credits", key: "about" },
+  ];
+
+  return (
+    <div className="scrollable" style={{ flex: 1, paddingBottom: 120 }}>
+      <div style={{ background: `linear-gradient(160deg,${C.dark},#2C2C2E)`, padding: "32px 20px 28px", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -40, right: -20, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.03)" }} />
+        <div style={{ position: "absolute", bottom: -30, left: -10, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.02)" }} />
+        <div style={{ width: 72, height: 72, borderRadius: 22, background: `linear-gradient(135deg,${C.accent},rgba(0,102,204,0.5))`, border: "2px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 900, color: "#fff", marginBottom: 16, letterSpacing: "-1px" }}>
+          {initials}
+        </div>
+        <div style={{ fontSize: 24, fontWeight: 900, color: "#fff", letterSpacing: "-0.5px", lineHeight: 1.2, marginBottom: 4 }}>
+          {tailor?.shop || "Your Shop Name"}
+        </div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+          {tailor?.city && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>📍 {tailor.city}</span>}
+          {tailor?.phone && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>📞 {tailor.phone}</span>}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          {[
+            { top: String(ts.score), mid: ts.level, btm: "Trust Score", color: ts.score >= 70 ? C.green : ts.score >= 45 ? "#FF9F0A" : C.red },
+            { top: String(allOrders(customers).filter(o => orderStatus(o) === "Delivered").length), mid: "completed", btm: "Orders" },
+            { top: String(customers.length), mid: "served", btm: "Customers" },
+          ].map((s, i) => (
+            <div key={i} style={{ background: "rgba(255,255,255,0.07)", borderRadius: 14, padding: "12px 10px", textAlign: "center", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: s.color || "#fff", lineHeight: 1 }}>{s.top}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 3, fontWeight: 600 }}>{s.mid}</div>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 1 }}>{s.btm}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: "16px 20px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+        {menuItems.map(item => (
+          <button key={item.key} className="tap" onClick={() => setSection(item.key)}
+            style={{ ...S.card, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", textAlign: "left", width: "100%", fontFamily: "inherit", padding: "14px 16px" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 13, background: C.s2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{item.icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{item.label}</div>
+              <div style={{ fontSize: 12, color: C.sub, marginTop: 1 }}>{item.sub}</div>
+            </div>
+            <div style={{ fontSize: 18, color: C.muted, flexShrink: 0 }}>›</div>
+          </button>
+        ))}
+      </div>
+
+      <div style={{ padding: "16px 20px 0" }}>
+        <button className="tap" onClick={handleSignOut}
+          style={{ width: "100%", padding: "15px", borderRadius: 16, fontSize: 15, fontWeight: 700, border: "1.5px solid rgba(255,59,48,0.2)", cursor: "pointer", background: "rgba(255,59,48,0.05)", color: C.red, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          🚪 Sign Out
+        </button>
+      </div>
+
+      <div style={{ padding: "14px 20px 0" }}>
+        <div style={{ fontSize: 11, color: C.muted, textAlign: "center", lineHeight: 1.7, padding: "10px 0" }}>
+          BOSS earns ₦75 when you get fully paid — so we only win when you do. 🤝
+        </div>
+      </div>
+
+      <div style={{ padding: "16px 20px 32px", textAlign: "center" }}>
+        <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.8 }}>BOSS · Build Trust. Grow Faster.<br />© 2025 Monoversal Hub · All rights reserved</div>
+      </div>
+    </div>
+  );
+}
