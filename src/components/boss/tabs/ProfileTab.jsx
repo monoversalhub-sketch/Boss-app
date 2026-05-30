@@ -110,12 +110,8 @@ export function ProfileTab() {
           <Btn variant="outline" onClick={handlePasswordReset} disabled={pwLoading}>{pwLoading ? "Updating…" : "Update Password"}</Btn>
         </div>
         <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Login Options</div>
-          <div style={{ fontSize: 12, color: C.sub }}>More sign-in methods coming soon.</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button className="tap" style={{ padding: "11px", borderRadius: 12, border: `1px solid ${C.border}`, background: C.s2, fontSize: 13, fontWeight: 700, color: C.sub, cursor: "pointer", fontFamily: "inherit" }}>🇬 Google</button>
-            <button className="tap" style={{ padding: "11px", borderRadius: 12, border: `1px solid ${C.border}`, background: C.s2, fontSize: 13, fontWeight: 700, color: C.sub, cursor: "pointer", fontFamily: "inherit" }}>🍎 Apple</button>
-          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Google Account</div>
+          <div style={{ fontSize: 12, color: C.sub }}>You're signed in with Google. Use the same account on any device.</div>
         </div>
       </div>
     </div>

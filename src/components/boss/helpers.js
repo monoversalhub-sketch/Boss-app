@@ -188,7 +188,8 @@ export function computeEarnings(customers) {
   orders.forEach(o => {
     const bal = getBalance(o);
     if (bal <= 0) return;
-    const c = (customers || []).find(x => x.id === o.customer_id);
+    const cid = o._cid || o.customer_id;
+    const c = (customers || []).find(x => x.id === cid);
     if (!c) return;
     if (!debtorMap[c.id]) debtorMap[c.id] = { name: c.name, owed: 0 };
     debtorMap[c.id].owed += bal;
@@ -198,7 +199,8 @@ export function computeEarnings(customers) {
   const now = new Date();
   const thisMonth = orders
     .filter(o => {
-      const d = o.created_at ? new Date(o.created_at) : null;
+      const ts = o.createdAt || o.created_at;
+      const d = ts ? new Date(ts) : null;
       return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     })
     .reduce((sum, o) => sum + getTotalPaid(o), 0);

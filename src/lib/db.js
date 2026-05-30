@@ -131,36 +131,23 @@ async function updateBosScore(tailorId) {
       return { data, error: null };
     },
 
-    async signUpWithPassword(email, password) {
-    const data = await authFetch("/api/auth/signup", { email, password });
-    if (data.error) return { error: { message: data.error } };
-    return { data: { session: data.session, needsConfirmation: data.needsConfirmation }, error: null };
-  },
+    async getSession() {
+      try {
+        const res = await fetch("/api/auth/session");
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.user || null;
+      } catch {
+        return null;
+      }
+    },
 
-  async signInWithPassword(email, password) {
-    const data = await authFetch("/api/auth/login", { email, password });
-    if (data.error) return { error: { message: data.error } };
-    lsSet("boss_session", { email: email.toLowerCase().trim() });
-    return { data: { session: true }, error: null };
-  },
-
-  async getSession() {
-    try {
-      const res = await fetch("/api/auth/session");
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.user || null;
-    } catch {
-      return null;
-    }
-  },
-
-  async signOut() {
-    lsSet("boss_session", null);
-    lsSet("boss_tailor", null);
-    lsSet("boss_customers", null);
-    await authFetch("/api/auth/logout", {}, { "x-boss-request": "1" });
-  },
+    async signOut() {
+      lsSet("boss_session", null);
+      lsSet("boss_tailor", null);
+      lsSet("boss_customers", null);
+      await authFetch("/api/auth/logout", {}, { "x-boss-request": "1" });
+    },
 
   // ── Tailor Profile ───────────────────────────────────────────────
   async getTailor() {
