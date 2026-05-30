@@ -218,23 +218,19 @@ insert into storage.buckets (id, name, public)
 values ('order-images', 'order-images', true)
 on conflict (id) do nothing;
 
-drop policy if exists "Order images public read" on storage.objects;
-create policy "Order images public read"
+drop policy if exists "Allow public to view" on storage.objects;
+create policy "Allow public to view"
   on storage.objects for select
   using (bucket_id = 'order-images');
 
-drop policy if EXISTS "Tailors upload own order images" on storage.objects;
-create policy "Tailors upload own order images"
+drop policy if exists "Allow authenticated inserts" on storage.objects;
+create policy "Allow authenticated inserts"
   on storage.objects for insert
-  with check (
-    bucket_id = 'order-images'
-    and auth.role() = 'authenticated'
-  );
+  to authenticated
+  with check (bucket_id = 'order-images');
 
-drop policy if exists "Tailors delete own order images" on storage.objects;
-create policy "Tailors delete own order images"
-  on storage.objects for delete
-  using (
-    bucket_id = 'order-images'
-    and auth.role() = 'authenticated'
-  );
+drop policy if exists "Allow authenticated updates" on storage.objects;
+create policy "Allow authenticated updates"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'order-images');
