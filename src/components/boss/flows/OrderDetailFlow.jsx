@@ -113,7 +113,6 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
             }
           }}/>
         </div>
-        </div>
       {vaDetails && (
         <div>
           <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Payment Details for Receipts</SectionLabel>
