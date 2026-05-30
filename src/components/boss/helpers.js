@@ -151,11 +151,6 @@ export function buildInvoiceMsg(order, customer, shopName, vaDetails = null) {
   return lines.filter(l => l !== undefined).join("\n");
 }
 
-// Kept for backward compatibility
-export function buildInvoiceLinkMsg(order, customer, shopName) {
-  return buildInvoiceMsg(order, customer, shopName, null);
-}
-
 export function buildReminderMsg(order, customer, shopName, vaDetails = null) {
   const bal  = getBalance(order);
   const va   = vaDetails;

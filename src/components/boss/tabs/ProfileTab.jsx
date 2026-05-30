@@ -2,7 +2,7 @@
 // src/components/boss/ProfileTab.jsx
 import { useState, useEffect, useMemo, useRef } from "react";
 import { C, S } from "../tokens";
-import { allOrders, orderStatus, computeTrustScore } from "../helpers";
+import { allOrders, orderStatus, computeTrustScore, fmt, getBalance, getTotalPaid } from "../helpers";
 import { useBOSS } from "../context";
 import { Btn, Input } from "../ui";
 import { SmartPricingCalculator } from "../SmartPricingCalculator";
