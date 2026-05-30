@@ -81,7 +81,9 @@ function BOSSApp(){
         setScreen("auth");return;
       }
       if(!session){setScreen("auth");return;}
-      setScreen(t?"app":"setup");
+      // auto-profile-trigger creates a tailors row with shop=''. If shop
+      // is missing or empty, the user hasn't completed setup yet.
+      setScreen(t?.shop ? "app" : "setup");
     });
   },[]);
 
@@ -106,7 +108,7 @@ function BOSSApp(){
       const t=await db.getTailor();
       const c=await db.getCustomers();
       setTailorState(t);setCustomersState(c||[]);
-      setScreen(t?"app":"setup");
+      setScreen(t?.shop ? "app" : "setup");
     }catch(e){
       console.error("[BOSS] handleAuthSuccess error:",e);
       toast("Connection error — pull down to retry");

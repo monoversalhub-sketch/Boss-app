@@ -271,3 +271,36 @@ ALTER TABLE tailors ADD COLUMN IF NOT EXISTS phone_verified_at     timestamptz;
 -- MISSING-14: Order category for ML readiness
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_category text DEFAULT 'Other';
 -- Valid values: Traditional, Formal (Men), Formal (Women), Casual, Children, Bridal, Accessories, Other
+
+-- ── AUTO-PROFILE TRIGGER (run this block separately in SQL Editor) ──
+-- Run this AFTER the schema above to enable auto-creating tailors rows
+-- on new signups. Safe to run multiple times (CREATE OR REPLACE + DROP
+-- TRIGGER IF EXISTS pattern).
+-- ─────────────────────────────────────────────────────────────────────
+-- Automatically creates a tailors row when a new user signs up via
+-- Google OAuth (or any auth provider). This ensures RLS policies that
+-- reference tailors.user_id work immediately, and the app never shows
+-- "setup" with a null tailor from the DB.
+--
+-- The trigger runs AFTER insert on auth.users (Supabase-managed table).
+-- The new tailors row has only user_id set — the user fills in shop,
+-- phone, city etc. during SetupScreen.
+-- ─────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+  INSERT INTO public.tailors (user_id, shop)
+  VALUES (NEW.id, '')
+  ON CONFLICT (user_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
