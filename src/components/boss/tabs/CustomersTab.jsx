@@ -6,7 +6,7 @@ import { getBalance, fmt } from "../helpers";
 import { useBOSS } from "../context";
 import { EmptyState } from "../ui";
 
-export function CustomersTab({ onOpenCustomer }) {
+export function CustomersTab({ onOpenCustomer, onAddClient }) {
   const { customers } = useBOSS();
   const [q, setQ] = useState("");
   const list = useMemo(() =>
@@ -38,6 +38,16 @@ export function CustomersTab({ onOpenCustomer }) {
           })}
       </div>
       <div style={{ height: 100 }} />
+      {/* FAB — Add Client */}
+      <button className="tap" onClick={onAddClient} style={{
+        position:"fixed",bottom:100,right:20,
+        width:56,height:56,borderRadius:28,
+        backgroundColor:C.accent,color:"#fff",
+        border:"none",fontSize:28,cursor:"pointer",
+        display:"flex",alignItems:"center",justifyContent:"center",
+        boxShadow:"0 4px 14px rgba(0,0,64,0.25)",
+        zIndex:40,fontFamily:"inherit",
+      }}>+</button>
     </div>
   );
 }

@@ -66,8 +66,8 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
         if (isNewCustomer) { const r = await db.addCustomer(cust, tailorId); if (!r.ok) { ok = false; console.error("[AddOrderFlow] addCustomer failed", r.error); } }
         else if (phone.trim()) { await db.updateCustomer(cust.id, { phone: phone.trim() }); }
         if (ok) { const r = await db.addOrder(order, cust.id, tailorId); if (!r.ok) { ok = false; console.error("[AddOrderFlow] addOrder failed", r.error); } }
-        if (!ok) toast("⚠️ Saved locally — sync failed. Check connection.");
-      } else { toast("⚠️ Saved locally — not signed in."); }
+        if (!ok) toast("⚠️ Saved on your phone. Will update online when network is back.");
+      } else { toast("⚠️ Saved on this phone. Sign in to back up your data safely."); }
 
       if (tailorId && selectedImages.length > 0) {
         const urls = await db.uploadOrderImages(tailorId, order.id, selectedImages);
@@ -125,7 +125,9 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
       <Flow open={open} onClose={onClose} title="New Order" action={isSaving ? "Saving…" : "Save"} onAction={isSaving ? undefined : save}>
         <div style={{ marginBottom: 4 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: C.sub }}>Form progress</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: C.sub }}>
+              {progress >= 100 ? "✓ Ready to save" : progress >= 60 ? "Almost ready to save" : "Keep going"}
+            </span>
             <span style={{ fontSize: 12, fontWeight: 700, color: progress === 100 ? C.green : C.accent }}>{progress}%</span>
           </div>
           <div style={{ height: 4, background: C.s3, borderRadius: 4, overflow: "hidden" }}>
@@ -133,7 +135,8 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
           </div>
         </div>
         <div style={{ position: "relative" }}>
-          <Input label="Search or Add Customer *" value={name} onChange={e => onNameChange(e.target.value)} placeholder="Type name to search or add new…" autoComplete="off" />
+          <Input label="Customer Name" value={name} onChange={e => onNameChange(e.target.value)} placeholder="Type name to search or add new…" autoComplete="off" />
+          {!name.trim() && <div style={{ fontSize: 12, color: C.sub, padding: "4px 4px 0" }}>Type to search existing customers or add a new one</div>}
           {name.length >= 1 && matches.length === 0 && customers.length > 0 && (
             <div style={{ fontSize: 12, color: C.sub, padding: "5px 4px", fontWeight: 500 }}>No match — a new customer will be created</div>
           )}
@@ -199,7 +202,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
 
       {receiptPrompt && (
         <div style={{ position: "fixed", inset: 0, zIndex: 500, display: "flex", alignItems: "flex-end" }}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }} onClick={skipReceipt} />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} onClick={skipReceipt} />
           <div className="anim-slide" style={{ position: "relative", zIndex: 1, background: C.s1, borderRadius: "32px 32px 0 0", padding: "28px 24px 48px", width: "100%" }}>
             <div style={{ fontSize: 24, marginBottom: 8, textAlign: "center" }}>🧾</div>
             <div style={{ fontSize: 19, fontWeight: 900, color: C.text, marginBottom: 8, textAlign: "center" }}>

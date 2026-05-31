@@ -115,7 +115,6 @@ function BOSSApp(){
     }
   }
 
-  const[actionSheetOpen,setActionSheetOpen]=useState(false);
   const[addClientOpen,setAddClientOpen]=useState(false);
   // MISSING-03: Sync + network status indicator
   const[syncStatus,setSyncStatus]=useState("idle"); // "syncing"|"saved"|"error"|"idle"
@@ -192,7 +191,6 @@ function BOSSApp(){
             position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",
             zIndex:100,display:"flex",alignItems:"center",gap:6,
             padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:700,
-            backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",
             whiteSpace:"nowrap",transition:"all 0.2s ease",
             ...(statusDisplay==="syncing"   ?{background:"rgba(99,102,241,0.15)",color:"#6366f1",border:"1px solid rgba(99,102,241,0.25)"}:
                 statusDisplay==="saved"     ?{background:"rgba(16,185,129,0.15)",color:"#10b981",border:"1px solid rgba(16,185,129,0.25)"}:
@@ -210,8 +208,8 @@ function BOSSApp(){
 
         {/* ── SCROLLABLE CONTENT ── */}
         <div className="scrollable" style={{flex:1,paddingBottom:140}}>
-          {tab==="today"    &&<TodayTab     tailor={tailor} onAddOrder={()=>setActionSheetOpen(true)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)}/>}
-          {tab==="customers"&&<CustomersTab onOpenCustomer={openCustomerDetail}/>}
+          {tab==="today"    &&<TodayTab     tailor={tailor} onAddOrder={()=>openAddOrder(null)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)}/>}
+          {tab==="customers"&&<CustomersTab onOpenCustomer={openCustomerDetail} onAddClient={()=>setAddClientOpen(true)}/>}
           {tab==="earnings" &&<EarningsTab/>}
           {tab==="profile"  &&<ProfileTab/>}
         </div>
@@ -227,9 +225,7 @@ function BOSSApp(){
             display:"flex",alignItems:"center",justifyContent:"space-between",
             padding:"6px 10px",
             width:"100%",maxWidth:400,
-            backgroundColor:"rgba(28,28,30,0.92)",
-            backdropFilter:"blur(20px)",
-            WebkitBackdropFilter:"blur(20px)",
+            backgroundColor:"rgba(28,28,30,0.97)",
             borderRadius:32,
             border:"1px solid rgba(255,255,255,0.08)",
             boxShadow:"0 8px 32px rgba(0,0,0,0.3)",
@@ -246,13 +242,13 @@ function BOSSApp(){
                   transition:"color 0.15s",
                 }}>
                   <div style={{transform:active?"scale(1.1)":"scale(1)",transition:"transform 0.2s cubic-bezier(0.34,1.56,0.64,1)"}}>{n.icon}</div>
-                  <div style={{fontSize:10,fontWeight:active?800:600,letterSpacing:"0.2px",textTransform:"uppercase"}}>{n.label}</div>
+                  <div style={{fontSize:11,fontWeight:active?800:600,letterSpacing:"0px",textTransform:"none"}}>{n.label}</div>
                 </button>
               );
             })}
 
-            {/* Center + button — exact reference */}
-            <button className="tap" onClick={()=>setActionSheetOpen(true)} style={{
+            {/* Center + button — opens Add Order directly */}
+            <button className="tap" onClick={()=>openAddOrder(null)} style={{
               width:56,height:56,
               backgroundColor:C.accent,
               borderRadius:20,
@@ -281,55 +277,12 @@ function BOSSApp(){
                   transition:"color 0.15s",
                 }}>
                   <div style={{transform:active?"scale(1.1)":"scale(1)",transition:"transform 0.2s cubic-bezier(0.34,1.56,0.64,1)"}}>{n.icon}</div>
-                  <div style={{fontSize:10,fontWeight:active?800:600,letterSpacing:"0.2px",textTransform:"uppercase"}}>{n.label}</div>
+                  <div style={{fontSize:11,fontWeight:active?800:600,letterSpacing:"0px",textTransform:"none"}}>{n.label}</div>
                 </button>
               );
             })}
           </div>
         </div>
-
-        {/* ── ACTION SHEET — + button ── */}
-        {actionSheetOpen&&(
-          <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",alignItems:"flex-end"}}>
-            <div onClick={()=>setActionSheetOpen(false)} style={{position:"absolute",inset:0,backgroundColor:"rgba(0,0,0,0.5)",backdropFilter:"blur(8px)"}}/>
-            <div className="anim-slide" style={{position:"relative",zIndex:1,width:"100%",padding:"0 24px 40px",display:"flex",flexDirection:"column",gap:12}}>
-              {/* Title */}
-              <div style={{backgroundColor:C.s1,borderRadius:20,padding:"16px 20px 4px",marginBottom:0}}>
-                <div style={{fontSize:13,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:12}}>Quick Actions</div>
-                {/* Add Order */}
-                <button className="tap" onClick={()=>{setActionSheetOpen(false);openAddOrder(null);}} style={{
-                  width:"100%",padding:"16px",marginBottom:8,
-                  backgroundColor:C.dark,color:"#fff",borderRadius:16,border:"none",cursor:"pointer",
-                  display:"flex",alignItems:"center",gap:16,fontFamily:"inherit",
-                }}>
-                  <div style={{width:44,height:44,backgroundColor:"rgba(255,255,255,0.12)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>📋</div>
-                  <div style={{textAlign:"left"}}>
-                    <div style={{fontSize:16,fontWeight:800,color:"#fff",letterSpacing:"-0.2px"}}>New Order</div>
-                    <div style={{fontSize:13,color:"rgba(255,255,255,0.5)",marginTop:2}}>Record a new sewing job</div>
-                  </div>
-                </button>
-                {/* Add Client */}
-                <button className="tap" onClick={()=>{setActionSheetOpen(false);setAddClientOpen(true);}} style={{
-                  width:"100%",padding:"16px",marginBottom:8,
-                  backgroundColor:C.s2,borderRadius:16,border:`1px solid ${C.border}`,cursor:"pointer",
-                  display:"flex",alignItems:"center",gap:16,fontFamily:"inherit",
-                }}>
-                  <div style={{width:44,height:44,backgroundColor:C.s3,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>👤</div>
-                  <div style={{textAlign:"left"}}>
-                    <div style={{fontSize:16,fontWeight:800,color:C.text,letterSpacing:"-0.2px"}}>New Client</div>
-                    <div style={{fontSize:13,color:C.sub,marginTop:2}}>Save measurements & details</div>
-                  </div>
-                </button>
-              </div>
-              {/* Cancel */}
-              <button className="tap" onClick={()=>setActionSheetOpen(false)} style={{
-                width:"100%",padding:"17px",
-                backgroundColor:C.s1,borderRadius:16,border:"none",cursor:"pointer",
-                fontSize:16,fontWeight:700,color:C.accent,fontFamily:"inherit",
-              }}>Cancel</button>
-            </div>
-          </div>
-        )}
 
         {/* ── FLOWS — all read customers/setCustomers/toast from BOSSContext ── */}
         <AddOrderFlow open={addOrderOpen} onClose={()=>setAddOrderOpen(false)} prefilledCid={prefilledCid}/>

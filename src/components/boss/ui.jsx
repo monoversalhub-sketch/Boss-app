@@ -146,7 +146,7 @@ export function Sheet({open,onClose,title,children}){
   if(!open)return null;
   return(
     <div style={{position:"fixed",inset:0,zIndex:500,display:"flex",alignItems:"flex-end"}}>
-      <div onClick={onClose} style={{position:"absolute",inset:0,backgroundColor:"rgba(0,0,0,0.4)",backdropFilter:"blur(6px)"}}/>
+      <div onClick={onClose} style={{position:"absolute",inset:0,backgroundColor:"rgba(0,0,0,0.4)"}}/>
       <div className="anim-slide" style={{position:"relative",zIndex:1,backgroundColor:C.s1,borderRadius:"32px 32px 0 0",padding:"8px 24px 48px",width:"100%",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 -8px 48px rgba(0,0,0,0.14)"}}>
         <div style={{width:36,height:4,backgroundColor:C.s3,borderRadius:4,margin:"12px auto 20px"}}/>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>

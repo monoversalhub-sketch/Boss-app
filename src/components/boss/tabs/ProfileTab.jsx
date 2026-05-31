@@ -67,7 +67,7 @@ export function ProfileTab() {
   const SubHeader = ({ title }) => (
     <div style={{ height: 64, display: "flex", alignItems: "center", padding: "0 20px", gap: 14, flexShrink: 0, borderBottom: `1px solid ${C.border}`, backgroundColor: C.s1 }}>
       <button className="tap" onClick={() => setSection(null)}
-        style={{ width: 38, height: 38, backgroundColor: C.s2, border: "none", borderRadius: 12, fontSize: 20, cursor: "pointer", color: C.text, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>←</button>
+        style={{ width: 44, height: 44, backgroundColor: C.s2, border: "none", borderRadius: 12, fontSize: 20, cursor: "pointer", color: C.text, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>←</button>
       <div style={{ flex: 1, fontSize: 17, fontWeight: 800, color: C.text }}>{title}</div>
     </div>
   );

@@ -123,7 +123,7 @@ export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOp
 
       {confirmDel && (
         <div style={{ position: "fixed", inset: 0, zIndex: 500, display: "flex", alignItems: "flex-end" }}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} onClick={() => setConfirmDel(false)} />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} onClick={() => setConfirmDel(false)} />
           <div className="anim-slide" style={{ position: "relative", zIndex: 1, background: C.s1, borderRadius: "28px 28px 0 0", padding: "24px 20px 48px", width: "100%" }}>
             <div style={{ width: 40, height: 4, background: C.s3, borderRadius: 4, margin: "0 auto 20px" }} />
             <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 8 }}>Delete {customer.name}?</div>

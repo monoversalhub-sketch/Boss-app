@@ -47,6 +47,16 @@ export function AuthScreen({ onAuthSuccess }) {
         </div>
       </div>
 
+      {/* Benefit lines */}
+      <div style={{display:"flex",flexDirection:"column",gap:10,margin:"0 0 28px"}}>
+        {["✂️  Track every order in seconds",
+          "💰  Know who owes you, always",
+          "📲  Send professional receipts on WhatsApp"
+        ].map(line => (
+          <div key={line} style={{fontSize:15,color:C.sub,textAlign:"center"}}>{line}</div>
+        ))}
+      </div>
+
       {/* Google button */}
       <button
         className="tap"

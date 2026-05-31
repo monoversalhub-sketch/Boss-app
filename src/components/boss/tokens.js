@@ -59,7 +59,7 @@ export const C = {
   red:"#FF3B30",   redDim:"rgba(255,59,48,0.08)",
   green:"#34C759", greenDim:"rgba(52,199,89,0.08)",
   amber:"#FF9F0A", amberDim:"rgba(255,159,10,0.08)",
-  text:"#111111", sub:"#8E8E93", muted:"#A1A1AA", subLight:"#A1A1AA",
+  text:"#111111", sub:"#6E6E73", muted:"#8E8E93", subLight:"#A1A1AA",
   border:"#E5E5EA", border2:"#E4E4E7",
   dark:"#1A1A1A",
 };
@@ -88,9 +88,9 @@ export const S = {
     boxSizing:"border-box",
   },
   label: {
-    fontSize:12,
+    fontSize:13,
     fontWeight:700,
-    color:"#A1A1AA",
+    color:"#8E8E93",
     display:"block",
     marginBottom:8,
     letterSpacing:"0.2px",
