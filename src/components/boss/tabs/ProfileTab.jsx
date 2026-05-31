@@ -17,7 +17,6 @@ export function ProfileTab() {
   const [bankName, setBankName] = useState(tailor?.bank_name || "");
   const [accountNumber, setAccountNumber] = useState(tailor?.account_number || "");
   const [accountName, setAccountName] = useState(tailor?.account_name || "");
-  const [cryptoAddress, setCryptoAddress] = useState(tailor?.crypto_address || "");
   const [saved, setSaved] = useState(false);
 
   const [restoreMsg, setRestoreMsg] = useState("");
@@ -34,7 +33,6 @@ export function ProfileTab() {
       bank_name: bankName.trim() || null,
       account_number: accountNumber.trim() || null,
       account_name: accountName.trim() || null,
-      crypto_address: cryptoAddress.trim() || null,
     };
     await db.setTailor(t); setTailor(t); setSaved(true);
   }
@@ -84,9 +82,6 @@ export function ProfileTab() {
         <Input label="Bank Name" value={bankName} onChange={e => setBankName(e.target.value)} placeholder="e.g. Access Bank" />
         <Input label="Account Number (added to customer receipts)" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder="0123456789" />
         <Input label="Account Name" value={accountName} onChange={e => setAccountName(e.target.value)} placeholder="e.g. CHIDI OKONKWO" />
-        <div style={{ height: 1, background: C.border, margin: "4px 0" }} />
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.sub }}>₿ Crypto Address (appears on receipts)</div>
-        <Input label="Bitcoin / USDT / Crypto Wallet Address" value={cryptoAddress} onChange={e => setCryptoAddress(e.target.value)} placeholder="bc1q... or 0x..." />
         <Btn variant={saved ? "green" : "primary"} onClick={saveProfile}>{saved ? "✅ Saved!" : "Save Changes"}</Btn>
       </div>
     </div>
@@ -238,7 +233,7 @@ export function ProfileTab() {
 
   const initials = (tailor?.shop || "B").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const menuItems = [
-    { icon: "👤", label: "Edit Profile", sub: "Shop, phone, bank, crypto", key: "edit" },
+    { icon: "👤", label: "Edit Profile", sub: "Shop, phone and bank details", key: "edit" },
     { icon: "📊", label: "Financial Report", sub: "Income, customers, export CSV", key: "report" },
     { icon: "☁️", label: "Data & Backup", sub: "Export, restore your data", key: "data" },
     { icon: "🧮", label: "Smart Pricing", sub: "Calculate your job prices", key: "tools" },

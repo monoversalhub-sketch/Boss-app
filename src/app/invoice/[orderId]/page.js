@@ -285,7 +285,7 @@ export default async function InvoicePage({ params }) {
           </div>
 
           {/* ── Payment instructions (bank details) ── */}
-          {!isPaid && (tailor.account_number || tailor.crypto_address) && (
+          {!isPaid && tailor.account_number && (
             <div style={{
               background:   C.s1,
               border:       `1px solid ${C.border2}`,
@@ -302,11 +302,6 @@ export default async function InvoicePage({ params }) {
                   <div style={{ fontSize: 13, color: C.sub }}>Bank: <span style={{ fontWeight: 700, color: "#fff" }}>{tailor.bank_name || "—"}</span></div>
                   <div style={{ fontSize: 13, color: C.sub }}>Account Number: <span style={{ fontWeight: 700, color: "#fff", fontFamily: "monospace", fontSize: 15 }}>{tailor.account_number}</span></div>
                   <div style={{ fontSize: 13, color: C.sub }}>Account Name: <span style={{ fontWeight: 700, color: "#fff" }}>{tailor.account_name || "—"}</span></div>
-                </div>
-              )}
-              {tailor.crypto_address && (
-                <div style={{ marginTop: tailor.account_number ? 12 : 0 }}>
-                  <div style={{ fontSize: 13, color: C.sub }}>₿ Crypto Address: <span style={{ fontWeight: 700, color: "#fff", wordBreak: "break-all" }}>{tailor.crypto_address}</span></div>
                 </div>
               )}
               <div style={{ marginTop: 14, fontSize: 12, color: C.sub, lineHeight: 1.5 }}>

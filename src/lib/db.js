@@ -157,7 +157,7 @@ async function updateBosScore(tailorId) {
       if (authError || !authData?.user) return null;
       const { data } = await client
         .from("tailors")
-        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,crypto_address,bos_score,bos_score_updated_at")
+        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at")
         .eq("user_id", authData.user.id)
         .single();
       if (data) lsSet("boss_tailor", data);
@@ -185,7 +185,6 @@ async function updateBosScore(tailorId) {
       if (profile.bank_code            !== undefined) payload.bank_code            = profile.bank_code            || null;
       if (profile.account_number       !== undefined) payload.account_number       = profile.account_number       || null;
       if (profile.account_name         !== undefined) payload.account_name         = profile.account_name         || null;
-      if (profile.crypto_address       !== undefined) payload.crypto_address       = profile.crypto_address       || null;
 
       _syncCallback?.("syncing");
       await client.from("tailors").upsert(payload, { onConflict: "user_id" });

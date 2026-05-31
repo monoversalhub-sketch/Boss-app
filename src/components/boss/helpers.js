@@ -78,7 +78,7 @@ export function waLink(phone, msg) {
 export function buildReceiptText(order, customer, shopName, vaDetails = null) {
   const paid = getTotalPaid(order);
   const bal  = getBalance(order);
-  const va   = vaDetails; // { number, bank, name, crypto }
+  const va   = vaDetails;
   const imgs = (order.imageUrls || []).slice(0, 3);
   const lines = [
     `━━━━━━━━━━━━━━━━━━━━━`,
@@ -111,7 +111,6 @@ export function buildReceiptText(order, customer, shopName, vaDetails = null) {
       `Name: *${va.name}*`,
       `Amount: *${fmt(bal)}*`,
     );
-    if (va.crypto) lines.push(`₿ *Crypto*: ${va.crypto}`);
     lines.push(`It reflects immediately! 🙏`);
   } else if (bal <= 0) {
     lines.push(`✅ Order is fully paid! Thank you so much 🙏`);
@@ -152,7 +151,6 @@ export function buildInvoiceMsg(order, customer, shopName, vaDetails = null) {
       `📋 Account: *${va.number}*`,
       `👤 Name: *${va.name}*`,
     );
-    if (va.crypto) lines.push(`₿ *Crypto*: ${va.crypto}`);
     lines.push(``, `It reflects immediately! Let us know once you've sent it 🙏`);
   } else if (bal <= 0) {
     lines.push(`Your order is *fully paid*! Thank you so much 🙏`);
@@ -186,7 +184,6 @@ export function buildReminderMsg(order, customer, shopName, vaDetails = null) {
       `👤 Name: *${va.name}*`,
       `Amount: *${fmt(bal)}*`,
     );
-    if (va.crypto) lines.push(`₿ *Crypto*: ${va.crypto}`);
     lines.push(``, `It reflects immediately — let us know once you've sent it! 🙏`);
   } else {
     lines.push(`Please come to the shop to pay. Thank you! 🙏`);

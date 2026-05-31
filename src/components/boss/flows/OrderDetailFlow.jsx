@@ -52,7 +52,6 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
     number: tailor.account_number,
     bank:   tailor.bank_name || "",
     name:   tailor.account_name || "",
-    crypto: tailor.crypto_address || null,
   } : null;
 
   function waMsg(msg){window.open(waLink(customer.phone,msg),"_blank");}
@@ -120,7 +119,6 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
             <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Bank: <span style={{fontWeight:700,color:C.text}}>{vaDetails.bank}</span></div>
             <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Account: <span style={{fontWeight:700,color:C.text}}>{vaDetails.number}</span></div>
             <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Name: <span style={{fontWeight:700,color:C.text}}>{vaDetails.name}</span></div>
-            {vaDetails.crypto && <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Crypto: <span style={{fontWeight:700,color:C.text}}>{vaDetails.crypto}</span></div>}
           </div>
         </div>
       )}
