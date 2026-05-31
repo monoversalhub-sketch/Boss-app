@@ -208,18 +208,26 @@ export function OrderCard({order,onClick}){
   const borderColor=overdue?"rgba(255,59,48,0.3)":dueToday?"rgba(255,159,10,0.3)":status==="Ready"?"rgba(52,199,89,0.3)":C.border;
   const badgeStyle=overdue?{background:"rgba(255,59,48,0.1)",color:C.red}:dueToday?{background:"rgba(255,159,10,0.1)",color:"#FF9F0A"}:status==="Ready"?{background:"rgba(52,199,89,0.1)",color:C.green}:status==="Delivered"?{background:"rgba(52,199,89,0.08)",color:C.green}:{background:C.s3,color:C.sub};
   const badgeText=overdue?"Overdue":dueToday?"Due Today":status;
+  const imgUrl=order.imageUrls?.[0];
   return(
-    <div className="tap" onClick={onClick} style={{...S.card,border:`1px solid ${borderColor}`,display:"flex",flexDirection:"column",gap:7}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
-        <div style={{fontSize:16,fontWeight:700,color:C.text}}>{order._cname||order.customerName||"—"}</div>
-        <div style={{...badgeStyle,fontSize:13,fontWeight:700,padding:"4px 10px",borderRadius:20,letterSpacing:"0.2px",flexShrink:0}}>{badgeText}</div>
-      </div>
-      <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{order.type||"—"}</div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
-        <div style={{fontSize:13,color:C.muted,fontWeight:600}}>📅 {fmtDate(order.date)}</div>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {getPaymentState(order)==="partially_paid"&&<div style={{fontSize:13,fontWeight:700,color:"#FF9F0A",background:"rgba(255,159,10,0.1)",padding:"2px 7px",borderRadius:10}}>PARTIAL</div>}
-          {bal>0?<div style={{fontSize:14,fontWeight:700,color:C.red}}>{fmt(bal)} due</div>:<div style={{fontSize:14,fontWeight:700,color:C.green}}>Paid ✓</div>}
+    <div className="tap" onClick={onClick} style={{...S.card,border:`1px solid ${borderColor}`,display:"flex",flexDirection:"row",alignItems:"center",gap:12}}>
+      {imgUrl?(
+        <img src={imgUrl} alt="" style={{width:80,height:80,borderRadius:12,objectFit:"cover",flexShrink:0,background:C.s3}}/>
+      ):(
+        <div style={{width:80,height:80,borderRadius:12,background:C.s3,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>✂️</div>
+      )}
+      <div style={{flex:1,display:"flex",flexDirection:"column",gap:7}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <div style={{fontSize:16,fontWeight:700,color:C.text}}>{order._cname||order.customerName||"—"}</div>
+          <div style={{...badgeStyle,fontSize:13,fontWeight:700,padding:"4px 10px",borderRadius:20,letterSpacing:"0.2px",flexShrink:0}}>{badgeText}</div>
+        </div>
+        <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{order.type||"—"}</div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
+          <div style={{fontSize:13,color:C.muted,fontWeight:600}}>📅 {fmtDate(order.date)}</div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            {getPaymentState(order)==="partially_paid"&&<div style={{fontSize:13,fontWeight:700,color:"#FF9F0A",background:"rgba(255,159,10,0.1)",padding:"2px 7px",borderRadius:10}}>PARTIAL</div>}
+            {bal>0?<div style={{fontSize:14,fontWeight:700,color:C.red}}>{fmt(bal)} due</div>:<div style={{fontSize:14,fontWeight:700,color:C.green}}>Paid ✓</div>}
+          </div>
         </div>
       </div>
     </div>
