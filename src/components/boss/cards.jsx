@@ -27,12 +27,12 @@ export function TrustScoreCard({customers,onPress}){
         </svg>
         <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
           <div style={{fontSize:20,fontWeight:800,lineHeight:1,color:C.text}}>{pct}</div>
-          <div style={{fontSize:12,fontWeight:700,color:C.sub,letterSpacing:"0.5px"}}>SCORE</div>
+          <div style={{fontSize:13,fontWeight:700,color:C.sub,letterSpacing:"0.5px"}}>SCORE</div>
         </div>
       </div>
       {/* Text */}
       <div style={{flex:1}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:4}}>BOSS Trust Score</div>
+        <div style={{fontSize:13,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:4}}>BOSS Trust Score</div>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
           <div style={{fontSize:22,fontWeight:800,color:C.text,letterSpacing:"-0.5px"}}>{ts.level}</div>
           <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth={2}><polyline points="9 18 15 12 9 6"/></svg>
@@ -95,7 +95,7 @@ export function TrustScoreSheet({customers,open,onClose}){
           <div style={{fontSize:13,color:"rgba(255,255,255,0.5)",marginTop:3}}>
             Credit Readiness: <span style={{color:scoreColor,fontWeight:700}}>{ts.readiness}</span>
           </div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,0.3)",marginTop:2}}>{totalOrders} order{totalOrders!==1?"s":""} recorded</div>
+          <div style={{fontSize:13,color:"rgba(255,255,255,0.3)",marginTop:2}}>{totalOrders} order{totalOrders!==1?"s":""} recorded</div>
         </div>
       </div>
 
@@ -104,7 +104,7 @@ export function TrustScoreSheet({customers,open,onClose}){
       </div>
 
       {/* Factor breakdown */}
-      <div style={{fontSize:11,fontWeight:800,color:C.sub,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:10}}>Score Breakdown</div>
+      <div style={{fontSize:13,fontWeight:800,color:C.sub,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:10}}>Score Breakdown</div>
       {factors.map(f=>{
         const bar=Math.min(100,Math.max(0,f.pct));
         return(
@@ -114,7 +114,7 @@ export function TrustScoreSheet({customers,open,onClose}){
                 <span style={{fontSize:16}}>{f.icon}</span>
                 <div>
                   <div style={{fontSize:14,fontWeight:700,color:C.text}}>{f.label}</div>
-                  <div style={{fontSize:11,color:C.sub}}>Weight: {f.weight}% of score</div>
+                  <div style={{fontSize:13,color:C.sub}}>Weight: {f.weight}% of score</div>
                 </div>
               </div>
               <div style={{fontSize:15,fontWeight:900,color:C.text}}>{f.value}</div>
@@ -124,7 +124,7 @@ export function TrustScoreSheet({customers,open,onClose}){
                 background:bar>=70?C.green:bar>=45?C.amber:C.red,
                 transition:"width 0.4s ease"}}/>
             </div>
-            <div style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{f.tip}</div>
+            <div style={{fontSize:13,color:C.sub,lineHeight:1.5}}>{f.tip}</div>
           </div>
         );
       })}
@@ -133,7 +133,7 @@ export function TrustScoreSheet({customers,open,onClose}){
       {ts.breakdown.overdue>0&&(
         <div style={{background:"rgba(255,59,48,0.06)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:14,padding:"12px 14px",marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:700,color:C.red,marginBottom:4}}>⚠️ Overdue Orders: {ts.breakdown.overdue}</div>
-          <div style={{fontSize:12,color:C.sub,lineHeight:1.5}}>Each overdue order deducts points. Update their delivery dates or mark as Delivered to remove the penalty.</div>
+          <div style={{fontSize:13,color:C.sub,lineHeight:1.5}}>Each overdue order deducts points. Update their delivery dates or mark as Delivered to remove the penalty.</div>
         </div>
       )}
 
@@ -148,11 +148,11 @@ export function TrustScoreSheet({customers,open,onClose}){
         ].map(t=>(
           <div key={t} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:6}}>
             <div style={{width:16,height:16,borderRadius:"50%",background:"rgba(0,102,204,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.accent,flexShrink:0,marginTop:1}}>✓</div>
-            <div style={{fontSize:12,color:C.sub,lineHeight:1.5}}>{t}</div>
+            <div style={{fontSize:13,color:C.sub,lineHeight:1.5}}>{t}</div>
           </div>
         ))}
       </div>
-      <div style={{marginTop:12,fontSize:11,color:C.muted,lineHeight:1.6}}>
+      <div style={{marginTop:12,fontSize:13,color:C.muted,lineHeight:1.6}}>
         BOSS Score is an internal signal only and is not a regulated credit score. Consult a financial advisor for lending decisions.
       </div>
     </Sheet>
@@ -178,19 +178,19 @@ export function TodayMoneyCard({customers}){
         boxShadow:"0 4px 20px rgba(0,0,0,0.12)",
         border:"none",
       }}>
-        <div style={{fontSize:12,fontWeight:700,color:"#A1A1AA",textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:12}}>Expected Today</div>
+        <div style={{fontSize:13,fontWeight:700,color:"#A1A1AA",textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:12}}>Expected Today</div>
         <div style={{fontSize:42,fontWeight:800,letterSpacing:"-1.5px",color:"#fff",lineHeight:1}}>{fmt(todayIncome)}</div>
         <div style={{fontSize:14,fontWeight:500,color:"#A1A1AA",marginTop:10}}>from {dueToday.length} job{dueToday.length!==1?"s":""} due today</div>
       </div>
       {/* Stats grid */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <div style={{...S.card,padding:20}}>
-          <div style={{fontSize:12,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Overdue</div>
+          <div style={{fontSize:13,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Overdue</div>
           <div style={{fontSize:28,fontWeight:800,color:overdue.length?C.red:"#D4D4D8",lineHeight:1}}>{overdue.length}</div>
           <div style={{fontSize:13,fontWeight:500,color:C.sub,marginTop:4}}>jobs</div>
         </div>
         <div style={{...S.card,padding:20}}>
-          <div style={{fontSize:12,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Unpaid</div>
+          <div style={{fontSize:13,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Unpaid</div>
           <div style={{fontSize:22,fontWeight:800,color:unpaid?C.accent:"#D4D4D8",letterSpacing:"-0.5px",lineHeight:1}}>{fmt(unpaid)}</div>
           <div style={{fontSize:13,fontWeight:500,color:C.sub,marginTop:4}}>outstanding</div>
         </div>
@@ -212,13 +212,13 @@ export function OrderCard({order,onClick}){
     <div className="tap" onClick={onClick} style={{...S.card,border:`1px solid ${borderColor}`,display:"flex",flexDirection:"column",gap:7}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
         <div style={{fontSize:16,fontWeight:700,color:C.text}}>{order._cname||order.customerName||"—"}</div>
-        <div style={{...badgeStyle,fontSize:12,fontWeight:700,padding:"4px 10px",borderRadius:20,letterSpacing:"0.2px",flexShrink:0}}>{badgeText}</div>
+        <div style={{...badgeStyle,fontSize:13,fontWeight:700,padding:"4px 10px",borderRadius:20,letterSpacing:"0.2px",flexShrink:0}}>{badgeText}</div>
       </div>
       <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{order.type||"—"}</div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
-        <div style={{fontSize:12,color:C.muted,fontWeight:600}}>📅 {fmtDate(order.date)}</div>
+        <div style={{fontSize:13,color:C.muted,fontWeight:600}}>📅 {fmtDate(order.date)}</div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {getPaymentState(order)==="partially_paid"&&<div style={{fontSize:12,fontWeight:700,color:"#FF9F0A",background:"rgba(255,159,10,0.1)",padding:"2px 7px",borderRadius:10}}>PARTIAL</div>}
+          {getPaymentState(order)==="partially_paid"&&<div style={{fontSize:13,fontWeight:700,color:"#FF9F0A",background:"rgba(255,159,10,0.1)",padding:"2px 7px",borderRadius:10}}>PARTIAL</div>}
           {bal>0?<div style={{fontSize:14,fontWeight:700,color:C.red}}>{fmt(bal)} due</div>:<div style={{fontSize:14,fontWeight:700,color:C.green}}>Paid ✓</div>}
         </div>
       </div>
@@ -239,7 +239,7 @@ export function StatusStepper({status,onChange}){
             <div style={{width:34,height:34,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,transition:"all 0.2s",background:i<idx?C.green:i===idx?C.text:C.s3,color:i<=idx?"#fff":C.sub,border:`2px solid ${i<idx?C.green:i===idx?C.text:C.border2}`}}>
               {i<idx?"✓":i===0?"✂":i===1?"★":"🏁"}
             </div>
-            <div style={{fontSize:12,fontWeight:700,letterSpacing:"0.3px",textTransform:"uppercase",textAlign:"center",color:i<idx?C.green:i===idx?C.text:C.sub,whiteSpace:"nowrap"}}>{s}</div>
+            <div style={{fontSize:13,fontWeight:700,letterSpacing:"0.3px",textTransform:"uppercase",textAlign:"center",color:i<idx?C.green:i===idx?C.text:C.sub,whiteSpace:"nowrap"}}>{s}</div>
           </div>
           {i<2&&<div style={{flex:1,height:2,margin:"-14px 4px 0",background:i<idx?C.green:C.s3,transition:"background 0.3s"}}/>}
         </div>
@@ -268,10 +268,10 @@ export function MeasGrid({measurements,onChange}){
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
       {MEAS_FIELDS.map(f=>(
         <div key={f.k} style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:14,padding:"10px 13px"}}>
-          <label style={{fontSize:12,fontWeight:600,color:C.sub,letterSpacing:"0.4px",textTransform:"uppercase"}}>{f.l}</label>
+          <label style={{fontSize:13,fontWeight:600,color:C.sub,letterSpacing:"0.4px",textTransform:"uppercase"}}>{f.l}</label>
           <input type="number" inputMode="decimal" placeholder="—" value={local[f.k]||""} onChange={e=>handleChange(f.k,e.target.value)}
             style={{background:"none",border:"none",outline:"none",fontSize:20,fontWeight:700,color:C.text,width:"100%",padding:0,fontFamily:"inherit",display:"block",marginTop:2}}/>
-          <div style={{fontSize:12,color:C.muted,fontWeight:600}}>inches</div>
+          <div style={{fontSize:13,color:C.muted,fontWeight:600}}>inches</div>
         </div>
       ))}
     </div>

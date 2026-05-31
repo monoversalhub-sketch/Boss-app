@@ -17,7 +17,7 @@ export function SplashScreen() {
         fontSize: 34, fontWeight: 900, letterSpacing: "-1.5px", marginTop: 20, color: C.text,
       }}>BOSS</div>
       <div className="anim-up2" style={{
-        fontSize: 12, color: C.sub, fontWeight: 600, letterSpacing: "2px",
+        fontSize: 13, color: C.sub, fontWeight: 600, letterSpacing: "2px",
         textTransform: "uppercase", marginTop: 6,
       }}>Build Trust. Grow Faster.</div>
       <div className="anim-up3" style={{

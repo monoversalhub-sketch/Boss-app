@@ -64,72 +64,35 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
       <div style={{fontSize:14,fontWeight:700,textAlign:"right",...valueStyle}}>{value}</div>
     </div>
   );
+  const payStateIcon = getPaymentState(order)==="fully_paid"?"✅":
+    getPaymentState(order)==="partially_paid"?"🔶":"⬜";
+  const payStateText = getPaymentState(order)==="fully_paid"?"Fully Paid":
+    getPaymentState(order)==="partially_paid"?"Partial — "+Math.round((getTotalPaid(order)/Math.max(order.price,1))*100)+"%":
+    "Unpaid";
+  const payStateColor = getPaymentState(order)==="fully_paid"?C.green:
+    getPaymentState(order)==="partially_paid"?"#FF9F0A":C.red;
   return(
     <>
-    <Flow open={open} onClose={onClose} title={customer.name}>
-      <StatusStepper status={orderStatus(order)} onChange={s=>{updateOrder({status:s});toast("✅ "+s);}}/>
-      <div style={{...S.card,display:"flex",flexDirection:"column"}}>
-        <Row label="Customer"    value={customer.name}/>
-        <Row label="Phone"       value={customer.phone||"—"} valueStyle={{color:C.accent}}/>
-        <Row label="Cloth Type"  value={order.type||"—"}/>
-        <Row label="Delivery"    value={fmtDate(order.date)}/>
-        <Row label="Total Price" value={fmt(order.price)}/>
-        <Row label="Paid So Far" value={fmt(paid)} valueStyle={{color:C.green}}/>
-        <Row label="Balance Due" value={bal>0?fmt(bal):"Fully Paid ✓"} valueStyle={{color:bal>0?C.red:C.green}}/>
-        <Row label="Payment Status" value={
-          getPaymentState(order)==="fully_paid"?"✅ Fully Paid":
-          getPaymentState(order)==="partially_paid"?"🔶 Partial — "+Math.round((getTotalPaid(order)/Math.max(order.price,1))*100)+"%":
-          "⬜ Unpaid"
-        } valueStyle={{fontWeight:700,color:getPaymentState(order)==="fully_paid"?C.green:getPaymentState(order)==="partially_paid"?"#FF9F0A":C.red}}/>
-        {order.notes&&<Row label="Notes" value={order.notes} valueStyle={{fontSize:13,fontWeight:500,color:C.sub}}/>}
-      </div>
-      <div>
-          <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Style Photos</SectionLabel>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:8}}>
-            {(order.imageUrls||[]).map((url,i)=>(
-              <div key={i} className="tap" onClick={()=>setLightboxUrl(url)}
-                style={{aspectRatio:1,borderRadius:12,overflow:"hidden",background:C.s3,cursor:"pointer",position:"relative"}}>
-                <img src={url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-              </div>
-            ))}
-            {(order.imageUrls?.length||0) < 5 && (
-              <button onClick={()=>photoInputRef.current?.click()}
-                style={{aspectRatio:1,borderRadius:12,border:`1.5px dashed ${C.border2}`,background:C.s2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
-                +
-              </button>
-            )}
-          </div>
-          <input ref={photoInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={async (e)=>{
-            const files=Array.from(e.target.files||[]); e.target.value="";
-            if(!files.length)return;
-            const tailorId=await db.getTailorId();
-            if(!tailorId)return;
-            const urls=await db.uploadOrderImages(tailorId, order.id, files);
-            if(urls.length){
-              const next=[...(order.imageUrls||[]),...urls].slice(0,5);
-              await updateOrder({imageUrls:next});
-              toast("✅ "+(urls.length===1?"Photo added":"Photos added"));
-            }
-          }}/>
+    <Flow open={open} onClose={onClose} title={`${customer.name} — ${fmt(order.price)}`}>
+      {/* ── Money Zone ── */}
+      <div style={{background:`linear-gradient(135deg,${C.dark},${C.s1})`,borderRadius:16,border:`1px solid ${C.border}`,overflow:"hidden"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 20px 12px"}}>
+          <div style={{fontSize:28,fontWeight:900,letterSpacing:"-0.5px",color:C.text}}>{fmt(order.price)}</div>
+          <div style={{fontSize:13,fontWeight:700,color:payStateColor,padding:"4px 10px",borderRadius:20,background:payStateColor+"14"}}>{payStateIcon} {payStateText}</div>
         </div>
-      {vaDetails && (
-        <div>
-          <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Payment Details for Receipts</SectionLabel>
-          <div style={{...S.card,display:"flex",flexDirection:"column",gap:8}}>
-            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Bank: <span style={{fontWeight:700,color:C.text}}>{vaDetails.bank}</span></div>
-            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Account: <span style={{fontWeight:700,color:C.text}}>{vaDetails.number}</span></div>
-            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Name: <span style={{fontWeight:700,color:C.text}}>{vaDetails.name}</span></div>
+        <div style={{display:"flex",gap:0,borderTop:`1px solid ${C.border}`}}>
+          <div style={{flex:1,padding:"14px 20px",borderRight:`1px solid ${C.border}`}}>
+            <div style={{fontSize:12,color:C.sub,fontWeight:600,marginBottom:2}}>Paid</div>
+            <div style={{fontSize:20,fontWeight:900,color:C.green}}>{fmt(paid)}</div>
+          </div>
+          <div style={{flex:1,padding:"14px 20px"}}>
+            <div style={{fontSize:12,color:C.sub,fontWeight:600,marginBottom:2}}>Balance</div>
+            <div style={{fontSize:20,fontWeight:900,color:bal>0?C.red:C.green}}>{bal>0?fmt(bal):"✓ None"}</div>
           </div>
         </div>
-      )}
-      <div>
-        <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>WhatsApp Messages</SectionLabel>
-        <Btn variant="wa" onClick={waReady}><span>💬</span> Order Ready for Pickup</Btn>
-        <div style={{height:10}}/>
-        <Btn variant="wa" onClick={waReminder}><span>📲</span> Payment Reminder + Link</Btn>
-        <div style={{height:10}}/>
-        <Btn variant="wa" onClick={waReceipt}><span>🧾</span> Full Receipt + Link</Btn>
       </div>
+
+      {/* ── Record Cash Payment ── */}
       {bal>0&&(
         <div>
           <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Record Cash Payment</SectionLabel>
@@ -139,6 +102,8 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
           </div>
         </div>
       )}
+
+      {/* ── Payment History ── */}
       {(order.installmentHistory||[]).length>0&&(
         <div>
           <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Payment History</SectionLabel>
@@ -147,7 +112,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
                 <div>
                   <div style={{fontSize:13,fontWeight:700,color:C.text}}>Initial Deposit</div>
-                  <div style={{fontSize:12,color:C.sub}}>At booking</div>
+                  <div style={{fontSize:13,color:C.sub}}>At booking</div>
                 </div>
                 <div style={{fontSize:14,fontWeight:800,color:C.green}}>{fmt(order.deposit)}</div>
               </div>
@@ -156,7 +121,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
               <div key={inst.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
                 <div>
                   <div style={{fontSize:13,fontWeight:700,color:C.text}}>Payment {i+1}</div>
-                  <div style={{fontSize:12,color:C.sub}}>{inst.method==="cash"?"Cash":inst.method} · {fmtDate(inst.date?.slice(0,10))}</div>
+                  <div style={{fontSize:13,color:C.sub}}>{inst.method==="cash"?"Cash":inst.method} · {fmtDate(inst.date?.slice(0,10))}</div>
                 </div>
                 <div style={{fontSize:14,fontWeight:800,color:C.green}}>{fmt(inst.amount)}</div>
               </div>
@@ -168,10 +133,79 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
           </div>
         </div>
       )}
+
+      {/* ── Status Stepper ── */}
+      <StatusStepper status={orderStatus(order)} onChange={s=>{updateOrder({status:s});toast("✅ "+s);}}/>
+
+      {/* ── Order Info ── */}
+      <div style={{...S.card,display:"flex",flexDirection:"column"}}>
+        <Row label="Customer"    value={customer.name}/>
+        <Row label="Phone"       value={customer.phone||"—"} valueStyle={{color:C.accent}}/>
+        <Row label="Cloth Type"  value={order.type||"—"}/>
+        <Row label="Delivery"    value={fmtDate(order.date)}/>
+        {order.notes&&<Row label="Notes" value={order.notes} valueStyle={{fontSize:13,fontWeight:500,color:C.sub}}/>}
+      </div>
+
+      {/* ── Style Photos ── */}
+      <div>
+        <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Style Photos</SectionLabel>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:8}}>
+          {(order.imageUrls||[]).map((url,i)=>(
+            <div key={i} className="tap" onClick={()=>setLightboxUrl(url)}
+              style={{aspectRatio:1,borderRadius:12,overflow:"hidden",background:C.s3,cursor:"pointer",position:"relative"}}>
+              <img src={url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+            </div>
+          ))}
+          {(order.imageUrls?.length||0) < 5 && (
+            <button onClick={()=>photoInputRef.current?.click()}
+              style={{aspectRatio:1,borderRadius:12,border:`1.5px dashed ${C.border2}`,background:C.s2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
+              +
+            </button>
+          )}
+        </div>
+        <input ref={photoInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={async (e)=>{
+          const files=Array.from(e.target.files||[]); e.target.value="";
+          if(!files.length)return;
+          const tailorId=await db.getTailorId();
+          if(!tailorId)return;
+          const urls=await db.uploadOrderImages(tailorId, order.id, files);
+          if(urls.length){
+            const next=[...(order.imageUrls||[]),...urls].slice(0,5);
+            await updateOrder({imageUrls:next});
+            toast("✅ "+(urls.length===1?"Photo added":"Photos added"));
+          }
+        }}/>
+      </div>
+
+      {/* ── Payment Details for Receipts ── */}
+      {vaDetails && (
+        <div>
+          <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Payment Details for Receipts</SectionLabel>
+          <div style={{...S.card,display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Bank: <span style={{fontWeight:700,color:C.text}}>{vaDetails.bank}</span></div>
+            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Account: <span style={{fontWeight:700,color:C.text}}>{vaDetails.number}</span></div>
+            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Name: <span style={{fontWeight:700,color:C.text}}>{vaDetails.name}</span></div>
+          </div>
+        </div>
+      )}
+
+      {/* ── WhatsApp Messages ── */}
+      <div>
+        <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>WhatsApp Messages</SectionLabel>
+        <Btn variant="wa" onClick={waReady}><span>💬</span> Order Ready for Pickup</Btn>
+        <div style={{height:10}}/>
+        <Btn variant="wa" onClick={waReminder}><span>📲</span> Payment Reminder + Link</Btn>
+        <div style={{height:10}}/>
+        <Btn variant="wa" onClick={waReceipt}><span>🧾</span> Full Receipt + Link</Btn>
+      </div>
+
+      {/* ── Measurements ── */}
       <div>
         <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Measurements (inches)</SectionLabel>
         <MeasGrid measurements={customer.measurements||{}} onChange={m=>{updateMeas(m);toast("✅ Saved");}}/>
       </div>
+
+      {/* ── Delete ── */}
       <button className="tap" onClick={()=>setConfirmDelete(true)}
         style={{width:"100%",padding:"15px",borderRadius:14,fontSize:14,fontWeight:700,
           border:"1.5px solid rgba(255,59,48,0.2)",cursor:"pointer",

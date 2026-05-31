@@ -30,7 +30,7 @@ export function CustomersTab({ onOpenCustomer, onAddClient }) {
                 <div style={{ width: 48, height: 48, backgroundColor: C.dark, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#fff", flexShrink: 0 }}>{(c.name || "?")[0].toUpperCase()}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: C.text }}>{c.name}</div>
-                  <div style={{ fontSize: 12, color: C.sub, marginTop: 1 }}>{(c.orders || []).length} order{(c.orders || []).length !== 1 ? "s" : ""} · {c.phone || "No phone"}</div>
+                  <div style={{ fontSize: 13, color: C.sub, marginTop: 1 }}>{(c.orders || []).length} order{(c.orders || []).length !== 1 ? "s" : ""} · {c.phone || "No phone"}</div>
                 </div>
                 {outstanding > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: C.red, flexShrink: 0 }}>{fmt(outstanding)}</div>}
               </div>

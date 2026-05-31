@@ -91,7 +91,7 @@ export function AuthScreen({ onAuthSuccess }) {
       )}
 
       {/* Footer note */}
-      <div style={{ position: "absolute", bottom: 32, fontSize: 11, color: C.muted, textAlign: "center", padding: "0 32px", lineHeight: 1.6 }}>
+      <div style={{ position: "absolute", bottom: 32, fontSize: 13, color: C.muted, textAlign: "center", padding: "0 32px", lineHeight: 1.6 }}>
         By continuing you agree to BOSS terms of service.{"\n"}Your Google account is used only for sign-in.
       </div>
     </div>

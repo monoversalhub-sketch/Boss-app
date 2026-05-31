@@ -190,7 +190,7 @@ function BOSSApp(){
           <div style={{
             position:"absolute",top:12,left:"50%",transform:"translateX(-50%)",
             zIndex:100,display:"flex",alignItems:"center",gap:6,
-            padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:700,
+            padding:"6px 14px",borderRadius:20,fontSize:13,fontWeight:700,
             whiteSpace:"nowrap",transition:"all 0.2s ease",
             ...(statusDisplay==="syncing"   ?{background:"rgba(99,102,241,0.15)",color:"#6366f1",border:"1px solid rgba(99,102,241,0.25)"}:
                 statusDisplay==="saved"     ?{background:"rgba(16,185,129,0.15)",color:"#10b981",border:"1px solid rgba(16,185,129,0.25)"}:
@@ -242,7 +242,7 @@ function BOSSApp(){
                   transition:"color 0.15s",
                 }}>
                   <div style={{transform:active?"scale(1.1)":"scale(1)",transition:"transform 0.2s cubic-bezier(0.34,1.56,0.64,1)"}}>{n.icon}</div>
-                  <div style={{fontSize:11,fontWeight:active?800:600,letterSpacing:"0px",textTransform:"none"}}>{n.label}</div>
+                  <div style={{fontSize:13,fontWeight:active?800:600,letterSpacing:"0px",textTransform:"none"}}>{n.label}</div>
                 </button>
               );
             })}
@@ -277,7 +277,7 @@ function BOSSApp(){
                   transition:"color 0.15s",
                 }}>
                   <div style={{transform:active?"scale(1.1)":"scale(1)",transition:"transform 0.2s cubic-bezier(0.34,1.56,0.64,1)"}}>{n.icon}</div>
-                  <div style={{fontSize:11,fontWeight:active?800:600,letterSpacing:"0px",textTransform:"none"}}>{n.label}</div>
+                  <div style={{fontSize:13,fontWeight:active?800:600,letterSpacing:"0px",textTransform:"none"}}>{n.label}</div>
                 </button>
               );
             })}

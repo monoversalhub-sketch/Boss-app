@@ -114,7 +114,7 @@ export function Textarea({label,...props}){
   );
 }
 export function SectionLabel({children,style={}}){
-  return<div style={{fontSize:12,fontWeight:700,color:C.muted,letterSpacing:"0.8px",textTransform:"uppercase",padding:"0 20px",marginTop:28,marginBottom:12,...style}}>{children}</div>;
+  return<div style={{fontSize:13,fontWeight:700,color:C.muted,letterSpacing:"0.8px",textTransform:"uppercase",padding:"0 20px",marginTop:28,marginBottom:12,...style}}>{children}</div>;
 }
 export function EmptyState({icon,title,sub}){
   return(

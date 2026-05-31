@@ -47,7 +47,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
     if (!date) { toast("⚠️ Set a delivery date"); return; }
     savingRef.current = true; setIsSaving(true);
     try {
-      const order = { id: uid(), type, price: parseFloat(price) || 0, deposit: parseFloat(deposit) || 0, paid: 0, date, notes, status: "In Progress", createdAt: new Date().toISOString() };
+      const order = { id: uid(), type, price: parseFloat(stripCommas(price)) || 0, deposit: parseFloat(stripCommas(deposit)) || 0, paid: 0, date, notes, status: "In Progress", createdAt: new Date().toISOString() };
       const next = [...customers];
       let cust = next.find(c => c.id === prefilledCid) || next.find(c => c.name.toLowerCase() === name.trim().toLowerCase());
       const isNewCustomer = !cust;
@@ -82,7 +82,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
         }
       }
 
-      const hasPaid = (parseFloat(deposit) || 0) > 0;
+      const hasPaid = (parseFloat(stripCommas(deposit)) || 0) > 0;
       const hasPhone = !!(cust.phone || "").trim();
       if (hasPaid && hasPhone) { setReceiptPrompt({ order, customer: { ...cust } }); }
       else { onClose(); toast("✅ Order saved!"); }
@@ -109,12 +109,16 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
     onClose(); toast("✅ Order saved!");
   }
 
+  function stripCommas(v){return v.replace(/,/g,"");}
+  function fmtPrice(v){const n=parseFloat(stripCommas(v));return isNaN(n)?"":n.toLocaleString("en-US");}
+  const depositWarn = price && deposit && parseFloat(stripCommas(deposit)) > parseFloat(stripCommas(price))
+    ? "⚠️ Deposit exceeds total price" : "";
   const progress = useMemo(() => {
     const fields = [
       !!name.trim(),
       !!phone.trim(),
       !!type,
-      !!(price),
+      !!stripCommas(price),
       !!date,
     ];
     return Math.round((fields.filter(Boolean).length / fields.length) * 100);
@@ -125,10 +129,10 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
       <Flow open={open} onClose={onClose} title="New Order" action={isSaving ? "Saving…" : "Save"} onAction={isSaving ? undefined : save}>
         <div style={{ marginBottom: 4 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: C.sub }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.sub }}>
               {progress >= 100 ? "✓ Ready to save" : progress >= 60 ? "Almost ready to save" : "Keep going"}
             </span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: progress === 100 ? C.green : C.accent }}>{progress}%</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: progress === 100 ? C.green : C.accent }}>{progress}%</span>
           </div>
           <div style={{ height: 4, background: C.s3, borderRadius: 4, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${progress}%`, borderRadius: 4, background: progress === 100 ? C.green : C.accent, transition: "width 0.3s ease" }} />
@@ -136,9 +140,9 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
         </div>
         <div style={{ position: "relative" }}>
           <Input label="Customer Name" value={name} onChange={e => onNameChange(e.target.value)} placeholder="Type name to search or add new…" autoComplete="off" />
-          {!name.trim() && <div style={{ fontSize: 12, color: C.sub, padding: "4px 4px 0" }}>Type to search existing customers or add a new one</div>}
+          {!name.trim() && <div style={{ fontSize: 13, color: C.sub, padding: "4px 4px 0" }}>Type to search existing customers or add a new one</div>}
           {name.length >= 1 && matches.length === 0 && customers.length > 0 && (
-            <div style={{ fontSize: 12, color: C.sub, padding: "5px 4px", fontWeight: 500 }}>No match — a new customer will be created</div>
+            <div style={{ fontSize: 13, color: C.sub, padding: "5px 4px", fontWeight: 500 }}>No match — a new customer will be created</div>
           )}
           {matches.length > 0 && (
             <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: C.s1, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.1)", marginTop: 4 }}>
@@ -149,7 +153,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: C.s3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, color: C.text, flexShrink: 0 }}>{c.name[0].toUpperCase()}</div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{c.name}</div>
-                    <div style={{ fontSize: 12, color: C.sub, marginTop: 1 }}>{c.phone || "No phone"} · {(c.orders || []).length} order{(c.orders || []).length !== 1 ? "s" : ""}</div>
+                    <div style={{ fontSize: 13, color: C.sub, marginTop: 1 }}>{c.phone || "No phone"} · {(c.orders || []).length} order{(c.orders || []).length !== 1 ? "s" : ""}</div>
                   </div>
                 </div>
               ))}
@@ -161,9 +165,10 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
 
         <div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Input label="Total Price (₦)" value={price} onChange={e => setPrice(e.target.value)} type="number" inputMode="numeric" placeholder="0" />
-            <Input label="Deposit Paid (₦)" value={deposit} onChange={e => setDeposit(e.target.value)} type="number" inputMode="numeric" placeholder="0" />
+            <Input label="Total Price (₦)" value={price} onChange={e => setPrice(e.target.value)} type="text" inputMode="numeric" placeholder="0" onFocus={e => setPrice(stripCommas(e.target.value))} onBlur={e => setPrice(fmtPrice(e.target.value))} />
+            <Input label="Deposit Paid (₦)" value={deposit} onChange={e => setDeposit(e.target.value)} type="text" inputMode="numeric" placeholder="0" onFocus={e => setDeposit(stripCommas(e.target.value))} onBlur={e => setDeposit(fmtPrice(e.target.value))} />
           </div>
+          {depositWarn && <div style={{fontSize:12,color:C.red,marginTop:4}}>{depositWarn}</div>}
           <button className="tap" onClick={() => setShowCalc(v => !v)}
             style={{ marginTop: 8, background: showCalc ? "rgba(0,102,204,0.1)" : C.s3, border: `1px solid ${showCalc ? "rgba(0,102,204,0.3)" : C.border}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, color: showCalc ? C.accent : C.sub, cursor: "pointer", width: "100%", fontFamily: "inherit" }}>
             {showCalc ? "▲ Close Calculator" : "🧮 Use Smart Pricing Calculator"}
@@ -176,15 +181,29 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
         </div>
 
         <DatePicker label="Delivery Date *" value={date} onChange={setDate} />
+        <div style={{display:"flex",gap:6,marginTop:8}}>
+          <button onClick={()=>setDate(new Date().toISOString().slice(0,10))}
+            style={{flex:1,padding:"9px 0",borderRadius:10,fontSize:13,fontWeight:700,border:`1px solid ${date===new Date().toISOString().slice(0,10)?C.accent:C.border}`,background:date===new Date().toISOString().slice(0,10)?`${C.accent}14`:C.s2,color:date===new Date().toISOString().slice(0,10)?C.accent:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
+            Today
+          </button>
+          <button onClick={()=>{const d=new Date();d.setDate(d.getDate()+1);setDate(d.toISOString().slice(0,10));}}
+            style={{flex:1,padding:"9px 0",borderRadius:10,fontSize:13,fontWeight:700,border:`1px solid ${C.border}`,background:C.s2,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
+            Tomorrow
+          </button>
+          <button onClick={()=>{const d=new Date();d.setDate(d.getDate()+7);setDate(d.toISOString().slice(0,10));}}
+            style={{flex:1,padding:"9px 0",borderRadius:10,fontSize:13,fontWeight:700,border:`1px solid ${C.border}`,background:C.s2,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
+            1 Week
+          </button>
+        </div>
         <div>
-          <div style={{fontSize:12,fontWeight:700,color:C.sub,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:8}}>Style Photos (max 5)</div>
+          <div style={{fontSize:13,fontWeight:700,color:C.sub,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:8}}>Style Photos (max 5)</div>
           <input ref={fileInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleImageSelect} />
           <div style={{display:"grid",gridTemplateColumns:"repeat(5, 1fr)",gap:6}}>
             {selectedImages.map((file, i) => (
               <div key={i} style={{position:"relative",aspectRatio:1,borderRadius:10,overflow:"hidden",background:C.s3}}>
                 <img src={URL.createObjectURL(file)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} />
                 <button onClick={() => removeSelectedImage(i)}
-                  style={{position:"absolute",top:2,right:2,width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.55)",color:"#fff",border:"none",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  style={{position:"absolute",top:2,right:2,width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.55)",color:"#fff",border:"none",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   ✕
                 </button>
               </div>

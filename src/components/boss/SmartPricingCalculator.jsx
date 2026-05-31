@@ -110,7 +110,7 @@ export function SmartPricingCalculator({ onUsePrice, compact = false }) {
             {paystackOn ? "✅ Fee ON — customer pays card charge" : "⬜ Fee OFF — you absorb card charge"}
           </button>
           {paystackOn && basePrice > 0 && (
-            <div style={{ fontSize: 12, color: C.sub, marginTop: 6, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: C.sub, marginTop: 6, lineHeight: 1.5 }}>
               Card fee added: <strong style={{ color: C.accent }}>+{fmt(Math.round(paystackFee))}</strong>{" "}
               · Formula: (Price + ₦100) ÷ 0.985, capped at ₦2,000
             </div>
@@ -120,7 +120,7 @@ export function SmartPricingCalculator({ onUsePrice, compact = false }) {
 
       {hasResult && (
         <div style={{ background: "linear-gradient(135deg,#1C1C1E,#2C2C2E)", borderRadius: 20, padding: 20, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 4 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 4 }}>
             Recommended Selling Price
           </div>
           <div style={{ fontSize: 42, fontWeight: 900, letterSpacing: "-2px", color: "#fff", lineHeight: 1 }}>

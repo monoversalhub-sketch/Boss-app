@@ -178,19 +178,19 @@ export function ProfileTab() {
       <div className="scrollable" style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 80 }}>
         <div style={{ ...S.card }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>Export Backup</div>
-          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6, marginBottom: 12 }}>Download all your customers, orders, measurements, and settings as a JSON file. Save to Google Drive or WhatsApp Saved Messages.</div>
+          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 12 }}>Download all your customers, orders, measurements, and settings as a JSON file. Save to Google Drive or WhatsApp Saved Messages.</div>
           <Btn variant="primary" onClick={exportBackup}>⬇️ Download Backup File</Btn>
         </div>
         <div style={{ ...S.card }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>Restore from Backup</div>
-          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6, marginBottom: 12 }}>Upload a previously downloaded BOSS backup file to restore your data.</div>
+          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 12 }}>Upload a previously downloaded BOSS backup file to restore your data.</div>
           <input ref={restoreRef} type="file" accept=".json" onChange={handleRestoreFile} style={{ display: "none" }} />
           <Btn variant="outline" onClick={() => restoreRef.current?.click()}>📂 Choose Backup File</Btn>
           {restoreMsg && <div style={{ fontSize: 13, color: restoreMsg.startsWith("✅") ? C.green : C.red, marginTop: 8, fontWeight: 500 }}>{restoreMsg}</div>}
         </div>
         <div style={{ ...S.card, background: "rgba(255,159,10,0.06)", border: "1px solid rgba(255,159,10,0.2)" }}>
-          <div style={{ fontSize: 12, color: "#FF9F0A", fontWeight: 700 }}>💡 Auto-backup to Google Drive coming soon</div>
-          <div style={{ fontSize: 12, color: C.sub, marginTop: 4 }}>We'll automatically back up your data to Google Drive daily.</div>
+          <div style={{ fontSize: 13, color: "#FF9F0A", fontWeight: 700 }}>💡 Auto-backup to Google Drive coming soon</div>
+          <div style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>We'll automatically back up your data to Google Drive daily.</div>
         </div>
       </div>
     </div>
@@ -225,7 +225,7 @@ export function ProfileTab() {
         </div>
         <div style={{ ...S.card, background: "rgba(0,102,204,0.04)", border: "1px solid rgba(0,102,204,0.15)" }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.accent, marginBottom: 4 }}>BOSS — Build Trust. Grow Faster.</div>
-          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.7 }}>A lightweight trust and operations system for informal African businesses. Made in Nigeria 🇳🇬 for tailors, artisans, and service providers.</div>
+          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.7 }}>A lightweight trust and operations system for informal African businesses. Made in Nigeria 🇳🇬 for tailors, artisans, and service providers.</div>
         </div>
       </div>
     </div>
@@ -252,8 +252,8 @@ export function ProfileTab() {
           {tailor?.shop || "Your Shop Name"}
         </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-          {tailor?.city && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>📍 {tailor.city}</span>}
-          {tailor?.phone && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>📞 {tailor.phone}</span>}
+          {tailor?.city && <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>📍 {tailor.city}</span>}
+          {tailor?.phone && <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>📞 {tailor.phone}</span>}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[
@@ -277,7 +277,7 @@ export function ProfileTab() {
             <div style={{ width: 40, height: 40, borderRadius: 13, background: C.s2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{item.icon}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{item.label}</div>
-              <div style={{ fontSize: 12, color: C.sub, marginTop: 1 }}>{item.sub}</div>
+              <div style={{ fontSize: 13, color: C.sub, marginTop: 1 }}>{item.sub}</div>
             </div>
             <div style={{ fontSize: 18, color: C.muted, flexShrink: 0 }}>›</div>
           </button>
@@ -292,7 +292,7 @@ export function ProfileTab() {
       </div>
 
       <div style={{ padding: "16px 20px 32px", textAlign: "center" }}>
-        <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.8 }}>BOSS · Build Trust. Grow Faster.<br />© 2025 Monoversal Hub · All rights reserved</div>
+        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.8 }}>BOSS · Build Trust. Grow Faster.<br />© 2025 Monoversal Hub · All rights reserved</div>
       </div>
     </div>
   );

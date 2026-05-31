@@ -87,14 +87,14 @@ export function SetupScreen({ onComplete }) {
             style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: C.s2, borderRadius: 12, cursor: "pointer", border: `1px solid ${showDeclaration ? C.accent : C.border}` }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>📋 Tell us about your experience</div>
-              <div style={{ fontSize: 11, color: C.sub, marginTop: 1 }}>Optional · Boosts your starting BOSS score</div>
+              <div style={{ fontSize: 13, color: C.sub, marginTop: 1 }}>Optional · Boosts your starting BOSS score</div>
             </div>
             <div style={{ fontSize: 14, color: C.sub }}>{showDeclaration ? "▲" : "▼"}</div>
           </div>
 
           {showDeclaration && (
             <div style={{ background: C.s2, borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 12, border: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.6 }}>
+              <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6 }}>
                 This gives you a starting score while your real record builds. It is marked self-reported and improves automatically as you add orders.
               </div>
               <Select label="Years in business"
@@ -105,7 +105,7 @@ export function SetupScreen({ onComplete }) {
               {hasSelfData && (
                 <div style={{ background: "rgba(52,199,89,0.08)", border: "1px solid rgba(52,199,89,0.2)", borderRadius: 10, padding: "10px 14px" }}>
                   <div style={{ fontSize: 13, fontWeight: 800, color: C.green }}>Starting BOSS score: {selfScore} / 30 ⭐</div>
-                  <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>Self-reported · Grows automatically with real orders</div>
+                  <div style={{ fontSize: 13, color: C.sub, marginTop: 2 }}>Self-reported · Grows automatically with real orders</div>
                 </div>
               )}
             </div>
