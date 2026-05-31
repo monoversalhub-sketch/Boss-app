@@ -79,6 +79,7 @@ export function buildReceiptText(order, customer, shopName, vaDetails = null) {
   const paid = getTotalPaid(order);
   const bal  = getBalance(order);
   const va   = vaDetails; // { number, bank, name, crypto }
+  const imgs = (order.imageUrls || []).slice(0, 3);
   const lines = [
     `━━━━━━━━━━━━━━━━━━━━━`,
     `🧵 *${shopName}*`,
@@ -96,6 +97,11 @@ export function buildReceiptText(order, customer, shopName, vaDetails = null) {
     order.notes ? `Notes: ${order.notes}` : "",
     ``,
   ];
+  if (imgs.length) {
+    lines.push(`📸 *Style Photos:*`);
+    imgs.forEach((url, i) => lines.push(`[${i + 1}] ${url}`));
+    lines.push(``);
+  }
   if (bal > 0 && va) {
     lines.push(
       `━━━━━━━━━━━━━━━━━━━━━`,
@@ -121,6 +127,7 @@ export function buildReceiptText(order, customer, shopName, vaDetails = null) {
 export function buildInvoiceMsg(order, customer, shopName, vaDetails = null) {
   const bal  = getBalance(order);
   const va   = vaDetails;
+  const imgs = (order.imageUrls || []).slice(0, 3);
   const lines = [
     `Hello *${customer.name}*! 👋`,
     ``,
@@ -132,6 +139,11 @@ export function buildInvoiceMsg(order, customer, shopName, vaDetails = null) {
     `🔴 Balance: *${fmt(bal)}*`,
     ``,
   ];
+  if (imgs.length) {
+    lines.push(`📸 *Style Photos:*`);
+    imgs.forEach((url, i) => lines.push(`[${i + 1}] ${url}`));
+    lines.push(``);
+  }
   if (bal > 0 && va) {
     lines.push(
       `To pay, please transfer *${fmt(bal)}* to:`,
@@ -154,12 +166,18 @@ export function buildInvoiceMsg(order, customer, shopName, vaDetails = null) {
 export function buildReminderMsg(order, customer, shopName, vaDetails = null) {
   const bal  = getBalance(order);
   const va   = vaDetails;
+  const imgs = (order.imageUrls || []).slice(0, 3);
   const lines = [
     `Hi *${customer.name}*! Just checking in from *${shopName}* 😊`,
     ``,
     `Your *${order.type || "order"}* has a balance of *${fmt(bal)}* outstanding.`,
     ``,
   ];
+  if (imgs.length) {
+    lines.push(`📸 *Style Photos:*`);
+    imgs.forEach((url, i) => lines.push(`[${i + 1}] ${url}`));
+    lines.push(``);
+  }
   if (va) {
     lines.push(
       `To pay, please transfer to:`,
