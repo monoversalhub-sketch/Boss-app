@@ -131,13 +131,12 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   const progress = useMemo(() => {
     const fields = [
       !!name.trim(),
-      !!phone.trim(),
       !!type,
       !!stripCommas(price),
       !!date,
     ];
     return Math.round((fields.filter(Boolean).length / fields.length) * 100);
-  }, [name, phone, type, price, date]);
+  }, [name, type, price, date]);
 
   return (
     <>

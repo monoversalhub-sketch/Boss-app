@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 import { C } from "../tokens";
-import { fmt, orderStatus } from "../helpers";
+import { fmt, orderStatus, getBalance } from "../helpers";
 import { useBOSS } from "../context";
 import { Flow } from "../ui";
 
@@ -133,7 +133,7 @@ export function CalendarFlow({open,onClose}){
                   <div style={{fontSize:12,fontWeight:700,color:orderStatus(order)==="Ready"?C.green:C.sub,background:orderStatus(order)==="Ready"?`${C.green}14`:C.s3,padding:"2px 8px",borderRadius:12,whiteSpace:"nowrap",flexShrink:0}}>{orderStatus(order)}</div>
                 </div>
                 <div style={{fontSize:13,color:C.sub}}>{order.type||"—"}</div>
-                <div style={{fontSize:13,fontWeight:700,color:(order.price||0)>(order.deposit||0)?C.red:C.green}}>Balance due: {fmt((order.price||0)-(order.deposit||0))}</div>
+                <div style={{fontSize:13,fontWeight:700,color:getBalance(order)>0?C.red:C.green}}>Balance due: {fmt(getBalance(order))}</div>
               </div>
             </div>
           ))

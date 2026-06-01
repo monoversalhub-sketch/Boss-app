@@ -8,6 +8,9 @@ export function FeedbackSheet({ open, type, trigger, screen, onClose }) {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [happened, setHappened] = useState("");
+  const [doing, setDoing] = useState("");
+  const [idea, setIdea] = useState("");
 
   if (!open) return null;
 
@@ -22,6 +25,9 @@ export function FeedbackSheet({ open, type, trigger, screen, onClose }) {
   function handleDismiss() {
     setScore(null);
     setMessage("");
+    setHappened("");
+    setDoing("");
+    setIdea("");
     onClose();
   }
 
@@ -92,8 +98,6 @@ export function FeedbackSheet({ open, type, trigger, screen, onClose }) {
   }
 
   if (type === "bug") {
-    const [happened, setHappened] = useState("");
-    const [doing, setDoing] = useState("");
     return (
       <div onClick={handleDismiss} style={{ position: "fixed", inset: 0, zIndex: 500, display: "flex", alignItems: "flex-end" }}>
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()} />
@@ -122,7 +126,6 @@ export function FeedbackSheet({ open, type, trigger, screen, onClose }) {
   }
 
   if (type === "feature") {
-    const [idea, setIdea] = useState("");
     return (
       <div onClick={handleDismiss} style={{ position: "fixed", inset: 0, zIndex: 500, display: "flex", alignItems: "flex-end" }}>
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()} />
