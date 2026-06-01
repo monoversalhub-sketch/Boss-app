@@ -1,8 +1,9 @@
 {
   "crons": [
-    {
-      "path": "/api/cron/daily-backup",
-      "schedule": "0 6 * * *"
-    }
+    { "path": "/api/cron/daily-backup",     "schedule": "0 6 * * *" },
+    { "path": "/api/cron/daily-briefing",   "schedule": "0 7 * * *" },
+    { "path": "/api/cron/delivery-alerts",  "schedule": "0 7 * * *" },
+    { "path": "/api/cron/payment-nudges",   "schedule": "0 13 * * *" },
+    { "path": "/api/cron/re-engagement",    "schedule": "0 9 * * *" }
   ]
 }

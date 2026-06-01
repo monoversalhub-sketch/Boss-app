@@ -1,6 +1,6 @@
 "use client";
 // src/components/boss/ProfileTab.jsx
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { C, S } from "../tokens";
 import { allOrders, orderStatus, computeTrustScore, fmt, getBalance, getTotalPaid } from "../helpers";
 import { useBOSS } from "../context";
@@ -28,6 +28,12 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
   const [referralCode, setReferralCode] = useState(null);
   const [referralStats, setReferralStats] = useState({ total: 0, activated: 0, rewarded: 0 });
   const [copied, setCopied] = useState(false);
+  const [notifDelivery, setNotifDelivery] = useState(tailor?.notif_delivery !== false);
+  const [notifPayments, setNotifPayments] = useState(tailor?.notif_payments !== false);
+  const [notifBriefing, setNotifBriefing] = useState(tailor?.notif_briefing !== false);
+  const notifTimerRef = useRef(null);
+
+  useEffect(()=>{ return ()=>clearTimeout(notifTimerRef.current); },[]);
 
   useEffect(() => { if (!saved) return; const id = setTimeout(() => setSaved(false), 2200); return () => clearTimeout(id); }, [saved]);
 
@@ -51,6 +57,14 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
       account_name: accountName.trim() || null,
     };
     await db.setTailor(t); setTailor(t); setSaved(true);
+  }
+
+  async function saveNotifPrefs(prefs){
+    await db.setNotificationPrefs(prefs);
+    setTailor({...(tailor||{}),...prefs});
+    clearTimeout(notifTimerRef.current);
+    notifTimerRef.current = setTimeout(()=>setSaved(false), 2200);
+    setSaved(true);
   }
 
   const driveConnected = !!tailor?.google_drive_refresh_token;
@@ -291,6 +305,55 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
     </div>
   );
 
+  if (section === "notifications") return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <SubHeader title="Notifications" />
+      <div className="scrollable" style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 80 }}>
+        <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>🔔 Delivery Reminders</div>
+          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 4 }}>
+            Get notified before delivery dates so you never miss a deadline.
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <div onClick={()=>{const v=!notifDelivery;setNotifDelivery(v);saveNotifPrefs({notif_delivery:v});}}
+              style={{ width: 44, height: 26, borderRadius: 13, background: notifDelivery ? C.green : C.s3, position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+              <div style={{ width: 22, height: 22, borderRadius: 11, background: "#fff", position: "absolute", top: 2, left: notifDelivery ? 20 : 2, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{notifDelivery ? "On" : "Off"}</span>
+          </label>
+        </div>
+
+        <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>💰 Payment Nudges</div>
+          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 4 }}>
+            Daily reminders about unpaid balances on delivered orders.
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <div onClick={()=>{const v=!notifPayments;setNotifPayments(v);saveNotifPrefs({notif_payments:v});}}
+              style={{ width: 44, height: 26, borderRadius: 13, background: notifPayments ? C.green : C.s3, position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+              <div style={{ width: 22, height: 22, borderRadius: 11, background: "#fff", position: "absolute", top: 2, left: notifPayments ? 20 : 2, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{notifPayments ? "On" : "Off"}</span>
+          </label>
+        </div>
+
+        <div style={{ ...S.card, display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>☀️ Morning Briefing</div>
+          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 4 }}>
+            Daily summary of jobs due this week and outstanding balance.
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <div onClick={()=>{const v=!notifBriefing;setNotifBriefing(v);saveNotifPrefs({notif_briefing:v});}}
+              style={{ width: 44, height: 26, borderRadius: 13, background: notifBriefing ? C.green : C.s3, position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+              <div style={{ width: 22, height: 22, borderRadius: 11, background: "#fff", position: "absolute", top: 2, left: notifBriefing ? 20 : 2, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{notifBriefing ? "On" : "Off"}</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+
   if (section === "tools") return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <SubHeader title="Smart Pricing Calculator" />
@@ -330,6 +393,7 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
   const menuItems = [
     { icon: "👤", label: "Edit Profile", sub: "Shop, phone and bank details", key: "edit" },
     { icon: "📊", label: "Financial Report", sub: "Income, customers, export CSV", key: "report" },
+    { icon: "🔔", label: "Notifications", sub: "Delivery alerts, payment nudges", key: "notifications" },
     { icon: "☁️", label: "Data & Backup", sub: "Export, restore your data", key: "data" },
     { icon: "🧮", label: "Smart Pricing", sub: "Calculate your job prices", key: "tools" },
     { icon: "🎓", label: "How BOSS Works", sub: "Replay the quick tour", key: "onboarding_tour" },

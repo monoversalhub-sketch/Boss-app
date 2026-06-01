@@ -3,7 +3,10 @@ import { OAuth2Client } from "google-auth-library";
 import { drive as driveV3 } from "@googleapis/drive";
 
 const FOLDER_NAME = "BOSS Backups";
-const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
+const SCOPES = [
+  "https://www.googleapis.com/auth/drive.file",
+  "https://www.googleapis.com/auth/calendar.events",
+];
 
 function getOAuth2Client() {
   return new OAuth2Client(

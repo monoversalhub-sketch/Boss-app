@@ -102,6 +102,16 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
         await referral.checkActivation(tailorId, totalOrders);
       }
 
+      if (tailor?.google_drive_refresh_token) {
+        fetch("/api/calendar/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: order.id, customerId: cust.id, action: "create" }),
+        }).then(r => r.json()).then(d => {
+          if (d.ok) toast("📅 Added to your Google Calendar with 3-day reminder");
+        }).catch(e => console.error("[calendar] create failed", e));
+      }
+
       const hasPaid = (parseFloat(stripCommas(deposit)) || 0) > 0;
       const hasPhone = !!(cust.phone || "").trim();
       if (hasPaid && hasPhone) { setReceiptPrompt({ order, customer: { ...cust } }); }

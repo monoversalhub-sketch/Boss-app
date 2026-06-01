@@ -30,6 +30,13 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
     const next=customers.map(c=>({...c,orders:(c.orders||[]).map(o=>o.id===orderId?{...o,...patch}:o)}));
     setCustomers(next);
     await db.updateOrder(orderId, patch);
+    const rt = tailor?.google_drive_refresh_token;
+    if (rt && patch.date && patch.date !== order.date) {
+      fireCalendarSync("update");
+    }
+    if (rt && patch.status === "Delivered" && order.google_event_id) {
+      fireCalendarSync("delete");
+    }
   }
   async function updateMeas(meas){
     const next=customers.map(c=>c.id===customer.id?{...c,measurements:meas}:c);
@@ -56,11 +63,22 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
     toast(state==="fully_paid"?"✅ Fully paid! Great work. 🎉":"✅ Payment recorded — "+fmt(getBalance({...order,paid:newPaid}))+" remaining");
   }
   async function deleteOrder(){
+    if (tailor?.google_drive_refresh_token && order.google_event_id) {
+      fireCalendarSync("delete");
+    }
     const next=customers.map(c=>({...c,orders:(c.orders||[]).filter(o=>o.id!==orderId)}));
     setCustomers(next);
     await db.deleteOrder(orderId);
     onClose();
     toast("Order deleted");
+  }
+  function fireCalendarSync(action){
+    fetch("/api/calendar/sync", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({orderId, customerId:customer.id, action}),
+    }).then(r=>r.json()).then(d=>{
+      if(!d.ok)console.warn("[calendar] sync failed", d.error);
+    }).catch(e=>console.error("[calendar] sync error", e));
   }
   const vaDetails = tailor?.account_number ? {
     number: tailor.account_number,

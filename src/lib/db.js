@@ -163,7 +163,7 @@ async function updateBosScore(tailorId) {
       if (authError || !authData?.user) return null;
       const { data } = await client
         .from("tailors")
-        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at,google_drive_refresh_token")
+        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at,google_drive_refresh_token,notif_delivery,notif_payments,notif_briefing")
         .eq("user_id", authData.user.id)
         .single();
       if (data) lsSet("boss_tailor", data);
@@ -191,6 +191,9 @@ async function updateBosScore(tailorId) {
       if (profile.bank_code            !== undefined) payload.bank_code            = profile.bank_code            || null;
       if (profile.account_number       !== undefined) payload.account_number       = profile.account_number       || null;
       if (profile.account_name         !== undefined) payload.account_name         = profile.account_name         || null;
+      if (profile.notif_delivery       !== undefined) payload.notif_delivery       = profile.notif_delivery;
+      if (profile.notif_payments       !== undefined) payload.notif_payments       = profile.notif_payments;
+      if (profile.notif_briefing       !== undefined) payload.notif_briefing       = profile.notif_briefing;
 
       _syncCallback?.("syncing");
       await client.from("tailors").upsert(payload, { onConflict: "user_id" });
@@ -519,7 +522,25 @@ async function updateBosScore(tailorId) {
     }
   },
 
+  async updateLastSeen() {
+    try {
+      const client = await getBrowserClient();
+      const { data: authData } = await client.auth.getUser();
+      if (!authData?.user) return;
+      await client.from("tailors").update({ last_seen_at: new Date().toISOString() }).eq("user_id", authData.user.id);
+    } catch {}
+  },
 
+  async setNotificationPrefs(prefs) {
+    try {
+      const client = await getBrowserClient();
+      const { data: authData } = await client.auth.getUser();
+      if (!authData?.user) return;
+      await client.from("tailors").update(prefs).eq("user_id", authData.user.id);
+    } catch (e) {
+      console.error("[db.setNotificationPrefs]", e);
+    }
+  },
 };
 
 export default db;

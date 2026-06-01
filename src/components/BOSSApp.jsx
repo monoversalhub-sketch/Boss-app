@@ -17,6 +17,7 @@ import { FeedbackSheet } from "./boss/FeedbackSheet";
 import { OnboardingTour } from "./boss/OnboardingTour";
 
 import { C } from "./boss/tokens";
+import { allOrders } from "./boss/helpers";
 import { ErrorBoundary, BOSSContext } from "./boss/context";
 import { GlobalStyles, Toast } from "./boss/ui";
 import { SplashScreen } from "./boss/SplashScreen";
@@ -222,6 +223,62 @@ function BOSSApp(){
       return()=>clearTimeout(timer);
     }
   },[screen]);
+
+  // Web Push: register SW, update last_seen, prompt on first order
+  useEffect(()=>{
+    if(screen!=="app")return;
+    db.updateLastSeen();
+    if("serviceWorker" in navigator && "PushManager" in window){
+      navigator.serviceWorker.register("/sw.js").catch(e=>console.warn("[push] SW reg failed",e));
+    }
+  },[screen]);
+
+  const pushPromptedRef = useRef(false);
+  const prevOrderCountRef = useRef(allOrders(customers).length);
+
+  useEffect(()=>{
+    if(screen!=="app")return;
+    const count = allOrders(customers).length;
+    if(count > 0 && prevOrderCountRef.current === 0 && !pushPromptedRef.current && "Notification" in window && Notification.permission === "default"){
+      pushPromptedRef.current = true;
+      const timer = setTimeout(()=>{
+        toast("🔔 Get reminders before delivery dates?");
+        // Show a non-blocking consent via a simple confirm-like UX
+        if(window.confirm("Get notified before delivery dates and when payments are due?")){
+          subscribeToPush();
+        }
+      }, 4000);
+      return()=>clearTimeout(timer);
+    }
+    prevOrderCountRef.current = count;
+  },[customers, screen]);
+
+  async function subscribeToPush(){
+    try{
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
+      });
+      await fetch("/api/push/subscribe",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({endpoint:sub.endpoint,keys:{p256dh:arrayBufferToBase64(sub.getKey("p256dh")),auth:arrayBufferToBase64(sub.getKey("auth"))}}),
+      });
+      toast("✅ Notifications enabled");
+    }catch(e){
+      console.warn("[push] subscribe failed",e);
+      toast("Could not enable notifications");
+    }
+  }
+  function urlBase64ToUint8Array(base64String){
+    const padding="=".repeat((4-base64String.length%4)%4);
+    const b64=(base64String+padding).replace(/\-/g,"+").replace(/_/g,"/");
+    const raw=atob(b64);
+    return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+  }
+  function arrayBufferToBase64(buf){
+    return btoa(String.fromCharCode(...new Uint8Array(buf)));
+  }
 
   if(screen==="splash")return(
     <><GlobalStyles/>
