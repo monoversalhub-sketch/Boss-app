@@ -1,21 +1,27 @@
 "use client";
-// src/components/boss/flows/OrderDetailFlow.jsx
 import { useState, useRef } from "react";
-import { C, S } from "../tokens";
-import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, waLink, buildReceiptText, buildReminderMsg } from "../helpers";
+import { C } from "../tokens";
+import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, isOverdue, isDueToday, waLink, buildReceiptText, buildReminderMsg } from "../helpers";
 import { useBOSS } from "../context";
-import { Btn, Input, Flow, SectionLabel } from "../ui";
+import { Btn, Input } from "../ui";
 import { StatusStepper, MeasGrid } from "../cards";
 import { db } from "../../../lib/db";
+
+const cardStyle = {
+  backgroundColor: C.s1, borderRadius: 16, padding: 16, marginBottom: 12,
+  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+};
 
 export function OrderDetailFlow({open,onClose,orderId,tailor}){
   const{customers,setCustomers,toast}=useBOSS();
   const[payAmt,setPayAmt]=useState("");
   const[confirmDelete,setConfirmDelete]=useState(false);
   const[lightboxUrl,setLightboxUrl]=useState(null);
+  const[heroIndex,setHeroIndex]=useState(0);
   const photoInputRef=useRef(null);
+  const payRef=useRef(null);
   const found=(()=>{for(const c of customers){const o=(c.orders||[]).find(x=>x.id===orderId);if(o)return{order:o,customer:c};}return null;})();
-  if(!found)return null;
+  if(!found||!open)return null;
   const{order,customer}=found;
   const bal=getBalance(order);const paid=(parseFloat(order.deposit)||0)+(parseFloat(order.paid)||0);
   const shop=tailor?.shop||"BOSS Shop";
@@ -64,156 +70,188 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
       <div style={{fontSize:14,fontWeight:700,textAlign:"right",...valueStyle}}>{value}</div>
     </div>
   );
-  const payStateIcon = getPaymentState(order)==="fully_paid"?"✅":
-    getPaymentState(order)==="partially_paid"?"🔶":"⬜";
-  const payStateText = getPaymentState(order)==="fully_paid"?"Fully Paid":
-    getPaymentState(order)==="partially_paid"?"Partial — "+Math.round((getTotalPaid(order)/Math.max(order.price,1))*100)+"%":
-    "Unpaid";
-  const payStateColor = getPaymentState(order)==="fully_paid"?C.green:
-    getPaymentState(order)==="partially_paid"?"#FF9F0A":C.red;
+  const heroImages=order.imageUrls||[];
+  const heroImage=heroImages[heroIndex]||null;
+  let dateColor=C.sub;
+  if(isOverdue(order))dateColor=C.red;
+  else if(isDueToday(order))dateColor="#FF9F0A";
   return(
     <>
-    <Flow open={open} onClose={onClose} title={`${customer.name} — ${fmt(order.price)}`}>
-      {/* ── Money Zone ── */}
-      <div style={{background:`linear-gradient(135deg,${C.dark},${C.s1})`,borderRadius:16,border:`1px solid ${C.border}`,overflow:"hidden"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 20px 12px"}}>
-          <div style={{fontSize:28,fontWeight:900,letterSpacing:"-0.5px",color:C.text}}>{fmt(order.price)}</div>
-          <div style={{fontSize:13,fontWeight:700,color:payStateColor,padding:"4px 10px",borderRadius:20,background:payStateColor+"14"}}>{payStateIcon} {payStateText}</div>
-        </div>
-        <div style={{display:"flex",gap:0,borderTop:`1px solid ${C.border}`}}>
-          <div style={{flex:1,padding:"14px 20px",borderRight:`1px solid ${C.border}`}}>
-            <div style={{fontSize:12,color:C.sub,fontWeight:600,marginBottom:2}}>Paid</div>
-            <div style={{fontSize:20,fontWeight:900,color:C.green}}>{fmt(paid)}</div>
-          </div>
-          <div style={{flex:1,padding:"14px 20px"}}>
-            <div style={{fontSize:12,color:C.sub,fontWeight:600,marginBottom:2}}>Balance</div>
-            <div style={{fontSize:20,fontWeight:900,color:bal>0?C.red:C.green}}>{bal>0?fmt(bal):"✓ None"}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Record Cash Payment ── */}
-      {bal>0&&(
-        <div>
-          <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Record Cash Payment</SectionLabel>
-          <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,alignItems:"end"}}>
-            <Input value={payAmt} onChange={e=>setPayAmt(e.target.value)} type="number" inputMode="numeric" placeholder="Amount (₦)" label="Amount"/>
-            <Btn variant="green" onClick={recordPay} style={{width:"auto",padding:"13px 20px"}}>Record ✓</Btn>
-          </div>
-        </div>
-      )}
-
-      {/* ── Payment History ── */}
-      {(order.installmentHistory||[]).length>0&&(
-        <div>
-          <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Payment History</SectionLabel>
-          <div style={{...S.card,display:"flex",flexDirection:"column",gap:0}}>
-            {(parseFloat(order.deposit)||0)>0&&(
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>Initial Deposit</div>
-                  <div style={{fontSize:13,color:C.sub}}>At booking</div>
-                </div>
-                <div style={{fontSize:14,fontWeight:800,color:C.green}}>{fmt(order.deposit)}</div>
+    <div style={{position:"fixed",inset:0,zIndex:300,backgroundColor:C.bg,overflowY:"auto",display:"flex",flexDirection:"column"}}>
+      {/* ── Zone 1: Hero Image ── */}
+      <div style={{position:"relative",width:"100%",height:220,backgroundColor:C.s3,overflow:"hidden",flexShrink:0}}>
+        {heroImage?(
+          <>
+            <img src={heroImage} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+            {heroImages.length>1&&(
+              <div style={{position:"absolute",bottom:12,left:"50%",transform:"translateX(-50%)",display:"flex",gap:4}}>
+                {heroImages.slice(0,5).map((url,i)=>(
+                  <div key={i} onClick={(e)=>{e.stopPropagation();setHeroIndex(i);}}
+                    style={{width:i===heroIndex?16:5,height:5,borderRadius:3,backgroundColor:i===heroIndex?"#fff":"rgba(255,255,255,0.5)",cursor:"pointer",transition:"width 0.2s"}}/>
+                ))}
               </div>
             )}
-            {(order.installmentHistory||[]).map((inst,i)=>(
-              <div key={inst.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.text}}>Payment {i+1}</div>
-                  <div style={{fontSize:13,color:C.sub}}>{inst.method==="cash"?"Cash":inst.method} · {fmtDate(inst.date?.slice(0,10))}</div>
-                </div>
-                <div style={{fontSize:14,fontWeight:800,color:C.green}}>{fmt(inst.amount)}</div>
-              </div>
-            ))}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0"}}>
-              <div style={{fontSize:13,fontWeight:800,color:C.text}}>Total Paid</div>
-              <div style={{fontSize:15,fontWeight:900,color:C.green}}>{fmt(getTotalPaid(order))}</div>
-            </div>
-          </div>
+          </>
+        ):(
+          <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:C.s3,fontSize:56}}>✂️</div>
+        )}
+        <div style={{position:"absolute",top:12,left:12,backgroundColor:"rgba(0,0,0,0.55)",color:"#fff",fontSize:11,fontWeight:800,padding:"5px 10px",borderRadius:20,textTransform:"uppercase",letterSpacing:"0.5px"}}>{orderStatus(order)}</div>
+        <div className="tap" onClick={onClose} style={{position:"absolute",top:12,right:12,width:36,height:36,borderRadius:18,backgroundColor:"rgba(0,0,0,0.45)",color:"#fff",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>←</div>
+        <div style={{position:"absolute",bottom:12,left:12,backgroundColor:bal>0?C.red:C.green,color:"#fff",fontSize:12,fontWeight:800,padding:"5px 12px",borderRadius:20}}>
+          {bal>0?`${fmt(bal)} due`:"✅ Fully Paid"}
         </div>
-      )}
-
-      {/* ── Status Stepper ── */}
-      <StatusStepper status={orderStatus(order)} onChange={s=>{updateOrder({status:s});toast("✅ "+s);}}/>
-
-      {/* ── Order Info ── */}
-      <div style={{...S.card,display:"flex",flexDirection:"column"}}>
-        <Row label="Customer"    value={customer.name}/>
-        <Row label="Phone"       value={customer.phone||"—"} valueStyle={{color:C.accent}}/>
-        <Row label="Cloth Type"  value={order.type||"—"}/>
-        <Row label="Delivery"    value={fmtDate(order.date)}/>
-        {order.notes&&<Row label="Notes" value={order.notes} valueStyle={{fontSize:13,fontWeight:500,color:C.sub}}/>}
       </div>
 
-      {/* ── Style Photos ── */}
-      <div>
-        <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Style Photos</SectionLabel>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:8}}>
-          {(order.imageUrls||[]).map((url,i)=>(
-            <div key={i} className="tap" onClick={()=>setLightboxUrl(url)}
-              style={{aspectRatio:1,borderRadius:12,overflow:"hidden",background:C.s3,cursor:"pointer",position:"relative"}}>
-              <img src={url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-            </div>
-          ))}
-          {(order.imageUrls?.length||0) < 5 && (
-            <button onClick={()=>photoInputRef.current?.click()}
-              style={{aspectRatio:1,borderRadius:12,border:`1.5px dashed ${C.border2}`,background:C.s2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
-              +
-            </button>
+      {/* ── Zone 2: Identity Card ── */}
+      <div style={{backgroundColor:C.s1,borderRadius:"0 0 24px 24px",padding:"16px 20px 20px",marginBottom:12,boxShadow:"0 4px 16px rgba(0,0,0,0.06)"}}>
+        <div style={{fontSize:20,fontWeight:800,color:C.text}}>{customer.name}</div>
+        <div style={{fontSize:14,color:C.sub,marginTop:2}}>{order.type||"Custom Order"}</div>
+        <div style={{fontSize:13,color:dateColor,marginTop:6}}>📅 Due {fmtDate(order.date)}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16}}>
+          <div style={{backgroundColor:C.s3,borderRadius:20,padding:"8px 16px",fontSize:16,fontWeight:800,color:C.text}}>{fmt(order.price)}</div>
+          {bal>0?(
+            <button className="tap" onClick={()=>payRef.current?.scrollIntoView({behavior:"smooth",block:"center"})}
+              style={{backgroundColor:C.accent,color:"#fff",borderRadius:24,padding:"10px 20px",fontSize:15,fontWeight:800,border:"none",cursor:"pointer",fontFamily:"inherit"}}>Record Payment →</button>
+          ):(
+            <button className="tap" onClick={waReceipt}
+              style={{backgroundColor:C.green,color:"#fff",borderRadius:24,padding:"10px 20px",fontSize:15,fontWeight:800,border:"none",cursor:"pointer",fontFamily:"inherit"}}>Send Receipt →</button>
           )}
         </div>
-        <input ref={photoInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={async (e)=>{
-          const files=Array.from(e.target.files||[]); e.target.value="";
-          if(!files.length)return;
-          const tailorId=await db.getTailorId();
-          if(!tailorId)return;
-          const urls=await db.uploadOrderImages(tailorId, order.id, files);
-          if(urls.length){
-            const next=[...(order.imageUrls||[]),...urls].slice(0,5);
-            await updateOrder({imageUrls:next});
-            toast("✅ "+(urls.length===1?"Photo added":"Photos added"));
-          }
-        }}/>
       </div>
 
-      {/* ── Payment Details for Receipts ── */}
-      {vaDetails && (
-        <div>
-          <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Payment Details for Receipts</SectionLabel>
-          <div style={{...S.card,display:"flex",flexDirection:"column",gap:8}}>
-            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Bank: <span style={{fontWeight:700,color:C.text}}>{vaDetails.bank}</span></div>
-            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Account: <span style={{fontWeight:700,color:C.text}}>{vaDetails.number}</span></div>
-            <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Name: <span style={{fontWeight:700,color:C.text}}>{vaDetails.name}</span></div>
-          </div>
+      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:12}}>
+        {/* ── Zone 3: Status Stepper ── */}
+        <div style={cardStyle}>
+          <StatusStepper status={orderStatus(order)} onChange={s=>{updateOrder({status:s});toast("✅ "+s);}}/>
         </div>
-      )}
 
-      {/* ── WhatsApp Messages ── */}
-      <div>
-        <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>WhatsApp Messages</SectionLabel>
-        <Btn variant="wa" onClick={waReady}><span>💬</span> Order Ready for Pickup</Btn>
-        <div style={{height:10}}/>
-        <Btn variant="wa" onClick={waReminder}><span>📲</span> Payment Reminder + Link</Btn>
-        <div style={{height:10}}/>
-        <Btn variant="wa" onClick={waReceipt}><span>🧾</span> Full Receipt + Link</Btn>
+        {/* ── Zone 4: Record Cash Payment ── */}
+        <div ref={payRef}>
+          {bal>0?(
+            <div style={cardStyle}>
+              <div style={{fontSize:13,fontWeight:700,color:C.sub,marginBottom:12}}>Record Cash Payment</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,alignItems:"end"}}>
+                <Input value={payAmt} onChange={e=>setPayAmt(e.target.value)} type="number" inputMode="numeric" placeholder="Amount (₦)" label="Amount"/>
+                <Btn variant="green" onClick={recordPay} style={{width:"auto",padding:"13px 20px"}}>Record ✓</Btn>
+              </div>
+            </div>
+          ):(
+            <div style={cardStyle}>
+              <div style={{fontSize:14,color:C.green,textAlign:"center",padding:8}}>✅ Fully Paid — nothing due</div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Payment History ── */}
+        {(order.installmentHistory||[]).length>0&&(
+          <div style={cardStyle}>
+            <div style={{fontSize:13,fontWeight:700,color:C.sub,marginBottom:12}}>Payment History</div>
+            <div style={{display:"flex",flexDirection:"column",gap:0}}>
+              {(parseFloat(order.deposit)||0)>0&&(
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:C.text}}>Initial Deposit</div>
+                    <div style={{fontSize:13,color:C.sub}}>At booking</div>
+                  </div>
+                  <div style={{fontSize:14,fontWeight:800,color:C.green}}>{fmt(order.deposit)}</div>
+                </div>
+              )}
+              {(order.installmentHistory||[]).map((inst,i)=>(
+                <div key={inst.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:C.text}}>Payment {i+1}</div>
+                    <div style={{fontSize:13,color:C.sub}}>{inst.method==="cash"?"Cash":inst.method} · {fmtDate(inst.date?.slice(0,10))}</div>
+                  </div>
+                  <div style={{fontSize:14,fontWeight:800,color:C.green}}>{fmt(inst.amount)}</div>
+                </div>
+              ))}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0"}}>
+                <div style={{fontSize:13,fontWeight:800,color:C.text}}>Total Paid</div>
+                <div style={{fontSize:15,fontWeight:900,color:C.green}}>{fmt(getTotalPaid(order))}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Zone 5: Customer Info ── */}
+        <div style={cardStyle}>
+          <Row label="Customer" value={customer.name}/>
+          <Row label="Phone" value={customer.phone||"—"} valueStyle={{color:C.accent}}/>
+          <Row label="Cloth Type" value={order.type||"—"}/>
+          <Row label="Delivery" value={fmtDate(order.date)}/>
+          {order.notes&&<Row label="Notes" value={order.notes} valueStyle={{fontSize:13,fontWeight:500,color:C.sub}}/>}
+        </div>
+
+        {/* ── Style Photos ── */}
+        <div style={cardStyle}>
+          <div style={{fontSize:13,fontWeight:700,color:C.sub,marginBottom:12}}>Style Photos</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:8}}>
+            {(order.imageUrls||[]).map((url,i)=>(
+              <div key={i} className="tap" onClick={()=>setLightboxUrl(url)}
+                style={{aspectRatio:1,borderRadius:12,overflow:"hidden",background:C.s3,cursor:"pointer",position:"relative"}}>
+                <img src={url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              </div>
+            ))}
+            {(order.imageUrls?.length||0) < 5 && (
+              <button onClick={()=>photoInputRef.current?.click()}
+                style={{aspectRatio:1,borderRadius:12,border:`1.5px dashed ${C.border2}`,background:C.s2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
+                +
+              </button>
+            )}
+          </div>
+          <input ref={photoInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={async (e)=>{
+            const files=Array.from(e.target.files||[]); e.target.value="";
+            if(!files.length)return;
+            const tailorId=await db.getTailorId();
+            if(!tailorId)return;
+            const urls=await db.uploadOrderImages(tailorId, order.id, files);
+            if(urls.length){
+              const next=[...(order.imageUrls||[]),...urls].slice(0,5);
+              await updateOrder({imageUrls:next});
+              toast("✅ "+(urls.length===1?"Photo added":"Photos added"));
+            }
+          }}/>
+        </div>
+
+        {/* ── Payment Details for Receipts ── */}
+        {vaDetails && (
+          <div style={cardStyle}>
+            <div style={{fontSize:13,fontWeight:700,color:C.sub,marginBottom:12}}>Payment Details for Receipts</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Bank: <span style={{fontWeight:700,color:C.text}}>{vaDetails.bank}</span></div>
+              <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Account: <span style={{fontWeight:700,color:C.text}}>{vaDetails.number}</span></div>
+              <div style={{fontSize:13,color:C.sub,fontWeight:500}}>Name: <span style={{fontWeight:700,color:C.text}}>{vaDetails.name}</span></div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Zone 6: WhatsApp Actions ── */}
+        <div style={cardStyle}>
+          <div style={{fontSize:13,fontWeight:700,color:C.sub,marginBottom:12}}>WhatsApp Messages</div>
+          <Btn variant="wa" onClick={waReady}><span>💬</span> Order Ready for Pickup</Btn>
+          <div style={{height:10}}/>
+          <Btn variant="wa" onClick={waReminder}><span>📲</span> Payment Reminder + Link</Btn>
+          <div style={{height:10}}/>
+          <Btn variant="wa" onClick={waReceipt}><span>🧾</span> Full Receipt + Link</Btn>
+        </div>
+
+        {/* ── Zone 7: Measurements ── */}
+        <div style={cardStyle}>
+          <div style={{fontSize:13,fontWeight:700,color:C.sub,marginBottom:12}}>Measurements (inches)</div>
+          <MeasGrid measurements={customer.measurements||{}} onChange={m=>{updateMeas(m);toast("✅ Saved");}}/>
+        </div>
+
+        {/* ── Zone 8: Danger Zone ── */}
+        <button className="tap" onClick={()=>setConfirmDelete(true)}
+          style={{width:"100%",padding:"15px",borderRadius:14,fontSize:14,fontWeight:700,
+            border:"1.5px solid rgba(255,59,48,0.2)",cursor:"pointer",
+            background:"rgba(255,59,48,0.05)",color:C.red,fontFamily:"inherit",
+            display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:8,marginBottom:32}}>
+          🗑 Delete This Order
+        </button>
       </div>
+    </div>
 
-      {/* ── Measurements ── */}
-      <div>
-        <SectionLabel style={{padding:0,marginTop:0,marginBottom:12}}>Measurements (inches)</SectionLabel>
-        <MeasGrid measurements={customer.measurements||{}} onChange={m=>{updateMeas(m);toast("✅ Saved");}}/>
-      </div>
-
-      {/* ── Delete ── */}
-      <button className="tap" onClick={()=>setConfirmDelete(true)}
-        style={{width:"100%",padding:"15px",borderRadius:14,fontSize:14,fontWeight:700,
-          border:"1.5px solid rgba(255,59,48,0.2)",cursor:"pointer",
-          background:"rgba(255,59,48,0.05)",color:C.red,fontFamily:"inherit",
-          display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-        🗑 Delete This Order
-      </button>
-    </Flow>
     {lightboxUrl&&(
       <div onClick={()=>setLightboxUrl(null)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,0.92)",display:"flex",alignItems:"center",justifyContent:"center"}}>
         <img src={lightboxUrl} alt="" style={{maxWidth:"92%",maxHeight:"92%",borderRadius:12,objectFit:"contain"}}/>
