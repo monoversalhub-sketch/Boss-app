@@ -6,13 +6,14 @@ import { useBOSS } from "../context";
 import { Btn, Input } from "../ui";
 import { StatusStepper, MeasGrid } from "../cards";
 import { db } from "../../../lib/db";
+import { feedback } from "../../../lib/feedback";
 
 const cardStyle = {
   backgroundColor: C.s1, borderRadius: 16, padding: 16, marginBottom: 12,
   boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
 };
 
-export function OrderDetailFlow({open,onClose,orderId,tailor}){
+export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger}){
   const{customers,setCustomers,toast}=useBOSS();
   const[payAmt,setPayAmt]=useState("");
   const[confirmDelete,setConfirmDelete]=useState(false);
@@ -44,6 +45,13 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
     await updateOrder({paid:newPaid,installmentHistory:history});
     await db.recordPayment({orderId:order.id,amount:amt,method:"cash"});
     setPayAmt("");
+
+    const isFirstPayment = !localStorage.getItem("boss_feedback_micro_payment");
+    if (isFirstPayment) {
+      feedback.markMicroShown("micro_first_payment");
+      onFeedbackTrigger?.("payment_recorded");
+    }
+
     const state=getPaymentState({...order,paid:newPaid});
     toast(state==="fully_paid"?"✅ Fully paid! Great work. 🎉":"✅ Payment recorded — "+fmt(getBalance({...order,paid:newPaid}))+" remaining");
   }
@@ -63,7 +71,14 @@ export function OrderDetailFlow({open,onClose,orderId,tailor}){
   function waMsg(msg){window.open(waLink(customer.phone,msg),"_blank");}
   function waReady(){waMsg(`Hello *${customer.name}*! 🎉\n\nYour *${order.type||"order"}* is ready o! You can come pick it up anytime from *${shop}*.\n\nWe can't wait for you to see it! 🙏`);}
   function waReminder(){waMsg(buildReminderMsg(order,customer,shop,vaDetails));}
-  function waReceipt(){waMsg(buildReceiptText(order,customer,shop,vaDetails));}
+  function waReceipt(){
+    waMsg(buildReceiptText(order,customer,shop,vaDetails));
+    const isFirstReceipt = !localStorage.getItem("boss_feedback_micro_receipt");
+    if (isFirstReceipt) {
+      feedback.markMicroShown("micro_first_receipt");
+      setTimeout(() => onFeedbackTrigger?.("first_receipt"), 2000);
+    }
+  }
   const Row=({label,value,valueStyle={}})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"11px 0",borderBottom:`1px solid ${C.border}`}}>
       <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{label}</div>

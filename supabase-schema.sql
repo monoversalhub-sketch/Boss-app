@@ -234,3 +234,116 @@ create policy "Allow authenticated updates"
   on storage.objects for update
   to authenticated
   using (bucket_id = 'order-images');
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- FEEDBACK SYSTEM (Section A)
+-- ═══════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS feedback (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tailor_id    uuid REFERENCES tailors(id) ON DELETE CASCADE,
+  type         text NOT NULL CHECK (type IN ('nps', 'micro', 'bug', 'feature')),
+  trigger      text,
+  score        integer,
+  message      text,
+  app_version  text,
+  screen       text,
+  created_at   timestamptz DEFAULT now()
+);
+
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "tailors_own_feedback" ON feedback
+  FOR ALL USING (
+    tailor_id = (SELECT id FROM tailors WHERE user_id = auth.uid())
+  );
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- REFERRAL SYSTEM (Section A)
+-- ═══════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS referrals (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  referrer_id     uuid REFERENCES tailors(id) ON DELETE CASCADE,
+  referred_user_id uuid REFERENCES tailors(id) ON DELETE SET NULL,
+  referral_code   text UNIQUE NOT NULL,
+  status          text DEFAULT 'pending'
+                  CHECK (status IN ('pending','signed_up','activated','rewarded')),
+  referred_at     timestamptz,
+  activated_at    timestamptz,
+  rewarded_at     timestamptz,
+  created_at      timestamptz DEFAULT now()
+);
+
+ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "referrals_own" ON referrals
+  FOR ALL USING (
+    referrer_id = (SELECT id FROM tailors WHERE user_id = auth.uid())
+  );
+
+-- Add referral columns to tailors
+ALTER TABLE tailors
+  ADD COLUMN IF NOT EXISTS referral_code text UNIQUE,
+  ADD COLUMN IF NOT EXISTS referred_by   uuid REFERENCES tailors(id),
+  ADD COLUMN IF NOT EXISTS orders_count  integer DEFAULT 0;
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- UPDATED AUTO-PROFILE TRIGGER — includes referral_code
+-- ═══════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+  INSERT INTO public.tailors (user_id, shop, referral_code)
+  VALUES (
+    NEW.id,
+    '',
+    upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 8))
+  )
+  ON CONFLICT (user_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- FEEDBACK SUMMARY VIEW
+-- ═══════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE VIEW feedback_summary AS
+SELECT
+  tailor_id,
+  type,
+  COUNT(*) as count,
+  AVG(score) as avg_score,
+  MAX(created_at) as last_received
+FROM feedback
+GROUP BY tailor_id, type;
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- REFERRAL REWARD RPC — boosts referrer's Trust Score by +5
+-- ═══════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION increment_referral_reward(
+  p_tailor_id uuid
+)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  UPDATE tailors
+  SET bos_score = LEAST(100, COALESCE(bos_score, 0) + 5)
+  WHERE id = p_tailor_id;
+
+  UPDATE referrals
+  SET status = 'rewarded',
+      rewarded_at = now()
+  WHERE referrer_id = p_tailor_id
+    AND status = 'activated';
+END;
+$$;

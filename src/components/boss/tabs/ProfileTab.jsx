@@ -7,8 +7,10 @@ import { useBOSS } from "../context";
 import { Btn, Input } from "../ui";
 import { SmartPricingCalculator } from "../SmartPricingCalculator";
 import { db } from "../../../lib/db";
+import { feedback } from "../../../lib/feedback";
+import { referral } from "../../../lib/referral";
 
-export function ProfileTab() {
+export function ProfileTab({ onFeedbackTrigger, onTour }) {
   const { tailor, setTailor, customers } = useBOSS();
   const [section, setSection] = useState(null);
   const [shop, setShop] = useState(tailor?.shop || "");
@@ -21,8 +23,16 @@ export function ProfileTab() {
 
   const [restoreMsg, setRestoreMsg] = useState("");
   const restoreRef = useRef(null);
+  const [referralCode, setReferralCode] = useState(null);
+  const [referralStats, setReferralStats] = useState({ total: 0, activated: 0, rewarded: 0 });
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => { if (!saved) return; const id = setTimeout(() => setSaved(false), 2200); return () => clearTimeout(id); }, [saved]);
+
+  useEffect(() => {
+    referral.getMyCode().then(setReferralCode);
+    referral.getStats().then(setReferralStats);
+  }, []);
 
   const ts = computeTrustScore(customers);
   const orders = useMemo(() => allOrders(customers), [customers]);
@@ -237,6 +247,9 @@ export function ProfileTab() {
     { icon: "📊", label: "Financial Report", sub: "Income, customers, export CSV", key: "report" },
     { icon: "☁️", label: "Data & Backup", sub: "Export, restore your data", key: "data" },
     { icon: "🧮", label: "Smart Pricing", sub: "Calculate your job prices", key: "tools" },
+    { icon: "🎓", label: "How BOSS Works", sub: "Replay the quick tour", key: "onboarding_tour" },
+    { icon: "🐛", label: "Report a Problem", sub: "Tell us what went wrong", key: "bug" },
+    { icon: "💡", label: "Suggest a Feature", sub: "What should BOSS do next?", key: "feature" },
     { icon: "ℹ️", label: "About BOSS", sub: "Version, credits", key: "about" },
   ];
 
@@ -271,18 +284,97 @@ export function ProfileTab() {
       </div>
 
       <div style={{ padding: "16px 20px 0", display: "flex", flexDirection: "column", gap: 8 }}>
-        {menuItems.map(item => (
-          <button key={item.key} className="tap" onClick={() => setSection(item.key)}
-            style={{ ...S.card, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", textAlign: "left", width: "100%", fontFamily: "inherit", padding: "14px 16px" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 13, background: C.s2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{item.icon}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{item.label}</div>
-              <div style={{ fontSize: 13, color: C.sub, marginTop: 1 }}>{item.sub}</div>
-            </div>
-            <div style={{ fontSize: 18, color: C.muted, flexShrink: 0 }}>›</div>
-          </button>
-        ))}
+        {menuItems.map(item => {
+          function handleClick() {
+            if (item.key === "bug") onFeedbackTrigger?.("bug");
+            else if (item.key === "feature") onFeedbackTrigger?.("feature");
+            else if (item.key === "onboarding_tour") onTour?.();
+            else setSection(item.key);
+          }
+          return (
+            <button key={item.key} className="tap" onClick={handleClick}
+              style={{ ...S.card, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", textAlign: "left", width: "100%", fontFamily: "inherit", padding: "14px 16px" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 13, background: C.s2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{item.icon}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{item.label}</div>
+                <div style={{ fontSize: 13, color: C.sub, marginTop: 1 }}>{item.sub}</div>
+              </div>
+              <div style={{ fontSize: 18, color: C.muted, flexShrink: 0 }}>›</div>
+            </button>
+          );
+        })}
       </div>
+
+      {/* REFERRAL CARD */}
+      {referralCode && (
+        <div style={{
+          backgroundColor: C.s1, borderRadius: 20,
+          padding: 20, margin: "16px 16px 0",
+          border: `1px solid ${C.border}`,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
+        }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: C.text }}>
+            Refer a Tailor 🤝
+          </div>
+          <div style={{ fontSize: 13, color: C.sub, marginTop: 3 }}>
+            Earn rewards when your fellow tailors join BOSS
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            {[
+              { label: "Referred", value: referralStats.total },
+              { label: "Active", value: referralStats.activated },
+              { label: "Rewarded", value: referralStats.rewarded },
+            ].map(s => (
+              <div key={s.label} style={{
+                backgroundColor: C.s3, borderRadius: 12,
+                padding: "6px 12px", fontSize: 12, fontWeight: 700,
+                color: C.text,
+              }}>
+                {s.value} {s.label}
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: C.sub, marginTop: 16,
+            textTransform: "uppercase", letterSpacing: 1 }}>
+            Your Referral Code
+          </div>
+          <div style={{
+            fontFamily: "monospace", fontSize: 22, fontWeight: 900,
+            color: C.accent, letterSpacing: 4, marginTop: 4,
+          }}>
+            {referralCode}
+          </div>
+          <button onClick={() => referral.shareOnWhatsApp(referralCode, tailor?.shop)}
+            style={{
+              marginTop: 16, width: "100%", padding: "14px 0",
+              backgroundColor: "#25D366", color: "white", fontWeight: 800,
+              borderRadius: 14, fontSize: 15, border: "none", cursor: "pointer",
+              fontFamily: "inherit",
+            }}>
+            📲 Share on WhatsApp
+          </button>
+          <button onClick={async () => {
+            await navigator.clipboard.writeText(referral.buildLink(referralCode));
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+            style={{
+              marginTop: 8, width: "100%", padding: "14px 0",
+              backgroundColor: C.s3, color: C.text, fontWeight: 800,
+              borderRadius: 14, fontSize: 15, border: "none", cursor: "pointer",
+              fontFamily: "inherit",
+            }}>
+            {copied ? "✅ Link copied!" : "📋 Copy Link"}
+          </button>
+          <div style={{
+            fontSize: 12, color: C.sub, marginTop: 16,
+            lineHeight: 1.6, textAlign: "center",
+          }}>
+            When a tailor you refer saves their first 3 orders,
+            your BOSS Trust Score goes up by +5 points. 🏆
+          </div>
+        </div>
+      )}
 
       <div style={{ padding: "16px 20px 0" }}>
         <button className="tap" onClick={handleSignOut}

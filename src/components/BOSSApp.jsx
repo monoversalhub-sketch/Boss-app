@@ -11,6 +11,10 @@
 // boss/tabs/        — TodayTab, EarningsTab, CustomersTab, ProfileTab…
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { db } from "../lib/db";
+import { feedback } from "../lib/feedback";
+import { referral } from "../lib/referral";
+import { FeedbackSheet } from "./boss/FeedbackSheet";
+import { OnboardingTour } from "./boss/OnboardingTour";
 
 import { C } from "./boss/tokens";
 import { ErrorBoundary, BOSSContext } from "./boss/context";
@@ -55,6 +59,9 @@ function BOSSApp(){
   const[calendarOpen,setCalendarOpen]=useState(false);
   const[pendingSession,setPendingSession]=useState(null);
   const[loadingData,setLoadingData]=useState(false);
+  const[feedbackOpen,setFeedbackOpen]=useState(false);
+  const[feedbackConfig,setFeedbackConfig]=useState(null);
+  const[tourOpen,setTourOpen]=useState(false);
 
   useEffect(()=>{
     const minWait   = new Promise(r=>setTimeout(r,800));
@@ -98,6 +105,7 @@ function BOSSApp(){
       const c=await db.getCustomers();
       setTailorState(t);setCustomersState(c||[]);
       setPendingSession(null);
+      if(t?.id) referral.attachReferral(t.id);
       setScreen(t?.shop ? "app" : "setup");
     }catch(e){
       console.error("[BOSS] session continue error:",e);
@@ -127,11 +135,20 @@ function BOSSApp(){
   function openOrderDetail(oid){setOrderDetailId(oid);}
   function openCustomerDetail(cid){setCustomerDetailId(cid);}
   async function handleSetupComplete(t){setTailorState(t);setCustomersState([]);setScreen("app");}
+  async function handleSetupCompleteAndAddOrder(t){
+    setTailorState(t);setCustomersState([]);setScreen("app");
+    setTimeout(()=>openAddOrder(null),400);
+  }
+  function handleFeedbackTrigger(trigger){
+    setFeedbackConfig({type: trigger === "bug" || trigger === "feature" ? trigger : "micro", trigger, screen: tab});
+    setFeedbackOpen(true);
+  }
   async function handleAuthSuccess(){
     try{
       const t=await db.getTailor();
       const c=await db.getCustomers();
       setTailorState(t);setCustomersState(c||[]);
+      if(t?.id) referral.attachReferral(t.id);
       setScreen(t?.shop ? "app" : "setup");
     }catch(e){
       console.error("[BOSS] handleAuthSuccess error:",e);
@@ -178,6 +195,19 @@ function BOSSApp(){
     };
   },[]);// eslint-disable-line react-hooks/exhaustive-deps
 
+  // NPS check + referral capture on app open
+  useEffect(()=>{
+    referral.captureReferralCode();
+    if(screen==="app"&&feedback.shouldShowNPS()){
+      const timer=setTimeout(()=>{
+        setFeedbackConfig({type:"nps",trigger:"scheduled",screen:tab});
+        setFeedbackOpen(true);
+        feedback.markNPSShown();
+      },30000);
+      return()=>clearTimeout(timer);
+    }
+  },[screen]);
+
   if(screen==="splash")return(
     <><GlobalStyles/>
     <div id="boss-root" style={{height:"100svh",overflow:"hidden"}}><SplashScreen/></div></>
@@ -188,7 +218,7 @@ function BOSSApp(){
   );
   if(screen==="setup")return(
     <><GlobalStyles/>
-    <div id="boss-root" style={{height:"100svh",overflow:"hidden"}}><SetupScreen onComplete={handleSetupComplete}/></div></>
+    <div id="boss-root" style={{height:"100svh",overflow:"hidden"}}><SetupScreen onComplete={handleSetupComplete} onCompleteAndAddOrder={handleSetupCompleteAndAddOrder}/></div></>
   );
   if(screen==="gate"&&pendingSession)return(
     <><GlobalStyles/>
@@ -241,7 +271,7 @@ function BOSSApp(){
           {tab==="today"    &&<TodayTab     tailor={tailor} onAddOrder={()=>openAddOrder(null)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)} onCalendar={()=>setCalendarOpen(true)}/>}
           {tab==="customers"&&<CustomersTab onOpenCustomer={openCustomerDetail} onAddClient={()=>setAddClientOpen(true)}/>}
           {tab==="earnings" &&<EarningsTab/>}
-          {tab==="profile"  &&<ProfileTab/>}
+          {tab==="profile"  &&<ProfileTab onFeedbackTrigger={handleFeedbackTrigger} onTour={()=>setTourOpen(true)}/>}
         </div>
 
         {/* ── BOTTOM NAV — exact reference design ── */}
@@ -315,9 +345,9 @@ function BOSSApp(){
         </div>
 
         {/* ── FLOWS — all read customers/setCustomers/toast from BOSSContext ── */}
-        <AddOrderFlow open={addOrderOpen} onClose={()=>setAddOrderOpen(false)} prefilledCid={prefilledCid}/>
+        <AddOrderFlow open={addOrderOpen} onClose={()=>setAddOrderOpen(false)} prefilledCid={prefilledCid} onFeedbackTrigger={handleFeedbackTrigger}/>
         <AddClientFlow open={addClientOpen} onClose={()=>setAddClientOpen(false)} onDone={(cid)=>{setAddClientOpen(false);setCustomerDetailId(cid);}}/>
-        <OrderDetailFlow open={!!orderDetailId} onClose={()=>setOrderDetailId(null)} orderId={orderDetailId} tailor={tailor}/>
+        <OrderDetailFlow open={!!orderDetailId} onClose={()=>setOrderDetailId(null)} orderId={orderDetailId} tailor={tailor} onFeedbackTrigger={handleFeedbackTrigger}/>
         <CustomerDetailFlow open={!!customerDetailId} onClose={()=>setCustomerDetailId(null)} customerId={customerDetailId}
           onAddOrder={()=>{setCustomerDetailId(null);openAddOrder(customerDetailId);}}
           onOpenOrder={(oid)=>{setCustomerDetailId(null);openOrderDetail(oid);}}/>
@@ -325,6 +355,15 @@ function BOSSApp(){
         <CalendarFlow open={calendarOpen} onClose={()=>setCalendarOpen(false)}/>
 
         {toastMsg&&<Toast key={toastKey} msg={toastMsg}/>}
+
+        <FeedbackSheet
+          open={feedbackOpen}
+          type={feedbackConfig?.type}
+          trigger={feedbackConfig?.trigger}
+          screen={feedbackConfig?.screen}
+          onClose={()=>{setFeedbackOpen(false);setFeedbackConfig(null);}}
+        />
+        <OnboardingTour open={tourOpen} onClose={()=>setTourOpen(false)}/>
       </div>
     </>
     </BOSSContext.Provider>

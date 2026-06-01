@@ -35,6 +35,8 @@ async function getBrowserClient() {
 // ── Sync status callback (registered by BOSSApp.jsx) ───────────────
 let _syncCallback = null;
 
+export { getBrowserClient, ls, lsSet };
+
 // ── Auth via API routes (server proxies to Supabase) ─────────────
 async function authFetch(path, body = null, extraHeaders = {}) {
   const res = await fetch(path, {
@@ -394,6 +396,20 @@ async function updateBosScore(tailorId) {
       _syncCallback?.("saved");
     } catch (e) {
       console.error("[db.deleteOrder]", e);
+      _syncCallback?.("error");
+    }
+  },
+
+  async deleteCustomer(customerId) {
+    try {
+      const client = await getBrowserClient();
+      _syncCallback?.("syncing");
+      await client.from("orders").delete().eq("customer_id", customerId);
+      const { error } = await client.from("customers").delete().eq("id", customerId);
+      if (error) throw error;
+      _syncCallback?.("saved");
+    } catch (e) {
+      console.error("[db.deleteCustomer]", e);
       _syncCallback?.("error");
     }
   },

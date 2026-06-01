@@ -7,8 +7,10 @@ import { useBOSS } from "../context";
 import { Btn, Input, Select, Textarea, Flow, DatePicker } from "../ui";
 import { SmartPricingCalculator } from "../SmartPricingCalculator";
 import { db } from "../../../lib/db";
+import { feedback } from "../../../lib/feedback";
+import { referral } from "../../../lib/referral";
 
-export function AddOrderFlow({ open, onClose, prefilledCid }) {
+export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger }) {
   const { customers, setCustomers, toast, tailor } = useBOSS();
   const pre = customers.find(c => c.id === prefilledCid);
   const [name, setName] = useState(pre?.name || ""); const [phone, setPhone] = useState(pre?.phone || "");
@@ -81,6 +83,16 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
           }
           setCustomers([...next]);
         }
+      }
+
+      const totalOrders = next.reduce((sum, c) => sum + (c.orders || []).length, 0);
+      if (totalOrders === 5 && feedback.shouldShowMicro("micro_5th_order")) {
+        feedback.markMicroShown("micro_5th_order");
+        onFeedbackTrigger?.("5th_order");
+      }
+
+      if (tailorId) {
+        await referral.checkActivation(tailorId, totalOrders);
       }
 
       const hasPaid = (parseFloat(stripCommas(deposit)) || 0) > 0;
