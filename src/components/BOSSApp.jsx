@@ -195,6 +195,21 @@ function BOSSApp(){
     };
   },[]);// eslint-disable-line react-hooks/exhaustive-deps
 
+  // Handle ?drive=* URL params from Google OAuth callback
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    const status=params.get("drive");
+    if(status==="connected")toast("☁️ Google Drive connected");
+    else if(status==="denied")toast("Drive access denied");
+    else if(status==="no_token")toast("Could not get Drive access. Reconnect.");
+    else if(status==="error"||status==="db_error")toast("Could not connect Drive");
+    if(status){ // clean URL without page reload
+      const u=new URL(window.location);
+      u.searchParams.delete("drive");u.searchParams.delete("auth_error");
+      window.history.replaceState({},"",u);
+    }
+  },[]);
+
   // NPS check + referral capture on app open
   useEffect(()=>{
     referral.captureReferralCode();
