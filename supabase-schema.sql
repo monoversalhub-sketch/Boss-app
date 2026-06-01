@@ -334,19 +334,8 @@ GROUP BY tailor_id, type;
 -- REFERRAL REWARD RPC — boosts referrer's Trust Score by +5
 -- ═══════════════════════════════════════════════════════════════
 
-CREATE OR REPLACE FUNCTION increment_referral_reward(
-  p_tailor_id uuid
-)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  UPDATE tailors
-  SET bos_score = LEAST(100, COALESCE(bos_score, 0) + 5)
-  WHERE id = p_tailor_id;
-
-  UPDATE referrals
-  SET status = 'rewarded',
-      rewarded_at = now()
-  WHERE referrer_id = p_tailor_id
-    AND status = 'activated';
-END;
-$$;
+-- NOTE: function intentionally removed — it was SECURITY DEFINER
+-- with no auth check, letting any authenticated user call it to
+-- boost their own bos_score. It was also never called from the
+-- app code. If re-added, use SECURITY INVOKER + explicit auth check.
+-- 
