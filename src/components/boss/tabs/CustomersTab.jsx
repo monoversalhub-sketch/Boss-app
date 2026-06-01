@@ -38,16 +38,7 @@ export function CustomersTab({ onOpenCustomer, onAddClient }) {
           })}
       </div>
       <div style={{ height: 100 }} />
-      {/* FAB — Add Client */}
-      <button className="tap" onClick={onAddClient} style={{
-        position:"fixed",bottom:100,right:20,
-        width:56,height:56,borderRadius:28,
-        backgroundColor:C.accent,color:"#fff",
-        border:"none",fontSize:28,cursor:"pointer",
-        display:"flex",alignItems:"center",justifyContent:"center",
-        boxShadow:"0 4px 14px rgba(0,0,64,0.25)",
-        zIndex:40,fontFamily:"inherit",
-      }}>+</button>
+
     </div>
   );
 }
