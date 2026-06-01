@@ -24,6 +24,7 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
   const [driveFiles, setDriveFiles] = useState([]);
   const [driveBusy, setDriveBusy] = useState(false);
   const [driveMsg, setDriveMsg] = useState("");
+  const [driveLoading, setDriveLoading] = useState(false);
   const [referralCode, setReferralCode] = useState(null);
   const [referralStats, setReferralStats] = useState({ total: 0, activated: 0, rewarded: 0 });
   const [copied, setCopied] = useState(false);
@@ -53,6 +54,8 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
   }
 
   const driveConnected = !!tailor?.google_drive_refresh_token;
+  const lastBackup = driveFiles[0]?.createdTime;
+  const daysAgo = lastBackup ? Math.floor((Date.now() - new Date(lastBackup).getTime()) / 86400000) : null;
 
   async function backupToDrive() {
     if (!driveConnected) { window.location.href = "/api/drive/auth"; return; }
@@ -72,11 +75,13 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
 
   async function listDriveBackups() {
     if (!driveConnected) return;
+    setDriveLoading(true);
     try {
       const res = await fetch("/api/drive/list");
       const json = await res.json();
       if (json.files) setDriveFiles(json.files);
     } catch {}
+    finally { setDriveLoading(false); }
   }
 
   async function restoreFromDrive(fileId) {
@@ -225,13 +230,31 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
           <>
             <div style={{ ...S.card }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>☁️ Google Drive</div>
-              <div style={{ fontSize: 13, color: C.green, fontWeight: 600, marginBottom: 12 }}>✅ Connected</div>
+              <div style={{ fontSize: 13, color: C.green, fontWeight: 600, marginBottom: 4 }}>✅ Connected</div>
+              {daysAgo !== null && (
+                <div style={{ fontSize: 13, color: C.sub, marginBottom: 12 }}>
+                  Last backup: {daysAgo === 0 ? "today" : `${daysAgo} day${daysAgo === 1 ? "" : "s"} ago`}
+                </div>
+              )}
               <Btn variant="primary" onClick={backupToDrive} disabled={driveBusy}>
                 {driveBusy ? "⏳ Backing up…" : "⬆️ Backup Now"}
               </Btn>
             </div>
 
-            {driveFiles.length > 0 && (
+            {driveLoading ? (
+              <div style={{ ...S.card, padding: "16px 20px" }}>
+                <div style={{ height: 14, width: "40%", borderRadius: 6, background: C.s3, marginBottom: 12 }} />
+                {[1,2,3].map(i => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: `1px solid ${C.border}` }}>
+                    <div>
+                      <div style={{ height: 13, width: 180, borderRadius: 4, background: C.s3, marginBottom: 4 }} />
+                      <div style={{ height: 11, width: 80, borderRadius: 4, background: C.s3 }} />
+                    </div>
+                    <div style={{ height: 32, width: 70, borderRadius: 8, background: C.s3 }} />
+                  </div>
+                ))}
+              </div>
+            ) : driveFiles.length > 0 ? (
               <div style={{ ...S.card }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 10 }}>Previous Backups</div>
                 {driveFiles.map(f => (
@@ -246,6 +269,14 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
                     </button>
                   </div>
                 ))}
+              </div>
+            ) : (
+              <div style={{ ...S.card, textAlign: "center", padding: "24px 20px" }}>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>📭</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 4 }}>No backups yet</div>
+                <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6 }}>
+                  Tap "Backup Now" above to save your data to Google Drive for the first time.
+                </div>
               </div>
             )}
 
