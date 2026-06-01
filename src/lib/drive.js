@@ -1,3 +1,4 @@
+import { Readable } from "stream";
 import { OAuth2Client } from "google-auth-library";
 import { drive as driveV3 } from "@googleapis/drive";
 
@@ -67,7 +68,7 @@ export async function uploadBackup(refreshToken, backupData) {
     },
     media: {
       mimeType: "application/json",
-      body: Buffer.from(content, "utf-8"),
+      body: Readable.from(Buffer.from(content, "utf-8")),
     },
     fields: "id,name,createdTime",
   });
