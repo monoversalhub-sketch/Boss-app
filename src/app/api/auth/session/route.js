@@ -8,7 +8,7 @@ export async function GET() {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return NextResponse.json({ user: null });
-    return NextResponse.json({ user: { id: user.id, email: user.email } });
+    return NextResponse.json({ user: { id: user.id, email: user.email, user_metadata: user.user_metadata } });
   } catch (e) {
     return NextResponse.json({ user: null });
   }

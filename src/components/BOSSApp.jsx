@@ -16,6 +16,7 @@ import { C } from "./boss/tokens";
 import { ErrorBoundary, BOSSContext } from "./boss/context";
 import { GlobalStyles, Toast } from "./boss/ui";
 import { SplashScreen } from "./boss/SplashScreen";
+import { SessionGate } from "./boss/SessionGate";
 import { AuthScreen } from "./boss/AuthScreen";
 import { SetupScreen } from "./boss/SetupScreen";
 import { CustomersTab } from "./boss/tabs/CustomersTab";
@@ -52,49 +53,63 @@ function BOSSApp(){
   const[customerDetailId,setCustomerDetailId]=useState(null);
   const[remindersOpen,setRemindersOpen]=useState(false);
   const[calendarOpen,setCalendarOpen]=useState(false);
+  const[pendingSession,setPendingSession]=useState(null);
+  const[loadingData,setLoadingData]=useState(false);
 
   useEffect(()=>{
-    // Show splash for minimum 800ms. Hard cap at 5000ms so the app
-    // never gets stuck on the splash screen even if network is dead.
     const minWait   = new Promise(r=>setTimeout(r,800));
     const hardLimit = new Promise(r=>setTimeout(r,5000));
 
-    const dataLoad = (async()=>{
+    const checkSession = (async()=>{
       try{
         const session=await db.getSession();
         if(!session){
           localStorage.removeItem("boss_tailor");
           localStorage.removeItem("boss_customers");
-          return{session:null,t:null};
+          return{session:null};
         }
-        localStorage.removeItem("boss_tailor");
-        localStorage.removeItem("boss_customers");
-        const t=await db.getTailor();
-        const c=await db.getCustomers();
-        setTailorState(t);setCustomersState(c||[]);
-        return{session,t};
+        return{session};
       }catch(e){
         console.error("BOSS load error:",e);
-        return{session:null,t:null};
+        return{session:null};
       }
     })();
 
-    // Race the data load against the hard limit.
-    // If data takes > 5s (dead network, misconfigured env), go to auth anyway.
     Promise.race([
-      Promise.all([minWait, dataLoad]).then(([,result])=>result),
-      hardLimit.then(()=>({ session: null, t: null, _timedOut: true })),
-    ]).then(({session,t,_timedOut})=>{
+      Promise.all([minWait, checkSession]).then(([,result])=>result),
+      hardLimit.then(()=>({ session: null, _timedOut: true })),
+    ]).then(({session,_timedOut})=>{
       if(_timedOut){
         console.warn("[BOSS] Splash timed out — forcing auth screen");
         setScreen("auth");return;
       }
       if(!session){setScreen("auth");return;}
-      // auto-profile-trigger creates a tailors row with shop=''. If shop
-      // is missing or empty, the user hasn't completed setup yet.
-      setScreen(t?.shop ? "app" : "setup");
+      setPendingSession(session);
+      setScreen("gate");
     });
   },[]);
+
+  async function handleSessionContinue(){
+    setLoadingData(true);
+    try{
+      localStorage.removeItem("boss_tailor");
+      localStorage.removeItem("boss_customers");
+      const t=await db.getTailor();
+      const c=await db.getCustomers();
+      setTailorState(t);setCustomersState(c||[]);
+      setPendingSession(null);
+      setScreen(t?.shop ? "app" : "setup");
+    }catch(e){
+      console.error("[BOSS] session continue error:",e);
+      setLoadingData(false);
+    }
+  }
+
+  async function handleSessionSwitch(){
+    await db.signOut();
+    setPendingSession(null);
+    setScreen("auth");
+  }
 
   const toast=useCallback((msg)=>{setToastMsg(msg);setToastKey(k=>k+1);},[]);
   const setTailor=useCallback(async(t)=>{setTailorState(t);await db.setTailor(t);},[]);
@@ -174,6 +189,12 @@ function BOSSApp(){
   if(screen==="setup")return(
     <><GlobalStyles/>
     <div id="boss-root" style={{height:"100svh",overflow:"hidden"}}><SetupScreen onComplete={handleSetupComplete}/></div></>
+  );
+  if(screen==="gate"&&pendingSession)return(
+    <><GlobalStyles/>
+    <div id="boss-root" style={{height:"100svh",overflow:"hidden"}}>
+      <SessionGate session={pendingSession} onContinue={handleSessionContinue} onSwitch={handleSessionSwitch}/>
+    </div></>
   );
 
   // Nav: Today | Clients | [+] | Wallet | Settings
