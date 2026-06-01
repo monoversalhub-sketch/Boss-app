@@ -3,6 +3,11 @@ import { uploadBackup } from "@/lib/drive";
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
+  console.log("[drive/upload] NEXT_PUBLIC_SUPABASE_URL:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log("[drive/upload] NEXT_PUBLIC_SUPABASE_ANON_KEY:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  console.log("[drive/upload] GOOGLE_DRIVE_CLIENT_ID:", !!process.env.GOOGLE_DRIVE_CLIENT_ID);
+  console.log("[drive/upload] GOOGLE_DRIVE_CLIENT_SECRET:", !!process.env.GOOGLE_DRIVE_CLIENT_SECRET);
+  console.log("[drive/upload] GOOGLE_DRIVE_REDIRECT_URI:", !!process.env.GOOGLE_DRIVE_REDIRECT_URI);
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
