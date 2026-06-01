@@ -72,9 +72,16 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
-  const [tourSlide, setTourSlide] = useState(0);
   const [saving, setSaving] = useState(false);
   const tourTouchStart = useRef(null);
+
+  const savedTourSlide = parseInt(localStorage.getItem("boss_onboarding_tour_slide") || "0");
+  const [tourSlide, setTourSlideRaw] = useState(savedTourSlide);
+
+  function setTourSlide(n) {
+    setTourSlideRaw(n);
+    localStorage.setItem("boss_onboarding_tour_slide", String(n));
+  }
 
   function setStep(n) {
     setStepState(n);

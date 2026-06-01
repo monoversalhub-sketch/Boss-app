@@ -11,6 +11,7 @@ export function FeedbackSheet({ open, type, trigger, screen, onClose }) {
   const [happened, setHappened] = useState("");
   const [doing, setDoing] = useState("");
   const [idea, setIdea] = useState("");
+  const [showOffField, setShowOffField] = useState(false);
 
   if (!open) return null;
 
@@ -28,6 +29,7 @@ export function FeedbackSheet({ open, type, trigger, screen, onClose }) {
     setHappened("");
     setDoing("");
     setIdea("");
+    setShowOffField(false);
     onClose();
   }
 
@@ -162,22 +164,33 @@ export function FeedbackSheet({ open, type, trigger, screen, onClose }) {
             <div style={{ fontSize: 14, color: C.sub, textAlign: "center", lineHeight: 1.6, marginBottom: 20 }}>
               Did everything look good to your customer?
             </div>
-            <button onClick={async () => {
-              await feedback.submit({ type: "micro", trigger, score: 5, message: "Looks great", screen });
-              setDone(true); setTimeout(() => { setDone(false); handleDismiss(); }, 1500);
-            }} style={{ ...btnStyle, backgroundColor: C.green, color: "#fff" }}>
-              Looks great ✓
-            </button>
-            <div style={{ height: 10 }} />
-            <textarea value={message} onChange={e => setMessage(e.target.value)}
-              placeholder="What was off?"
-              style={{ width: "100%", padding: 14, borderRadius: 12, border: `1px solid ${C.border}`, fontSize: 14, fontFamily: "inherit", resize: "none", minHeight: 60, backgroundColor: C.s2, color: C.text, outline: "none" }} />
-            <button onClick={async () => {
-              await feedback.submit({ type: "micro", trigger, score: 1, message: message || "Something was off", screen });
-              setDone(true); setTimeout(() => { setDone(false); handleDismiss(); }, 1500);
-            }} style={{ ...btnStyle, backgroundColor: C.s3, color: C.text }}>
-              Send Feedback
-            </button>
+            {!showOffField ? (
+              <>
+                <button onClick={async () => {
+                  await feedback.submit({ type: "micro", trigger, score: 5, message: "Looks great", screen });
+                  setDone(true); setTimeout(() => { setDone(false); handleDismiss(); }, 1500);
+                }} style={{ ...btnStyle, backgroundColor: C.green, color: "#fff" }}>
+                  Looks great ✓
+                </button>
+                <div style={{ height: 10 }} />
+                <button onClick={() => setShowOffField(true)}
+                  style={{ ...btnStyle, backgroundColor: C.s3, color: C.text }}>
+                  Something was off
+                </button>
+              </>
+            ) : (
+              <>
+                <textarea value={message} onChange={e => setMessage(e.target.value)}
+                  placeholder="What was off?"
+                  style={{ width: "100%", padding: 14, borderRadius: 12, border: `1px solid ${C.border}`, fontSize: 14, fontFamily: "inherit", resize: "none", minHeight: 60, backgroundColor: C.s2, color: C.text, outline: "none" }} />
+                <button onClick={async () => {
+                  await feedback.submit({ type: "micro", trigger, score: 1, message: message || "Something was off", screen });
+                  setDone(true); setTimeout(() => { setDone(false); handleDismiss(); }, 1500);
+                }} style={{ ...btnStyle, backgroundColor: C.accent, color: "#fff" }}>
+                  Send Feedback
+                </button>
+              </>
+            )}
             <button onClick={handleDismiss}
               style={{ background: "none", border: "none", fontSize: 14, color: C.sub, cursor: "pointer", fontFamily: "inherit", marginTop: 12, width: "100%", fontWeight: 600 }}>
               Skip
