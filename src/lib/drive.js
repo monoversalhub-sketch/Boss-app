@@ -1,10 +1,11 @@
-import { google } from "googleapis";
+import { OAuth2Client } from "google-auth-library";
+import { drive as driveV3 } from "@googleapis/drive";
 
 const FOLDER_NAME = "BOSS Backups";
 const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
 
 function getOAuth2Client() {
-  return new google.auth.OAuth2(
+  return new OAuth2Client(
     process.env.GOOGLE_DRIVE_CLIENT_ID,
     process.env.GOOGLE_DRIVE_CLIENT_SECRET,
     process.env.GOOGLE_DRIVE_REDIRECT_URI
@@ -30,7 +31,7 @@ export async function exchangeCodeForTokens(code) {
 async function getDriveClient(refreshToken) {
   const auth = getOAuth2Client();
   auth.setCredentials({ refresh_token: refreshToken });
-  return google.drive({ version: "v3", auth });
+  return driveV3({ version: "v3", auth });
 }
 
 async function getOrCreateFolder(drive) {
