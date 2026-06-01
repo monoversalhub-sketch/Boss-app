@@ -316,7 +316,10 @@ $$;
 -- FEEDBACK SUMMARY VIEW
 -- ═══════════════════════════════════════════════════════════════
 
-CREATE OR REPLACE VIEW feedback_summary AS
+DROP VIEW IF EXISTS public.feedback_summary;
+CREATE VIEW public.feedback_summary
+  WITH (security_invoker = true)
+AS
 SELECT
   tailor_id,
   type,
