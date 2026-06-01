@@ -210,5 +210,5 @@ Vercel auto-deploys on push. Add all env variables in Vercel → Project → Set
 
 ---
 
-© 2025 Monoversal Hub. All rights reserved.  
+© 2026 Monoversal Hub. All rights reserved.  
 BOSS — Build Trust. Grow Faster.

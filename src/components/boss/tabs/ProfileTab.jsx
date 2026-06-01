@@ -384,7 +384,7 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
       </div>
 
       <div style={{ padding: "16px 20px 32px", textAlign: "center" }}>
-        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.8 }}>BOSS · Build Trust. Grow Faster.<br />© 2025 Monoversal Hub · All rights reserved</div>
+        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.8 }}>BOSS · Build Trust. Grow Faster.<br />© 2026 Monoversal Hub · All rights reserved</div>
       </div>
     </div>
   );
