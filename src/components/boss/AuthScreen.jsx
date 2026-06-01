@@ -15,7 +15,7 @@ export function AuthScreen({ onAuthSuccess }) {
         localStorage.removeItem("boss_customers");
         onAuthSuccess();
       }
-    });
+    }).catch(() => {});
   }, []);
 
   async function handleGoogle() {

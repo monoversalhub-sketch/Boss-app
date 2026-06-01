@@ -30,8 +30,8 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
   useEffect(() => { if (!saved) return; const id = setTimeout(() => setSaved(false), 2200); return () => clearTimeout(id); }, [saved]);
 
   useEffect(() => {
-    referral.getMyCode().then(setReferralCode);
-    referral.getStats().then(setReferralStats);
+    referral.getMyCode().then(setReferralCode).catch(() => {});
+    referral.getStats().then(setReferralStats).catch(() => {});
   }, []);
 
   const ts = computeTrustScore(customers);

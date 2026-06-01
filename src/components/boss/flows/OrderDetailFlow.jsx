@@ -275,6 +275,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
           updateOrder({imageUrls:next});
           setLightboxUrl(null);
           toast("🗑 Photo removed");
+        }).catch(()=>{toast("Could not remove photo");});
         });}} style={{position:"absolute",bottom:40,left:"50%",transform:"translateX(-50%)",background:"rgba(255,59,48,0.8)",color:"#fff",border:"none",borderRadius:24,padding:"12px 24px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
           🗑 Delete Photo
         </button>

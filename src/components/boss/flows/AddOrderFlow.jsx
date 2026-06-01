@@ -27,7 +27,9 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
 
   useEffect(() => {
     if (open) { const p = customers.find(c => c.id === prefilledCid);
-      setName(p?.name || ""); setPhone(p?.phone || ""); setType(""); setPrice(""); setDeposit(""); setDate(""); setNotes(""); setMatches([]); setShowCalc(false); setIsSaving(false); savingRef.current = false; setSelectedImages([]); }
+      setName(p?.name || ""); setPhone(p?.phone || ""); setType(""); setPrice(""); setDeposit(""); setDate(""); setNotes(""); setMatches([]); setShowCalc(false); setIsSaving(false); savingRef.current = false;
+      setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; }); }
+    return () => setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; });
   }, [open, prefilledCid]);
 
   function onNameChange(v) { setName(v); if (v.length < 1) { setMatches([]); return; } setMatches(customers.filter(c => c.name.toLowerCase().includes(v.toLowerCase())).slice(0, 5)); }
@@ -36,12 +38,17 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   function handleImageSelect(e) {
     const files = Array.from(e.target.files || []);
     const remaining = 5 - selectedImages.length;
-    setSelectedImages(prev => [...prev, ...files.slice(0, remaining)].slice(0, 5));
+    const newItems = files.slice(0, remaining).map(file => ({ file, url: URL.createObjectURL(file) }));
+    setSelectedImages(prev => [...prev, ...newItems].slice(0, 5));
     e.target.value = "";
   }
 
   function removeSelectedImage(index) {
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setSelectedImages(prev => {
+      const img = prev[index];
+      if (img) URL.revokeObjectURL(img.url);
+      return prev.filter((_, i) => i !== index);
+    });
   }
 
   async function save() {
@@ -73,7 +80,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
       } else { toast("⚠️ Saved on this phone. Sign in to back up your data safely."); }
 
       if (tailorId && selectedImages.length > 0) {
-        const urls = await db.uploadOrderImages(tailorId, order.id, selectedImages);
+        const urls = await db.uploadOrderImages(tailorId, order.id, selectedImages.map(i => i.file));
         if (urls.length > 0) {
           order.imageUrls = urls;
           await db.updateOrder(order.id, { imageUrls: urls });
@@ -210,9 +217,9 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
           <div style={{fontSize:13,fontWeight:700,color:C.sub,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:8}}>Style Photos (max 5)</div>
           <input ref={fileInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleImageSelect} />
           <div style={{display:"grid",gridTemplateColumns:"repeat(5, 1fr)",gap:6}}>
-            {selectedImages.map((file, i) => (
+            {selectedImages.map((img, i) => (
               <div key={i} style={{position:"relative",aspectRatio:1,borderRadius:10,overflow:"hidden",background:C.s3}}>
-                <img src={URL.createObjectURL(file)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} />
+                <img src={img.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} />
                 <button onClick={() => removeSelectedImage(i)}
                   style={{position:"absolute",top:2,right:2,width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.55)",color:"#fff",border:"none",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
                   ✕

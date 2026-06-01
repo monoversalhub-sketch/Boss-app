@@ -93,14 +93,14 @@ Your BOSS account will be set up in 2 minutes. 🎉`
   async checkActivation(tailorId, orderCount) {
     if (orderCount !== 3) return;
     const client = await getBrowserClient();
-    const { data: ref } = await client
+    const { data: ref, error: refErr } = await client
       .from("referrals")
       .select("id, status")
       .eq("referred_user_id", tailorId)
       .eq("status", "signed_up")
       .single();
 
-    if (!ref) return;
+    if (refErr || !ref) return;
 
     await client.from("referrals")
       .update({ status: "activated", activated_at: new Date().toISOString() })

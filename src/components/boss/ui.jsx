@@ -100,7 +100,7 @@ export function Select({label,options,...props}){
     <div style={{display:"flex",flexDirection:"column"}}>
       {label&&<label style={S.label}>{label}</label>}
       <select style={{...S.input,color:C.text,backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23888'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 14px center",paddingRight:36}} {...props}>
-        {options.map(o=><option key={o.value??o} value={o.value??o}>{o.label??o}</option>)}
+        {options?.map(o=><option key={o.value??o} value={o.value??o}>{o.label??o}</option>)}
       </select>
     </div>
   );

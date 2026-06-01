@@ -108,7 +108,7 @@ async function updateBosScore(tailorId) {
         overdue_count:   overdue,
       }).then(({ error: histErr }) => {
         if (histErr) console.warn("[db.updateBosScore] bos_score_history insert (non-fatal):", histErr.message);
-      });
+      }).catch(() => {});
 
       console.log("[db.updateBosScore] BOSS Score:", score, "for tailor", tailorId);
     } catch (err) {
@@ -404,7 +404,8 @@ async function updateBosScore(tailorId) {
     try {
       const client = await getBrowserClient();
       _syncCallback?.("syncing");
-      await client.from("orders").delete().eq("customer_id", customerId);
+      const { error: ordersErr } = await client.from("orders").delete().eq("customer_id", customerId);
+      if (ordersErr) console.warn("[db.deleteCustomer] orders delete (non-fatal):", ordersErr.message);
       const { error } = await client.from("customers").delete().eq("id", customerId);
       if (error) throw error;
       _syncCallback?.("saved");
