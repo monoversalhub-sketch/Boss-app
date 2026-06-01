@@ -10,7 +10,7 @@ import { TrustScoreCard, TrustScoreSheet, TodayMoneyCard, OrderCard } from "../c
 // ─────────────────────────────────────────
 // TODAY TAB
 // ─────────────────────────────────────────
-export function TodayTab({tailor,onAddOrder,onOpenOrder,onReminders,isLoading=false}){
+export function TodayTab({tailor,onAddOrder,onOpenOrder,onReminders,onCalendar,isLoading=false}){
   const{customers}=useBOSS();
   const[scoreOpen,setScoreOpen]=useState(false);
   const[filter,setFilter]=useState("active");
@@ -42,13 +42,11 @@ export function TodayTab({tailor,onAddOrder,onOpenOrder,onReminders,isLoading=fa
 
       {/* Action shortcut buttons */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,padding:"12px 20px 0"}}>
-        <div className="tap" onClick={onAddOrder} style={{
+        <div className="tap" onClick={onCalendar} style={{
           ...S.card,display:"flex",alignItems:"center",gap:14,cursor:"pointer",padding:"16px",
         }}>
-          <div style={{width:40,height:40,backgroundColor:C.dark,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",flexShrink:0}}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          </div>
-          <div style={{fontSize:15,fontWeight:700,color:C.text,lineHeight:1.2}}>Add<br/>Order</div>
+          <div style={{width:40,height:40,backgroundColor:C.dark,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",flexShrink:0,fontSize:20}}>📅</div>
+          <div style={{fontSize:15,fontWeight:700,color:C.text,lineHeight:1.2}}>My<br/>Calendar</div>
         </div>
         <div className="tap" onClick={onReminders} style={{
           ...S.card,display:"flex",alignItems:"center",gap:14,cursor:"pointer",padding:"16px",

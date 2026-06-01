@@ -23,6 +23,7 @@ import { EarningsTab } from "./boss/tabs/EarningsTab";
 import { ProfileTab } from "./boss/tabs/ProfileTab";
 import { TodayTab } from "./boss/tabs/TodayTab";
 import { RemindersFlow } from "./boss/flows/RemindersFlow";
+import { CalendarFlow } from "./boss/flows/CalendarFlow";
 import { AddClientFlow } from "./boss/flows/AddClientFlow";
 import { CustomerDetailFlow } from "./boss/flows/CustomerDetailFlow";
 import { AddOrderFlow } from "./boss/flows/AddOrderFlow";
@@ -50,6 +51,7 @@ function BOSSApp(){
   const[orderDetailId,setOrderDetailId]=useState(null);
   const[customerDetailId,setCustomerDetailId]=useState(null);
   const[remindersOpen,setRemindersOpen]=useState(false);
+  const[calendarOpen,setCalendarOpen]=useState(false);
 
   useEffect(()=>{
     // Show splash for minimum 800ms. Hard cap at 5000ms so the app
@@ -208,7 +210,7 @@ function BOSSApp(){
 
         {/* ── SCROLLABLE CONTENT ── */}
         <div className="scrollable" style={{flex:1,paddingBottom:140}}>
-          {tab==="today"    &&<TodayTab     tailor={tailor} onAddOrder={()=>openAddOrder(null)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)}/>}
+          {tab==="today"    &&<TodayTab     tailor={tailor} onAddOrder={()=>openAddOrder(null)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)} onCalendar={()=>setCalendarOpen(true)}/>}
           {tab==="customers"&&<CustomersTab onOpenCustomer={openCustomerDetail} onAddClient={()=>setAddClientOpen(true)}/>}
           {tab==="earnings" &&<EarningsTab/>}
           {tab==="profile"  &&<ProfileTab/>}
@@ -292,6 +294,7 @@ function BOSSApp(){
           onAddOrder={()=>{setCustomerDetailId(null);openAddOrder(customerDetailId);}}
           onOpenOrder={(oid)=>{setCustomerDetailId(null);openOrderDetail(oid);}}/>
         <RemindersFlow open={remindersOpen} onClose={()=>setRemindersOpen(false)}/>
+        <CalendarFlow open={calendarOpen} onClose={()=>setCalendarOpen(false)}/>
 
         {toastMsg&&<Toast key={toastKey} msg={toastMsg}/>}
       </div>
