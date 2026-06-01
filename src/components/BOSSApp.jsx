@@ -62,6 +62,13 @@ function BOSSApp(){
     const dataLoad = (async()=>{
       try{
         const session=await db.getSession();
+        if(!session){
+          localStorage.removeItem("boss_tailor");
+          localStorage.removeItem("boss_customers");
+          return{session:null,t:null};
+        }
+        localStorage.removeItem("boss_tailor");
+        localStorage.removeItem("boss_customers");
         const t=await db.getTailor();
         const c=await db.getCustomers();
         setTailorState(t);setCustomersState(c||[]);

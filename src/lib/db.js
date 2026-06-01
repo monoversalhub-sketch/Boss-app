@@ -143,9 +143,13 @@ async function updateBosScore(tailorId) {
     },
 
     async signOut() {
-      lsSet("boss_session", null);
-      lsSet("boss_tailor", null);
-      lsSet("boss_customers", null);
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("boss_")) keysToRemove.push(key);
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      sessionStorage.removeItem("boss_order_draft");
       await authFetch("/api/auth/logout", {}, { "x-boss-request": "1" });
     },
 
@@ -164,7 +168,7 @@ async function updateBosScore(tailorId) {
       return data || null;
     } catch (e) {
       console.error("[db.getTailor]", e);
-      return ls("boss_tailor", null); // serve cache on error
+      return null; // never serve stale cache from another user
     }
   },
 
@@ -200,19 +204,19 @@ async function updateBosScore(tailorId) {
     try {
       const client = await getBrowserClient();
       const { data: authData, error: authError } = await client.auth.getUser();
-      if (authError || !authData?.user) return ls("boss_customers", []);
+      if (authError || !authData?.user) return [];
       const { data: tailor } = await client
         .from("tailors")
         .select("id")
         .eq("user_id", authData.user.id)
         .single();
-      if (!tailor) return ls("boss_customers", []);
+      if (!tailor) return [];
       const { data } = await client
         .from("customers")
         .select("*, orders(*)")
         .eq("tailor_id", tailor.id)
         .order("name");
-      if (!data) return ls("boss_customers", []);
+      if (!data) return [];
       const mapped = data.map(c => ({
         id: c.id, name: c.name, phone: c.phone || "",
         measurements: c.measurements || {}, notes: c.notes || "",
@@ -229,7 +233,7 @@ async function updateBosScore(tailorId) {
       return mapped;
     } catch (e) {
       console.error("[db.getCustomers]", e);
-      return ls("boss_customers", []);
+      return []; // never serve stale cache from another user
     }
   },
 

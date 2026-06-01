@@ -10,7 +10,11 @@ export function AuthScreen({ onAuthSuccess }) {
 
   useEffect(() => {
     db.getSession().then(session => {
-      if (session?.email) onAuthSuccess({ email: session.email });
+      if (session?.id) {
+        localStorage.removeItem("boss_tailor");
+        localStorage.removeItem("boss_customers");
+        onAuthSuccess();
+      }
     });
   }, []);
 
