@@ -104,6 +104,10 @@ export function FeedbackSheet({ open, type, trigger, screen, onClose }) {
       <div onClick={handleDismiss} style={{ position: "fixed", inset: 0, zIndex: 500, display: "flex", alignItems: "flex-end" }}>
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()} />
         <div className="anim-slide" onClick={e => e.stopPropagation()} style={{ position: "relative", zIndex: 1, background: C.s1, borderRadius: "32px 32px 0 0", padding: "28px 24px 48px", width: "100%" }}>
+          <button onClick={handleDismiss}
+            style={{ position: "absolute", top: 16, right: 20, width: 32, height: 32, borderRadius: "50%", background: C.s3, color: C.sub, border: "none", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>
+            ✕
+          </button>
           <div style={{ fontSize: 20, fontWeight: 800, color: C.text, marginBottom: 16 }}>Report a Problem</div>
           <textarea value={happened} onChange={e => setHappened(e.target.value)}
             placeholder="Describe what went wrong…"
@@ -132,6 +136,10 @@ export function FeedbackSheet({ open, type, trigger, screen, onClose }) {
       <div onClick={handleDismiss} style={{ position: "fixed", inset: 0, zIndex: 500, display: "flex", alignItems: "flex-end" }}>
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()} />
         <div className="anim-slide" onClick={e => e.stopPropagation()} style={{ position: "relative", zIndex: 1, background: C.s1, borderRadius: "32px 32px 0 0", padding: "28px 24px 48px", width: "100%" }}>
+          <button onClick={handleDismiss}
+            style={{ position: "absolute", top: 16, right: 20, width: 32, height: 32, borderRadius: "50%", background: C.s3, color: C.sub, border: "none", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>
+            ✕
+          </button>
           <div style={{ fontSize: 20, fontWeight: 800, color: C.text, marginBottom: 16 }}>Suggest a Feature</div>
           <textarea value={idea} onChange={e => setIdea(e.target.value)}
             placeholder="I wish BOSS could…"
