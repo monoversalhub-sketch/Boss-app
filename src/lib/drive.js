@@ -59,9 +59,6 @@ export async function uploadBackup(refreshToken, backupData) {
   const fileName = `boss-backup-${new Date().toISOString().slice(0, 10)}.json`;
   const content = JSON.stringify(backupData, null, 2);
 
-  const { Readable } = await import("stream");
-  const body = Readable.from([content]);
-
   const res = await drive.files.create({
     requestBody: {
       name: fileName,
@@ -69,7 +66,7 @@ export async function uploadBackup(refreshToken, backupData) {
     },
     media: {
       mimeType: "application/json",
-      body,
+      body: Buffer.from(content, "utf-8"),
     },
     fields: "id,name,createdTime",
   });

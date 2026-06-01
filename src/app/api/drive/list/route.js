@@ -3,8 +3,6 @@ import { listBackups } from "@/lib/drive";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
-  console.log("[drive/list] NEXT_PUBLIC_SUPABASE_URL:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
-  console.log("[drive/list] NEXT_PUBLIC_SUPABASE_ANON_KEY:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
