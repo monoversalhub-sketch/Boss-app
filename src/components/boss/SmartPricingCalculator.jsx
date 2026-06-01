@@ -1,7 +1,7 @@
 "use client";
 // src/components/boss/SmartPricingCalculator.jsx
 import { useState } from "react";
-import { C, S, VAT_RATE } from "./tokens";
+import { C, S } from "./tokens";
 import { uid, fmt } from "./helpers";
 import { Btn, Input } from "./ui";
 
@@ -9,8 +9,7 @@ export function SmartPricingCalculator({ onUsePrice, compact = false }) {
   const [hourlyRate, setHourlyRate] = useState("");
   const [hours, setHours] = useState("");
   const [margin, setMargin] = useState("30");
-  const [vatOn, setVatOn] = useState(false);
-  const [paystackOn, setPaystackOn] = useState(false);
+  const [rushFee, setRushFee] = useState("");
   const [items, setItems] = useState([
     { id: uid(), label: "Fabric", amount: "" },
     { id: uid(), label: "Thread & Accessories", amount: "" },
@@ -20,19 +19,10 @@ export function SmartPricingCalculator({ onUsePrice, compact = false }) {
   const production = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
   const subtotal = labour + production;
   const profit = subtotal * ((parseFloat(margin) || 0) / 100);
-  const vatAmount = vatOn ? (subtotal + profit) * VAT_RATE : 0;
-  const basePrice = subtotal + profit + vatAmount;
-
-  function calcPaystackFee(price) {
-    if (!paystackOn) return 0;
-    const applicableFee = 0.015 * price + 100;
-    if (applicableFee >= 2000) return 2000;
-    if (price < 2500) return Math.ceil(price * 0.015 * 100) / 100;
-    return Math.ceil(((price + 100) / (1 - 0.015) - price) * 100) / 100;
-  }
-
-  const paystackFee = calcPaystackFee(basePrice);
-  const finalPrice = basePrice + paystackFee;
+  const withProfit = subtotal + profit;
+  const rushPct = parseFloat(rushFee) || 0;
+  const rushAmount = rushPct > 0 ? withProfit * (rushPct / 100) : 0;
+  const finalPrice = withProfit + rushAmount;
 
   function addItem() {
     setItems((prev) => [...prev, { id: uid(), label: "", amount: "" }]);
@@ -71,50 +61,13 @@ export function SmartPricingCalculator({ onUsePrice, compact = false }) {
       </div>
 
       <div style={{ ...S.card }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 12 }}>📈 Profit & Tax</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 12 }}>📈 Profit & Fees</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <Input label="Profit Margin (%)" value={margin} onChange={(e) => setMargin(e.target.value)} type="number" inputMode="numeric" placeholder="30" />
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <label style={S.label}>Nigerian VAT (7.5%)</label>
-            <button
-              onClick={() => setVatOn((v) => !v)}
-              style={{
-                ...S.input,
-                background: vatOn ? "rgba(52,199,89,0.1)" : C.s2,
-                border: `1px solid ${vatOn ? C.green : C.border2}`,
-                color: vatOn ? C.green : C.sub,
-                fontWeight: 700,
-                cursor: "pointer",
-                textAlign: "left",
-              }}
-            >
-              {vatOn ? "✅ VAT ON" : "⬜ VAT OFF"}
-            </button>
+          <div>
+            <Input label="Rush Fee (%)" value={rushFee} onChange={(e) => setRushFee(e.target.value)} type="number" inputMode="numeric" placeholder="0" />
+            <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>Add this for urgent or last-minute jobs</div>
           </div>
-        </div>
-        <div style={{ marginTop: 10 }}>
-          <label style={S.label}>Pass Paystack Card Fee to Customer</label>
-          <button
-            onClick={() => setPaystackOn((v) => !v)}
-            style={{
-              ...S.input,
-              width: "100%",
-              background: paystackOn ? "rgba(0,102,204,0.08)" : C.s2,
-              border: `1px solid ${paystackOn ? C.accent : C.border2}`,
-              color: paystackOn ? C.accent : C.sub,
-              fontWeight: 700,
-              cursor: "pointer",
-              textAlign: "left",
-            }}
-          >
-            {paystackOn ? "✅ Fee ON — customer pays card charge" : "⬜ Fee OFF — you absorb card charge"}
-          </button>
-          {paystackOn && basePrice > 0 && (
-            <div style={{ fontSize: 13, color: C.sub, marginTop: 6, lineHeight: 1.5 }}>
-              Card fee added: <strong style={{ color: C.accent }}>+{fmt(Math.round(paystackFee))}</strong>{" "}
-              · Formula: (Price + ₦100) ÷ 0.985, capped at ₦2,000
-            </div>
-          )}
         </div>
       </div>
 
@@ -131,8 +84,7 @@ export function SmartPricingCalculator({ onUsePrice, compact = false }) {
               { label: "Labour", val: fmt(labour) },
               { label: "Production Costs", val: fmt(production) },
               { label: `Profit (${margin}%)`, val: fmt(profit) },
-              ...(vatOn ? [{ label: "VAT (7.5%)", val: fmt(vatAmount) }] : []),
-              ...(paystackOn && paystackFee > 0 ? [{ label: "Paystack Card Fee", val: "+" + fmt(Math.round(paystackFee)) }] : []),
+              ...(rushAmount > 0 ? [{ label: `Rush Fee (${rushPct}%)`, val: fmt(rushAmount) }] : []),
             ].map((r) => (
               <div key={r.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
                 <span>{r.label}</span>

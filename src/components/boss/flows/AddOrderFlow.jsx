@@ -20,6 +20,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
   const savingRef = useRef(false);
   const [receiptPrompt, setReceiptPrompt] = useState(null);
   const [selectedImages, setSelectedImages] = useState([]);
+  const [activeShortcut, setActiveShortcut] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -111,6 +112,8 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
 
   function stripCommas(v){return v.replace(/,/g,"");}
   function fmtPrice(v){const n=parseFloat(stripCommas(v));return isNaN(n)?"":n.toLocaleString("en-US");}
+  function applyDateShortcut(days){const d=new Date();d.setDate(d.getDate()+days);const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,"0");const dd=String(d.getDate()).padStart(2,"0");setDate(`${y}-${m}-${dd}`);setActiveShortcut(days);}
+  function handleDateChange(val){setActiveShortcut(null);setDate(val);}
   const depositWarn = price && deposit && parseFloat(stripCommas(deposit)) > parseFloat(stripCommas(price))
     ? "⚠️ Deposit exceeds total price" : "";
   const progress = useMemo(() => {
@@ -180,20 +183,17 @@ export function AddOrderFlow({ open, onClose, prefilledCid }) {
           )}
         </div>
 
-        <DatePicker label="Delivery Date *" value={date} onChange={setDate} />
-        <div style={{display:"flex",gap:6,marginTop:8}}>
-          <button onClick={()=>setDate(new Date().toISOString().slice(0,10))}
-            style={{flex:1,padding:"9px 0",borderRadius:10,fontSize:13,fontWeight:700,border:`1px solid ${date===new Date().toISOString().slice(0,10)?C.accent:C.border}`,background:date===new Date().toISOString().slice(0,10)?`${C.accent}14`:C.s2,color:date===new Date().toISOString().slice(0,10)?C.accent:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
-            Today
-          </button>
-          <button onClick={()=>{const d=new Date();d.setDate(d.getDate()+1);setDate(d.toISOString().slice(0,10));}}
-            style={{flex:1,padding:"9px 0",borderRadius:10,fontSize:13,fontWeight:700,border:`1px solid ${C.border}`,background:C.s2,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
-            Tomorrow
-          </button>
-          <button onClick={()=>{const d=new Date();d.setDate(d.getDate()+7);setDate(d.toISOString().slice(0,10));}}
-            style={{flex:1,padding:"9px 0",borderRadius:10,fontSize:13,fontWeight:700,border:`1px solid ${C.border}`,background:C.s2,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
-            1 Week
-          </button>
+        <DatePicker label="Delivery Date *" value={date} onChange={handleDateChange} />
+        <div style={{display:"flex",gap:8,overflowX:"auto",scrollbarWidth:"none",WebkitOverflowScrolling:"touch",marginTop:8}}>
+          {[[1,"Tomorrow"],[7,"1 Week"],[14,"2 Weeks"]].map(([d,l])=>{
+            const active=activeShortcut===d;
+            return(
+              <button key={d} className="tap" onClick={()=>applyDateShortcut(d)}
+                style={{padding:"9px 16px",borderRadius:10,fontSize:13,fontWeight:active?700:500,border:"none",background:active?C.accent:C.s3,color:active?"#fff":C.text,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit"}}>
+                {l}
+              </button>
+            );
+          })}
         </div>
         <div>
           <div style={{fontSize:13,fontWeight:700,color:C.sub,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:8}}>Style Photos (max 5)</div>
