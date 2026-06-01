@@ -1,6 +1,6 @@
 "use client";
 // src/components/boss/ProfileTab.jsx
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { C, S } from "../tokens";
 import { allOrders, orderStatus, computeTrustScore, fmt, getBalance, getTotalPaid } from "../helpers";
 import { useBOSS } from "../context";
@@ -21,8 +21,9 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
   const [accountName, setAccountName] = useState(tailor?.account_name || "");
   const [saved, setSaved] = useState(false);
 
-  const [restoreMsg, setRestoreMsg] = useState("");
-  const restoreRef = useRef(null);
+  const [driveFiles, setDriveFiles] = useState([]);
+  const [driveBusy, setDriveBusy] = useState(false);
+  const [driveMsg, setDriveMsg] = useState("");
   const [referralCode, setReferralCode] = useState(null);
   const [referralStats, setReferralStats] = useState({ total: 0, activated: 0, rewarded: 0 });
   const [copied, setCopied] = useState(false);
@@ -33,6 +34,10 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
     referral.getMyCode().then(setReferralCode).catch(() => {});
     referral.getStats().then(setReferralStats).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (section === "data" && driveConnected) listDriveBackups();
+  }, [section]);
 
   const ts = computeTrustScore(customers);
   const orders = useMemo(() => allOrders(customers), [customers]);
@@ -47,24 +52,45 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
     await db.setTailor(t); setTailor(t); setSaved(true);
   }
 
-  function exportBackup() {
-    const data = { tailor, customers, exportedAt: new Date().toISOString(), version: "boss-v7" };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `boss-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+  const driveConnected = !!tailor?.google_drive_refresh_token;
+
+  async function backupToDrive() {
+    if (!driveConnected) { window.location.href = "/api/drive/auth"; return; }
+    setDriveBusy(true); setDriveMsg("");
+    try {
+      const data = { tailor, customers, exportedAt: new Date().toISOString(), version: "boss-v7" };
+      const res = await fetch("/api/drive/upload", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) { setDriveMsg(json.error || "Upload failed"); return; }
+      setDriveMsg(`✅ Backed up to Drive`);
+      listDriveBackups();
+    } catch { setDriveMsg("❌ Could not connect to Drive"); }
+    finally { setDriveBusy(false); }
   }
 
-  function handleRestoreFile(e) {
-    const file = e.target.files?.[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        if (data.customers) { await db.setCustomers(data.customers); }
-        if (data.tailor) { await db.setTailor(data.tailor); setTailor(data.tailor); }
-        setRestoreMsg("✅ Data restored successfully. Refresh to see changes.");
-      } catch { setRestoreMsg("❌ Invalid backup file."); }
-    };
-    reader.readAsText(file);
+  async function listDriveBackups() {
+    if (!driveConnected) return;
+    try {
+      const res = await fetch("/api/drive/list");
+      const json = await res.json();
+      if (json.files) setDriveFiles(json.files);
+    } catch {}
+  }
+
+  async function restoreFromDrive(fileId) {
+    setDriveBusy(true); setDriveMsg("");
+    try {
+      const res = await fetch(`/api/drive/download?id=${fileId}`);
+      const json = await res.json();
+      if (!json.ok) { setDriveMsg(json.error || "Restore failed"); return; }
+      const data = json.data;
+      if (data.customers) { await db.setCustomers(data.customers); }
+      if (data.tailor) { await db.setTailor(data.tailor); setTailor(data.tailor); }
+      setDriveMsg("✅ Restored from Drive. Refresh to see changes.");
+    } catch { setDriveMsg("❌ Could not restore from Drive"); }
+    finally { setDriveBusy(false); }
   }
 
   async function handleSignOut() {
@@ -186,22 +212,50 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <SubHeader title="Data & Backup" />
       <div className="scrollable" style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 80 }}>
-        <div style={{ ...S.card }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>Export Backup</div>
-          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 12 }}>Download all your customers, orders, measurements, and settings as a JSON file. Save to Google Drive or WhatsApp Saved Messages.</div>
-          <Btn variant="primary" onClick={exportBackup}>⬇️ Download Backup File</Btn>
-        </div>
-        <div style={{ ...S.card }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>Restore from Backup</div>
-          <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 12 }}>Upload a previously downloaded BOSS backup file to restore your data.</div>
-          <input ref={restoreRef} type="file" accept=".json" onChange={handleRestoreFile} style={{ display: "none" }} />
-          <Btn variant="outline" onClick={() => restoreRef.current?.click()}>📂 Choose Backup File</Btn>
-          {restoreMsg && <div style={{ fontSize: 13, color: restoreMsg.startsWith("✅") ? C.green : C.red, marginTop: 8, fontWeight: 500 }}>{restoreMsg}</div>}
-        </div>
-        <div style={{ ...S.card, background: "rgba(255,159,10,0.06)", border: "1px solid rgba(255,159,10,0.2)" }}>
-          <div style={{ fontSize: 13, color: "#FF9F0A", fontWeight: 700 }}>💡 Auto-backup to Google Drive coming soon</div>
-          <div style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>We'll automatically back up your data to Google Drive daily.</div>
-        </div>
+        {!driveConnected ? (
+          <div style={{ ...S.card, textAlign: "center", padding: "24px 20px" }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>☁️</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 4 }}>Back up to Google Drive</div>
+            <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 16 }}>
+              Connect your Google account to back up your data securely. Your data stays yours.
+            </div>
+            <Btn variant="primary" onClick={backupToDrive}>🔗 Connect Google Drive</Btn>
+          </div>
+        ) : (
+          <>
+            <div style={{ ...S.card }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>☁️ Google Drive</div>
+              <div style={{ fontSize: 13, color: C.green, fontWeight: 600, marginBottom: 12 }}>✅ Connected</div>
+              <Btn variant="primary" onClick={backupToDrive} disabled={driveBusy}>
+                {driveBusy ? "⏳ Backing up…" : "⬆️ Backup Now"}
+              </Btn>
+            </div>
+
+            {driveFiles.length > 0 && (
+              <div style={{ ...S.card }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 10 }}>Previous Backups</div>
+                {driveFiles.map(f => (
+                  <div key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: `1px solid ${C.border}` }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{f.name}</div>
+                      <div style={{ fontSize: 11, color: C.sub }}>{f.createdTime?.slice(0, 10)}</div>
+                    </div>
+                    <button onClick={() => restoreFromDrive(f.id)} disabled={driveBusy}
+                      style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: C.s3, color: C.text, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      Restore
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {driveMsg && (
+              <div style={{ fontSize: 13, color: driveMsg.startsWith("✅") ? C.green : C.red, fontWeight: 500, padding: "8px 12px", background: C.s2, borderRadius: 10 }}>
+                {driveMsg}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

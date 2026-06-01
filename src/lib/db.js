@@ -163,7 +163,7 @@ async function updateBosScore(tailorId) {
       if (authError || !authData?.user) return null;
       const { data } = await client
         .from("tailors")
-        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at")
+        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at,google_drive_refresh_token")
         .eq("user_id", authData.user.id)
         .single();
       if (data) lsSet("boss_tailor", data);
