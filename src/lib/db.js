@@ -35,6 +35,20 @@ async function getBrowserClient() {
 // ── Sync status callback (registered by BOSSApp.jsx) ───────────────
 let _syncCallback = null;
 
+// ── Pending-sync queue (offline resilience) ────────────────────────
+function _getPendingOps() {
+  return ls("boss_pending_sync", []);
+}
+function _setPendingOps(ops) {
+  lsSet("boss_pending_sync", ops);
+}
+function _enqueuePending(op) {
+  const ops = _getPendingOps();
+  ops.push({ ...op, timestamp: new Date().toISOString() });
+  _setPendingOps(ops);
+  console.log("[db] enqueued pending op:", op.type, op.orderId || op.customerId);
+}
+
 export { getBrowserClient, ls, lsSet };
 
 // ── Auth via API routes (server proxies to Supabase) ─────────────
@@ -498,6 +512,7 @@ async function updateBosScore(tailorId) {
     } catch (e) {
       console.error("[db.addCustomer]", e);
       _syncCallback?.("error");
+      _enqueuePending({ type: "addCustomer", customer, tailorId });
       return { ok: false, error: e };
     }
   },
@@ -520,6 +535,7 @@ async function updateBosScore(tailorId) {
     } catch (e) {
       console.error("[db.addOrder]", e);
       _syncCallback?.("error");
+      _enqueuePending({ type: "addOrder", order, customerId, tailorId });
       return { ok: false, error: e };
     }
   },
@@ -542,6 +558,32 @@ async function updateBosScore(tailorId) {
     } catch (e) {
       console.error("[db.setNotificationPrefs]", e);
     }
+  },
+
+  async processPendingQueue() {
+    const ops = _getPendingOps();
+    if (!ops.length) return { processed: 0 };
+    const stale = ops.filter(o => Date.now() - new Date(o.timestamp).getTime() > 7 * 86400000);
+    const fresh = ops.filter(o => Date.now() - new Date(o.timestamp).getTime() <= 7 * 86400000);
+    let processed = 0;
+    for (const op of fresh) {
+      try {
+        if (op.type === "addOrder") {
+          const r = await db.addOrder(op.order, op.customerId, op.tailorId);
+          if (r.ok) processed++;
+        } else if (op.type === "addCustomer") {
+          const r = await db.addCustomer(op.customer, op.tailorId);
+          if (r.ok) processed++;
+        }
+      } catch (e) {
+        console.warn("[db.processPendingQueue] retry failed for", op.type, e);
+      }
+    }
+    _setPendingOps(stale);
+    if (stale.length > 0) {
+      console.warn("[db.processPendingQueue] stale ops discarded:", stale.length);
+    }
+    return { processed, stale: stale.length };
   },
 };
 

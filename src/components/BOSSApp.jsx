@@ -232,6 +232,9 @@ function BOSSApp(){
   useEffect(()=>{
     if(screen!=="app")return;
     db.updateLastSeen();
+    db.processPendingQueue().then(r=>{
+      if(r?.processed > 0) toast(`☁️ ${r.processed} pending item${r.processed > 1 ? "s" : ""} synced`);
+    }).catch(()=>{});
     if("serviceWorker" in navigator && "PushManager" in window){
       navigator.serviceWorker.register("/sw.js").catch(e=>console.warn("[push] SW reg failed",e));
     }
@@ -336,6 +339,20 @@ function BOSSApp(){
             {statusDisplay==="connected" &&"📡 Connected"}
             {statusDisplay==="error"     &&"⚠️ Sync error"}
             {statusDisplay==="offline"   &&"⚠️ Offline"}
+          </div>
+        )}
+        {statusDisplay==="error" && (
+          <div className="tap" onClick={async ()=>{
+            setSyncStatus("syncing");
+            try{await Promise.all([db.getTailor(), db.getCustomers()]);setSyncStatus("saved");}catch{setSyncStatus("error");}
+            setTimeout(()=>setSyncStatus("idle"),2500);
+          }} style={{
+            position:"absolute",top:52,left:"50%",transform:"translateX(-50%)",zIndex:100,
+            background:"rgba(239,68,68,0.12)",color:"#ef4444",border:"1px solid rgba(239,68,68,0.25)",
+            padding:"8px 18px",borderRadius:20,fontSize:13,fontWeight:700,cursor:"pointer",
+            fontFamily:"inherit",whiteSpace:"nowrap",
+          }}>
+            ↻ Retry sync
           </div>
         )}
 

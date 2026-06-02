@@ -114,7 +114,10 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
 
       const hasPaid = (parseFloat(stripCommas(deposit)) || 0) > 0;
       const hasPhone = !!(cust.phone || "").trim();
-      if (hasPaid && hasPhone) { setReceiptPrompt({ order, customer: { ...cust } }); }
+      if (hasPaid && hasPhone) {
+        toast("✅ Order saved!");
+        setTimeout(() => setReceiptPrompt({ order, customer: { ...cust } }), 1000);
+      }
       else { onClose(); toast("✅ Order saved!"); }
     } catch (e) {
       console.error("[AddOrderFlow save]", e);

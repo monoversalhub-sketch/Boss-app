@@ -137,18 +137,20 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
     <div style={containerStyle(step)}>
       {/* TOP BAR */}
       <div style={topBarStyle()}>
-        {step > 1 ? (
+        {step > 1 && step !== 4 ? (
           <button onClick={() => setStep(step - 1)}
             style={{ fontSize: 20, color: C.text, background: "none", border: "none", cursor: "pointer", padding: 8 }}>
             ←
           </button>
         ) : <div style={{ width: 36 }} />}
 
-        <div style={{ display: "flex", gap: 6 }}>
-          {[1,2,3,4,5].map(n => <div key={n} style={progressDot(n)} />)}
-        </div>
+        {step !== 4 && (
+          <div style={{ display: "flex", gap: 6 }}>
+            {[1,2,3,4,5].map(n => <div key={n} style={progressDot(n)} />)}
+          </div>
+        )}
 
-        {step > 1 && step < 5 ? (
+        {step > 1 && step < 5 && step !== 4 ? (
           <button onClick={() => setStep(step + 1)}
             style={{ fontSize: 13, color: C.sub, background: "none", border: "none", cursor: "pointer", padding: 8, fontWeight: 600 }}>
             Skip →
@@ -233,7 +235,7 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
               Add your payment details
             </div>
             <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 24 }}>
-              Your bank details appear on receipts you send to customers on WhatsApp. You can add this later.
+              Add your bank details so customers know where to pay you. Takes 30 seconds — this shows up on every receipt.
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", flexDirection: "column" }}>
