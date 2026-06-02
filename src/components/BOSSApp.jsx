@@ -19,7 +19,7 @@ import { OnboardingTour } from "./boss/OnboardingTour";
 import { C } from "./boss/tokens";
 import { allOrders } from "./boss/helpers";
 import { ErrorBoundary, BOSSContext } from "./boss/context";
-import { GlobalStyles, Toast } from "./boss/ui";
+import { GlobalStyles, Toast, Sheet, Btn } from "./boss/ui";
 import { SplashScreen } from "./boss/SplashScreen";
 import { SessionGate } from "./boss/SessionGate";
 import { AuthScreen } from "./boss/AuthScreen";
@@ -215,14 +215,18 @@ function BOSSApp(){
   useEffect(()=>{
     referral.captureReferralCode();
     if(screen==="app"&&feedback.shouldShowNPS()){
+      const totalOrders = allOrders(customers).length;
+      if (totalOrders < 3) return;
       const timer=setTimeout(()=>{
+        const anyFlowOpen = addOrderOpen || !!orderDetailId || !!customerDetailId || remindersOpen || calendarOpen || addClientOpen;
+        if (anyFlowOpen) return;
         setFeedbackConfig({type:"nps",trigger:"scheduled",screen:tab});
         setFeedbackOpen(true);
         feedback.markNPSShown();
-      },30000);
+      },60000);
       return()=>clearTimeout(timer);
     }
-  },[screen]);
+  },[screen, customers, addOrderOpen, orderDetailId, customerDetailId, remindersOpen, calendarOpen, addClientOpen]);
 
   // Web Push: register SW, update last_seen, prompt on first order
   useEffect(()=>{
@@ -235,6 +239,7 @@ function BOSSApp(){
 
   const pushPromptedRef = useRef(false);
   const prevOrderCountRef = useRef(allOrders(customers).length);
+  const[pushConsentOpen,setPushConsentOpen]=useState(false);
 
   useEffect(()=>{
     if(screen!=="app")return;
@@ -242,11 +247,7 @@ function BOSSApp(){
     if(count > 0 && prevOrderCountRef.current === 0 && !pushPromptedRef.current && "Notification" in window && Notification.permission === "default"){
       pushPromptedRef.current = true;
       const timer = setTimeout(()=>{
-        toast("🔔 Get reminders before delivery dates?");
-        // Show a non-blocking consent via a simple confirm-like UX
-        if(window.confirm("Get notified before delivery dates and when payments are due?")){
-          subscribeToPush();
-        }
+        setPushConsentOpen(true);
       }, 4000);
       return()=>clearTimeout(timer);
     }
@@ -340,7 +341,7 @@ function BOSSApp(){
 
         {/* ── SCROLLABLE CONTENT ── */}
         <div className="scrollable" style={{flex:1,paddingBottom:140}}>
-          {tab==="today"    &&<TodayTab     tailor={tailor} onAddOrder={()=>openAddOrder(null)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)} onCalendar={()=>setCalendarOpen(true)}/>}
+          {tab==="today"    &&<TodayTab     tailor={tailor} onAddOrder={()=>openAddOrder(null)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)} onCalendar={()=>setCalendarOpen(true)} isLoading={loadingData}/>}
           {tab==="customers"&&<CustomersTab onOpenCustomer={openCustomerDetail} onAddClient={()=>setAddClientOpen(true)}/>}
           {tab==="earnings" &&<EarningsTab/>}
           {tab==="profile"  &&<ProfileTab onFeedbackTrigger={handleFeedbackTrigger} onTour={()=>setTourOpen(true)}/>}
@@ -436,6 +437,19 @@ function BOSSApp(){
           onClose={()=>{setFeedbackOpen(false);setFeedbackConfig(null);}}
         />
         <OnboardingTour open={tourOpen} onClose={()=>setTourOpen(false)}/>
+
+        <Sheet open={pushConsentOpen} onClose={()=>setPushConsentOpen(false)} title="">
+          <div style={{textAlign:"center",padding:"8px 0 16px"}}>
+            <div style={{fontSize:32,marginBottom:8}}>🔔</div>
+            <div style={{fontSize:17,fontWeight:800,color:C.text,marginBottom:6}}>Get delivery reminders?</div>
+            <div style={{fontSize:14,color:C.sub,lineHeight:1.6,marginBottom:20}}>
+              We&apos;ll notify you 3 days before an order is due so you&apos;re never late.
+            </div>
+            <Btn variant="primary" onClick={()=>{subscribeToPush();setPushConsentOpen(false);}} style={{marginBottom:12,width:"100%"}}>Allow notifications</Btn>
+            <button onClick={()=>setPushConsentOpen(false)}
+              style={{fontSize:14,color:C.sub,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Not now</button>
+          </div>
+        </Sheet>
       </div>
     </>
     </BOSSContext.Provider>

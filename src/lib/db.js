@@ -181,12 +181,10 @@ async function updateBosScore(tailorId) {
       const { data: authData, error: authError } = await client.auth.getUser();
       if (authError || !authData?.user) return;
       const user = authData.user;
-      const payload = {
-        user_id: user.id,
-        shop:    profile.shop  || "",
-        phone:   profile.phone || "",
-        city:    profile.city  || "",
-      };
+      const payload = { user_id: user.id };
+      if (profile.shop  !== undefined) payload.shop  = profile.shop  || "";
+      if (profile.phone !== undefined) payload.phone = profile.phone || "";
+      if (profile.city  !== undefined) payload.city  = profile.city  || "";
       if (profile.bank_name            !== undefined) payload.bank_name            = profile.bank_name            || null;
       if (profile.bank_code            !== undefined) payload.bank_code            = profile.bank_code            || null;
       if (profile.account_number       !== undefined) payload.account_number       = profile.account_number       || null;
