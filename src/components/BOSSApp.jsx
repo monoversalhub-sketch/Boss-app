@@ -107,7 +107,7 @@ function BOSSApp(){
       setTailorState(t);setCustomersState(c||[]);
       setPendingSession(null);
       if(t?.id) referral.attachReferral(t.id);
-      setScreen(t?.shop ? "app" : "setup");
+      setScreen(t?.id && t?.shop ? "app" : "setup");
     }catch(e){
       console.error("[BOSS] session continue error:",e);
       setLoadingData(false);
@@ -150,7 +150,7 @@ function BOSSApp(){
       const c=await db.getCustomers();
       setTailorState(t);setCustomersState(c||[]);
       if(t?.id) referral.attachReferral(t.id);
-      setScreen(t?.shop ? "app" : "setup");
+      setScreen(t?.id && t?.shop ? "app" : "setup");
     }catch(e){
       console.error("[BOSS] handleAuthSuccess error:",e);
       toast("Connection error — pull down to retry");

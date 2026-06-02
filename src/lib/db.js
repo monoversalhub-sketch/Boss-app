@@ -194,6 +194,10 @@ async function updateBosScore(tailorId) {
       if (profile.notif_delivery       !== undefined) payload.notif_delivery       = profile.notif_delivery;
       if (profile.notif_payments       !== undefined) payload.notif_payments       = profile.notif_payments;
       if (profile.notif_briefing       !== undefined) payload.notif_briefing       = profile.notif_briefing;
+      if (profile.self_declared_score  !== undefined) payload.self_declared_score  = profile.self_declared_score || 0;
+      if (profile.self_declared_years  !== undefined) payload.self_declared_years  = profile.self_declared_years || null;
+      if (profile.self_declared_score  !== undefined && profile.self_declared_score > 0)
+        payload.self_declared_at = new Date().toISOString();
 
       _syncCallback?.("syncing");
       await client.from("tailors").upsert(payload, { onConflict: "user_id" });

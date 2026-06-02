@@ -60,8 +60,7 @@ function scrollContentStyle() {
 }
 
 export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
-  const savedStep = parseInt(localStorage.getItem("boss_onboarding_step") || "1");
-  const [step, setStepState] = useState(savedStep);
+  const [step, setStepState] = useState(1);
   const [shop, setShop] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
@@ -73,6 +72,7 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
   const tourTouchStart = useRef(null);
 
   const savedTourSlide = parseInt(localStorage.getItem("boss_onboarding_tour_slide") || "0");
@@ -85,7 +85,6 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
 
   function setStep(n) {
     setStepState(n);
-    localStorage.setItem("boss_onboarding_step", String(n));
   }
 
   function computeSelfScore() {
@@ -117,7 +116,6 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
     };
     await db.setTailor(t);
     localStorage.setItem("boss_onboarding_v1_complete", "1");
-    localStorage.removeItem("boss_onboarding_step");
     setSaving(false);
     if (addOrder) onCompleteAndAddOrder(t);
     else onComplete(t);
@@ -160,6 +158,11 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
 
       {/* STEP CONTENT */}
       <div style={scrollContentStyle()}>
+        {msg && (
+          <div style={{ backgroundColor: "rgba(255,59,48,0.1)", borderRadius: 10, padding: "10px 14px", marginBottom: 12, fontSize: 13, fontWeight: 600, color: "#FF3B30", textAlign: "center" }}>
+            {msg}
+          </div>
+        )}
         {step === 1 && (
           <div>
             <div style={{ textAlign: "center", marginBottom: 28 }}>
@@ -186,9 +189,13 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
                   <input value={cityOther} onChange={e => setCityOther(e.target.value)} placeholder="Type your city" style={{ ...S.input, marginTop: 8, color: C.text }} />
                 )}
               </div>
-              <button onClick={() => shop.trim() && setStep(2)}
-                disabled={!shop.trim()}
-                style={{ ...btnPrimary, opacity: shop.trim() ? 1 : 0.5 }}>
+              <button onClick={async () => {
+                if (!shop.trim()) { setMsg("⚠️ Enter your shop name to continue"); return; }
+                setMsg("");
+                await db.setTailor({ shop: shop.trim(), phone: phone.trim(), city: city === "Other" ? cityOther.trim() : city });
+                setStep(2);
+              }}
+                style={btnPrimary}>
                 Continue →
               </button>
             </div>

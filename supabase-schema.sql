@@ -338,4 +338,21 @@ GROUP BY tailor_id, type;
 -- with no auth check, letting any authenticated user call it to
 -- boost their own bos_score. It was also never called from the
 -- app code. If re-added, use SECURITY INVOKER + explicit auth check.
--- 
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION: Missing columns (safe to re-run — IF NOT EXISTS)
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE tailors
+  ADD COLUMN IF NOT EXISTS notif_delivery              boolean DEFAULT true,
+  ADD COLUMN IF NOT EXISTS notif_payments              boolean DEFAULT true,
+  ADD COLUMN IF NOT EXISTS notif_briefing              boolean DEFAULT true,
+  ADD COLUMN IF NOT EXISTS last_seen_at                timestamptz,
+  ADD COLUMN IF NOT EXISTS google_drive_refresh_token  text,
+  ADD COLUMN IF NOT EXISTS self_declared_years         text;
+
+ALTER TABLE orders
+  ADD COLUMN IF NOT EXISTS updated_at  timestamptz DEFAULT now();
+
+UPDATE orders SET updated_at = created_at WHERE updated_at IS NULL;

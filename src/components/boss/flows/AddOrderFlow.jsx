@@ -128,7 +128,12 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
     if (!receiptPrompt) return;
     const { order, customer } = receiptPrompt;
     const shop = tailor?.shop || "BOSS Shop";
-    const msg = buildReceiptText(order, customer, shop, null);
+    const vaDetails = tailor?.account_number ? {
+      bank:   tailor.bank_name   || "",
+      number: tailor.account_number,
+      name:   tailor.account_name || "",
+    } : null;
+    const msg = buildReceiptText(order, customer, shop, vaDetails);
     window.open(waLink(customer.phone, msg), "_blank");
     setReceiptPrompt(null);
     onClose(); toast("✅ Order saved + receipt sent!");
