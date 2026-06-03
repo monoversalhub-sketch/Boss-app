@@ -183,8 +183,22 @@ async function updateBosScore(tailorId) {
       if (data) lsSet("boss_tailor", data);
       return data || null;
     } catch (e) {
-      console.error("[db.getTailor]", e);
-      return null; // never serve stale cache from another user
+      console.warn("[db.getTailor] full query failed, retrying with core columns:", e.message);
+      try {
+        const client = await getBrowserClient();
+        const { data: authData, error: authError } = await client.auth.getUser();
+        if (authError || !authData?.user) return null;
+        const { data } = await client
+          .from("tailors")
+          .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at")
+          .eq("user_id", authData.user.id)
+          .single();
+        if (data) lsSet("boss_tailor", data);
+        return data || null;
+      } catch (e2) {
+        console.error("[db.getTailor] fallback query also failed:", e2);
+        return null;
+      }
     }
   },
 

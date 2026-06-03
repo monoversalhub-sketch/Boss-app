@@ -104,10 +104,12 @@ function BOSSApp(){
       localStorage.removeItem("boss_customers");
       const t=await db.getTailor();
       const c=await db.getCustomers();
+      if (!t) console.error("[BOSS] getTailor returned null — data may not load");
       setTailorState(t);setCustomersState(c||[]);
       setPendingSession(null);
       if(t?.id) referral.attachReferral(t.id);
       setScreen(t?.id && t?.shop ? "app" : "setup");
+      setLoadingData(false);
     }catch(e){
       console.error("[BOSS] session continue error:",e);
       setLoadingData(false);
