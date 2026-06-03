@@ -96,7 +96,11 @@ export function AuthScreen({ onAuthSuccess }) {
 
       {/* Footer note */}
       <div style={{ position: "absolute", bottom: 32, fontSize: 13, color: C.muted, textAlign: "center", padding: "0 32px", lineHeight: 1.6 }}>
-        By continuing you agree to BOSS terms of service.{"\n"}Your Google account is used only for sign-in.
+        By continuing you agree to BOSS{" "}
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#007AFF", textDecoration: "underline" }}>privacy policy</a>
+        {" "}and{" "}
+        <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "#007AFF", textDecoration: "underline" }}>terms of service</a>
+        . Your Google account is used only for sign-in.
       </div>
     </div>
   );
