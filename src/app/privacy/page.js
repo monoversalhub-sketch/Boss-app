@@ -6,7 +6,7 @@ export const metadata = {
 };
 
 const s = {
-  wrap: { background: "#F2F2F7", minHeight: "100svh", fontFamily: "inherit" },
+  wrap: { background: "#F2F2F7", height: "100svh", overflowY: "auto", overflowX: "hidden", fontFamily: "inherit" },
   inner: { maxWidth: 680, margin: "0 auto", padding: "24px 24px 80px" },
   back: { display: "block", fontSize: 14, color: "#007AFF", padding: "0 0 16px 0", textDecoration: "none", fontWeight: 600 },
   wordmark: { fontSize: 13, fontWeight: 800, letterSpacing: 2, color: "#8E8E93", textTransform: "uppercase", marginBottom: 8 },
