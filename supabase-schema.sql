@@ -356,3 +356,24 @@ ALTER TABLE orders
   ADD COLUMN IF NOT EXISTS updated_at  timestamptz DEFAULT now();
 
 UPDATE orders SET updated_at = created_at WHERE updated_at IS NULL;
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- PUSH SUBSCRIPTIONS TABLE
+-- ═══════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tailor_id uuid REFERENCES tailors(id) ON DELETE CASCADE NOT NULL,
+  endpoint  text UNIQUE NOT NULL,
+  p256dh    text NOT NULL,
+  auth_key  text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "tailors_own_push_subs" ON push_subscriptions
+  FOR ALL USING (
+    tailor_id = (SELECT id FROM tailors WHERE user_id = auth.uid())
+  );
