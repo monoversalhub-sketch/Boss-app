@@ -24,9 +24,14 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing endpoint or keys" }, { status: 400 });
     }
 
-    const { error } = await supabase.from("push_subscriptions").upsert(
+    const { error: delErr } = await supabase
+      .from("push_subscriptions")
+      .delete()
+      .eq("endpoint", endpoint);
+    if (delErr) console.warn("[push/subscribe] delete old sub:", delErr.message);
+
+    const { error } = await supabase.from("push_subscriptions").insert(
       { tailor_id: tailor.id, endpoint, p256dh: keys.p256dh, auth_key: keys.auth },
-      { onConflict: "endpoint" }
     );
 
     if (error) throw error;

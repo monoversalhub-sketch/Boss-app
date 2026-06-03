@@ -35,6 +35,14 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
 
   useEffect(()=>{ return ()=>clearTimeout(notifTimerRef.current); },[]);
 
+  useEffect(() => {
+    if (tailor) {
+      if (tailor.notif_delivery !== undefined) setNotifDelivery(tailor.notif_delivery);
+      if (tailor.notif_payments !== undefined) setNotifPayments(tailor.notif_payments);
+      if (tailor.notif_briefing !== undefined) setNotifBriefing(tailor.notif_briefing);
+    }
+  }, [tailor]);
+
   useEffect(() => { if (!saved) return; const id = setTimeout(() => setSaved(false), 2200); return () => clearTimeout(id); }, [saved]);
 
   useEffect(() => {

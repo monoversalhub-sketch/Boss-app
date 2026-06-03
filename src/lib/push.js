@@ -3,6 +3,10 @@ import webpush from "web-push";
 let _vapidSet = false;
 function ensureVapid() {
   if (_vapidSet) return;
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    console.error("[push] VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY not set");
+    return;
+  }
   webpush.setVapidDetails(
     process.env.VAPID_EMAIL || "mailto:admin@boss-africa.vercel.app",
     process.env.VAPID_PUBLIC_KEY,
@@ -17,6 +21,10 @@ export async function sendPush(subscription, title, body, url = "/") {
     return;
   }
   ensureVapid();
+  if (!_vapidSet) {
+    console.warn("[push] VAPID not configured — skipping send");
+    return;
+  }
   try {
     await webpush.sendNotification(
       { endpoint: subscription.endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth } },
@@ -24,7 +32,7 @@ export async function sendPush(subscription, title, body, url = "/") {
     );
   } catch (e) {
     if (e.statusCode === 410 || e.statusCode === 404) {
-      console.warn("[push] subscription expired/gone:", subscription.endpoint);
+      console.warn("[push] subscription expired/gone — should delete:", subscription.endpoint);
     } else {
       console.error("[push] send failed:", e.message);
     }

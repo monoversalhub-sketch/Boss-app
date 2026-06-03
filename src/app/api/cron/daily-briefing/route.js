@@ -22,8 +22,10 @@ export async function GET(request) {
     }
 
     const now = new Date();
+    now.setHours(0, 0, 0, 0);
     const weekEnd = new Date(now);
-    weekEnd.setDate(weekEnd.getDate() + 7);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
 
     let sent = 0;
 
