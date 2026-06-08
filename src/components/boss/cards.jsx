@@ -6,6 +6,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { C, S, STATUSES, MEAS_FIELDS } from "./tokens";
 import { fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, allOrders, orderStatus, isOverdue, isDueToday, computeTrustScore } from "./helpers";
 import { Sheet, SectionLabel } from "./ui";
+import { useBOSS } from "./context";
 
 export function TrustScoreCard({customers,onPress}){
   const ts=computeTrustScore(customers);const pct=ts.score;
@@ -206,13 +207,11 @@ const ORDER_META = {...S.rowBetween,marginTop:4};
 const ORDER_BALANCE = {fontSize:14,fontWeight:700};
 const BADGE_BASE = {fontSize:13,fontWeight:700,padding:"4px 10px",borderRadius:20,letterSpacing:"0.2px",flexShrink:0};
 const PARTIAL_BADGE = {fontSize:13,fontWeight:700,color:"#FF9F0A",background:"rgba(255,159,10,0.1)",padding:"2px 7px",borderRadius:10};
-const TODAY_HERO = {backgroundColor:C.dark,color:"#fff",borderRadius:24,padding:"28px 24px",boxShadow:"0 4px 20px rgba(0,0,0,0.12)",border:"none"};
-const TODAY_GRID = {display:"grid",gridTemplateColumns:"1fr 1fr",gap:12};
-const STAT_LABEL = {fontSize:13,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8};
-const STAT_NUMBER = {fontSize:28,fontWeight:800,lineHeight:1};
-const STAT_SUB = {fontSize:13,fontWeight:500,color:C.sub,marginTop:4};
+const MEAS_BADGE = {fontSize:13,fontWeight:700,color:C.accent,background:"rgba(0,102,204,0.1)",padding:"2px 7px",borderRadius:10,cursor:"pointer",border:"none",fontFamily:"inherit"};
 
 export function OrderCard({order,onClick}){
+  const {customers}=useBOSS();
+
   const overdue=isOverdue(order);const dueToday=isDueToday(order);
   const status=orderStatus(order);const bal=getBalance(order);
   const borderColor=overdue?"rgba(255,59,48,0.3)":dueToday?"rgba(255,159,10,0.3)":status==="Ready"?"rgba(52,199,89,0.3)":C.border;
@@ -233,7 +232,12 @@ export function OrderCard({order,onClick}){
         </div>
         <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{order.type||"—"}</div>
         <div style={ORDER_META}>
-          <div style={{fontSize:13,color:C.muted,fontWeight:600}}>📅 {fmtDate(order.date)}</div>
+          <div style={S.row}>
+            <div style={{fontSize:13,color:C.muted,fontWeight:600}}>📅 {fmtDate(order.date)}</div>
+            {(customers||[]).find(c=>c.name===order._cname)?.measurements&&Object.keys((customers||[]).find(c=>c.name===order._cname).measurements).length>0&&(
+              <button className="tap" onClick={e=>{e.stopPropagation();onClick?.();}} style={MEAS_BADGE}>📏</button>
+            )}
+          </div>
           <div style={S.row}>
             {getPaymentState(order)==="partially_paid"&&<div style={PARTIAL_BADGE}>PARTIAL</div>}
             {bal>0?<div style={{...ORDER_BALANCE,color:C.red}}>{fmt(bal)} due</div>:<div style={{...ORDER_BALANCE,color:C.green}}>Paid ✓</div>}

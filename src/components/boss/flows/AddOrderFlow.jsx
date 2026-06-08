@@ -1,11 +1,12 @@
 "use client";
 // src/components/boss/flows/AddOrderFlow.jsx
 import { useState, useEffect, useMemo, useRef } from "react";
-import { C, S, CLOTH_TYPES } from "../tokens";
+import { C, S, CLOTH_TYPES, MEAS_FIELDS } from "../tokens";
 import { uid, fmt, vibrate, waLink, buildReceiptText } from "../helpers";
 import { useBOSS } from "../context";
-import { Btn, Input, Select, Textarea, Flow, DatePicker } from "../ui";
+import { Btn, Input, Select, Textarea, Flow, DatePicker, SectionLabel } from "../ui";
 import { SmartPricingCalculator } from "../SmartPricingCalculator";
+import { MeasGrid } from "../cards";
 import { db } from "../../../lib/db";
 import { feedback } from "../../../lib/feedback";
 import { referral } from "../../../lib/referral";
@@ -24,10 +25,13 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   const [selectedImages, setSelectedImages] = useState([]);
   const [activeShortcut, setActiveShortcut] = useState(null);
   const fileInputRef = useRef(null);
+  const [meas, setMeas] = useState({});
+  const [measOpen, setMeasOpen] = useState(false);
 
   useEffect(() => {
     if (open) { const p = customers.find(c => c.id === prefilledCid);
       setName(p?.name || ""); setPhone(p?.phone || ""); setType(""); setPrice(""); setDeposit(""); setDate(""); setNotes(""); setMatches([]); setShowCalc(false); setIsSaving(false); savingRef.current = false;
+      setMeas({}); setMeasOpen(false);
       setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; }); }
     return () => setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; });
   }, [open, prefilledCid]);
@@ -61,8 +65,8 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
       const next = [...customers];
       let cust = next.find(c => c.id === prefilledCid) || next.find(c => c.name.toLowerCase() === name.trim().toLowerCase());
       const isNewCustomer = !cust;
-      if (isNewCustomer) { cust = { id: uid(), name: name.trim(), phone: phone.trim(), measurements: {}, orders: [] }; next.push(cust); }
-      else { if (phone.trim()) cust.phone = phone.trim(); }
+      if (isNewCustomer) { cust = { id: uid(), name: name.trim(), phone: phone.trim(), measurements: meas, orders: [] }; next.push(cust); }
+      else { if (phone.trim()) cust.phone = phone.trim(); if (Object.keys(meas).length) cust.measurements = { ...(cust.measurements||{}), ...meas }; }
       cust.orders = [order, ...(cust.orders || [])];
       setCustomers(next);
       let tailorId = null;
@@ -254,6 +258,19 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
           </div>
         </div>
         <Textarea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Style details, fabric colour, special requests…" />
+
+        <div style={{marginTop:4}}>
+          <button className="tap" onClick={()=>setMeasOpen(v=>!v)}
+            style={{background:measOpen?C.accent:C.s3,color:measOpen?"#fff":C.text,border:"none",borderRadius:12,padding:"12px 16px",fontSize:14,fontWeight:700,width:"100%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit"}}>
+            <span>{measOpen ? "▲" : "📏"} Measurements {Object.keys(meas).length > 0 && `(${Object.keys(meas).length})`}</span>
+            <span style={{fontSize:13,fontWeight:500,color:measOpen?"rgba(255,255,255,0.7)":C.sub}}>{measOpen ? "Hide" : "Add"}</span>
+          </button>
+          {measOpen && (
+            <div style={{marginTop:8}}>
+              <MeasGrid measurements={meas} onChange={setMeas} />
+            </div>
+          )}
+        </div>
       </Flow>
 
       {receiptPrompt && (
