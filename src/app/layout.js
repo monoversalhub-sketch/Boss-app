@@ -5,6 +5,9 @@ export const metadata = {
   title:       "BOSS — Build Trust. Grow Faster.",
   description: "The operating system for artisan businesses. Manage orders, clients, payments and grow your craft business.",
   manifest:    "/manifest.json",
+  verification: {
+    google: "googlec15a44381ada5908",
+  },
   icons: {
     icon:    [{ url: "/favicon.svg", type: "image/svg+xml" }],
     apple:   [{ url: "/favicon.svg", type: "image/svg+xml" }],
