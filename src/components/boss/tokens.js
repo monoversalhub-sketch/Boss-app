@@ -130,8 +130,8 @@ export const GLOBAL_CSS = `
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
   ::-webkit-scrollbar{width:0}
-  input,select,textarea,button{font-family:'Plus Jakarta Sans',sans-serif}
-  body{font-family:'Plus Jakarta Sans',sans-serif;background:#F5F5F7;color:#1C1C1E}
+  input,select,textarea,button{font-family:var(--font-plus-jakarta),sans-serif}
+  body{font-family:var(--font-plus-jakarta),sans-serif;background:#F5F5F7;color:#1C1C1E}
 
   .anim-boss  {animation:bossIn  0.6s cubic-bezier(0.34,1.56,0.64,1) both}
   .anim-up1   {animation:fadeUp  0.5s 0.3s both;opacity:0}

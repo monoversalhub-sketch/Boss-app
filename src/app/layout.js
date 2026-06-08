@@ -1,5 +1,13 @@
 // src/app/layout.js
 import "./globals.css";
+import { Plus_Jakarta_Sans } from "next/font/google";
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400","500","600","700","800"],
+  display: "swap",
+  variable: "--font-plus-jakarta",
+});
 
 export const metadata = {
   title:       "BOSS — Build Trust. Grow Faster.",
@@ -31,16 +39,10 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={plusJakarta.variable}>
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
         <link rel="apple-touch-icon" href="/favicon.svg"/>
-        <link rel="preconnect" href="https://fonts.googleapis.com"/>
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-        />
       </head>
       <body>{children}</body>
     </html>
