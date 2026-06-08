@@ -32,6 +32,18 @@ async function getBrowserClient() {
   return _browserClient;
 }
 
+// ── Session-scoped user cache (avoids redundant auth.getUser() calls) ──
+let _cachedUser = null;
+let _cachedTailorId = null;
+
+async function getCachedUser() {
+  if (_cachedUser) return _cachedUser;
+  const client = await getBrowserClient();
+  const { data } = await client.auth.getUser();
+  _cachedUser = data?.user || null;
+  return _cachedUser;
+}
+
 // ── Sync status callback (registered by BOSSApp.jsx) ───────────────
 let _syncCallback = null;
 
@@ -159,6 +171,8 @@ async function updateBosScore(tailorId) {
     },
 
     async signOut() {
+      _cachedUser = null;
+      _cachedTailorId = null;
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -173,27 +187,27 @@ async function updateBosScore(tailorId) {
   async getTailor() {
     try {
       const client = await getBrowserClient();
-      const { data: authData, error: authError } = await client.auth.getUser();
-      if (authError || !authData?.user) return null;
+      const authUser = await getCachedUser();
+      if (!authUser) return null;
       const { data } = await client
         .from("tailors")
         .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at,google_drive_refresh_token,notif_delivery,notif_payments,notif_briefing")
-        .eq("user_id", authData.user.id)
+        .eq("user_id", authUser.id)
         .single();
-      if (data) lsSet("boss_tailor", data);
+      if (data) { lsSet("boss_tailor", data); _cachedTailorId = data.id; }
       return data || null;
     } catch (e) {
       console.warn("[db.getTailor] full query failed, retrying with core columns:", e.message);
       try {
         const client = await getBrowserClient();
-        const { data: authData, error: authError } = await client.auth.getUser();
-        if (authError || !authData?.user) return null;
+        const authUser = await getCachedUser();
+        if (!authUser) return null;
         const { data } = await client
           .from("tailors")
           .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at")
-          .eq("user_id", authData.user.id)
+          .eq("user_id", authUser.id)
           .single();
-        if (data) lsSet("boss_tailor", data);
+        if (data) { lsSet("boss_tailor", data); _cachedTailorId = data.id; }
         return data || null;
       } catch (e2) {
         console.error("[db.getTailor] fallback query also failed:", e2);
@@ -238,12 +252,12 @@ async function updateBosScore(tailorId) {
   async getCustomers() {
     try {
       const client = await getBrowserClient();
-      const { data: authData, error: authError } = await client.auth.getUser();
-      if (authError || !authData?.user) return [];
+      const authUser = await getCachedUser();
+      if (!authUser) return [];
       const { data: tailor } = await client
         .from("tailors")
         .select("id")
-        .eq("user_id", authData.user.id)
+        .eq("user_id", authUser.id)
         .single();
       if (!tailor) return [];
       const { data } = await client
@@ -477,7 +491,11 @@ async function updateBosScore(tailorId) {
   // Get the internal tailor UUID (needed for addCustomer/addOrder targeted writes)
   // Auto-creates the tailors row if missing (defensive guard for existing users
   // who signed up before the auto-profile trigger was added).
-  async getTailorId() {
+    getTailorIdSync() {
+      return _cachedTailorId || null;
+    },
+
+    async getTailorId() {
     try {
       const client = await getBrowserClient();
       const { data: authData } = await client.auth.getUser();

@@ -10,7 +10,7 @@
 // boss/flows/       — AddOrderFlow, OrderDetailFlow, RemindersFlow…
 // boss/tabs/        — TodayTab, EarningsTab, CustomersTab, ProfileTab…
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { db } from "../lib/db";
+import { db, ls } from "../lib/db";
 import { feedback } from "../lib/feedback";
 import { referral } from "../lib/referral";
 import { FeedbackSheet } from "./boss/FeedbackSheet";
@@ -67,36 +67,48 @@ function BOSSApp(){
   const[justCameOnline,setJustCameOnline]=useState(false);
 
   useEffect(()=>{
-    const minWait   = new Promise(r=>setTimeout(r,800));
-    const hardLimit = new Promise(r=>setTimeout(r,5000));
+    const cachedTailor = ls("boss_tailor", null);
+    const cachedCustomers = ls("boss_customers", null);
+    const hasValidCache = cachedTailor?.shop && Array.isArray(cachedCustomers);
 
-    const checkSession = (async()=>{
-      try{
-        const session=await db.getSession();
-        if(!session){
-          localStorage.removeItem("boss_tailor");
-          localStorage.removeItem("boss_customers");
-          return{session:null};
+    if (hasValidCache) {
+      setTailorState(cachedTailor);
+      setCustomersState(cachedCustomers);
+      setScreen("app");
+      (async()=>{
+        try{
+          const [freshTailor, freshCustomers] = await Promise.all([db.getTailor(), db.getCustomers()]);
+          if (freshTailor) setTailorState(freshTailor);
+          if (freshCustomers) setCustomersState(freshCustomers);
+        }catch(e){
+          console.warn("[BOSS] Background refresh failed:", e);
         }
-        return{session};
-      }catch(e){
-        console.error("BOSS load error:",e);
-        return{session:null};
-      }
-    })();
-
-    Promise.race([
-      Promise.all([minWait, checkSession]).then(([,result])=>result),
-      hardLimit.then(()=>({ session: null, _timedOut: true })),
-    ]).then(({session,_timedOut})=>{
-      if(_timedOut){
-        console.warn("[BOSS] Splash timed out — forcing auth screen");
-        setScreen("auth");return;
-      }
-      if(!session){setScreen("auth");return;}
-      setPendingSession(session);
-      setScreen("gate");
-    });
+      })();
+    } else {
+      const minWait = new Promise(r=>setTimeout(r,600));
+      const hardLimit = new Promise(r=>setTimeout(r,5000));
+      const dataLoad = (async()=>{
+        try{
+          const session = await db.getSession();
+          const [t, c] = await Promise.all([db.getTailor(), db.getCustomers()]);
+          setTailorState(t);
+          setCustomersState(c || []);
+          return { session, t };
+        }catch(e){
+          console.error("BOSS load error:", e);
+          return { session: null, t: null };
+        }
+      })();
+      Promise.race([
+        Promise.all([minWait, dataLoad]).then(([, result])=>result),
+        hardLimit.then(()=>({ session: null, t: null, _timedOut: true })),
+      ]).then(({ session, t, _timedOut })=>{
+        if(_timedOut){ setScreen("auth"); return; }
+        if(!session){ setScreen("auth"); return; }
+        setPendingSession(session);
+        setScreen("gate");
+      });
+    }
   },[]);
 
   async function handleSessionContinue(){
