@@ -111,6 +111,51 @@ export const S = {
     justifyContent:"center",
     gap:8,
   },
+  row: {
+    display:"flex",
+    alignItems:"center",
+    gap:12,
+  },
+  rowBetween: {
+    display:"flex",
+    alignItems:"center",
+    justifyContent:"space-between",
+  },
+  col: {
+    display:"flex",
+    flexDirection:"column",
+  },
+  flexCenter: {
+    display:"flex",
+    alignItems:"center",
+    justifyContent:"center",
+  },
+  sectionTitle: {
+    fontSize:15,
+    fontWeight:700,
+    color:C.sub,
+    marginBottom:14,
+  },
+  cardSection: {
+    backgroundColor:C.s1,
+    border:"1px solid #E5E5EA",
+    borderRadius:20,
+    padding:20,
+  },
+  pillBtn: (active) => ({
+    padding:"12px 20px",
+    borderRadius:20,
+    fontSize:14,
+    fontWeight:active ? 700 : 600,
+    minHeight:48,
+    backgroundColor:active ? C.dark : C.s3,
+    color:active ? "#fff" : "#71717A",
+    border:"none",
+    cursor:"pointer",
+    whiteSpace:"nowrap",
+    flexShrink:0,
+    transition:"all 0.15s",
+  }),
 };
 
 // ─────────────────────────────────────────

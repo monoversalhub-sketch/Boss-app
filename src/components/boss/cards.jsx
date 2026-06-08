@@ -170,29 +170,24 @@ export function TodayMoneyCard({customers}){
   const unpaid  =active.reduce((s,o)=>s+getBalance(o),0);
   const todayIncome=dueToday.reduce((s,o)=>s+getBalance(o),0);
   return(
-    <div style={{padding:"0 20px",display:"flex",flexDirection:"column",gap:12}}>
+    <div style={{padding:"0 20px",...S.col,gap:12}}>
       {/* Dark hero card - matches reference */}
-      <div style={{
-        backgroundColor:C.dark,color:"#fff",
-        borderRadius:24,padding:"28px 24px",
-        boxShadow:"0 4px 20px rgba(0,0,0,0.12)",
-        border:"none",
-      }}>
+      <div style={TODAY_HERO}>
         <div style={{fontSize:13,fontWeight:700,color:"#A1A1AA",textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:12}}>Expected Today</div>
         <div style={{fontSize:42,fontWeight:800,letterSpacing:"-1.5px",color:"#fff",lineHeight:1}}>{fmt(todayIncome)}</div>
         <div style={{fontSize:14,fontWeight:500,color:"#A1A1AA",marginTop:10}}>from {dueToday.length} job{dueToday.length!==1?"s":""} due today</div>
       </div>
       {/* Stats grid */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      <div style={TODAY_GRID}>
         <div style={{...S.card,padding:20}}>
-          <div style={{fontSize:13,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Overdue</div>
-          <div style={{fontSize:28,fontWeight:800,color:overdue.length?C.red:"#D4D4D8",lineHeight:1}}>{overdue.length}</div>
-          <div style={{fontSize:13,fontWeight:500,color:C.sub,marginTop:4}}>jobs</div>
+          <div style={STAT_LABEL}>Overdue</div>
+          <div style={{...STAT_NUMBER,color:overdue.length?C.red:"#D4D4D8"}}>{overdue.length}</div>
+          <div style={STAT_SUB}>jobs</div>
         </div>
         <div style={{...S.card,padding:20}}>
-          <div style={{fontSize:13,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8}}>Unpaid</div>
+          <div style={STAT_LABEL}>Unpaid</div>
           <div style={{fontSize:22,fontWeight:800,color:unpaid?C.accent:"#D4D4D8",letterSpacing:"-0.5px",lineHeight:1}}>{fmt(unpaid)}</div>
-          <div style={{fontSize:13,fontWeight:500,color:C.sub,marginTop:4}}>outstanding</div>
+          <div style={STAT_SUB}>outstanding</div>
         </div>
       </div>
     </div>
@@ -202,6 +197,21 @@ export function TodayMoneyCard({customers}){
 // ─────────────────────────────────────────
 // ORDER CARD
 // ─────────────────────────────────────────
+// ── Static style objects ─────────────────────────────────────────────
+const ORDER_IMG = {width:80,height:80,borderRadius:12,objectFit:"cover",flexShrink:0,background:C.s3};
+const ORDER_PLACEHOLDER = {width:80,height:80,borderRadius:12,background:C.s3,flexShrink:0,...S.flexCenter,fontSize:24};
+const ORDER_BODY = {flex:1,...S.col,gap:7};
+const ORDER_ROW = {...S.rowBetween,gap:8};
+const ORDER_META = {...S.rowBetween,marginTop:4};
+const ORDER_BALANCE = {fontSize:14,fontWeight:700};
+const BADGE_BASE = {fontSize:13,fontWeight:700,padding:"4px 10px",borderRadius:20,letterSpacing:"0.2px",flexShrink:0};
+const PARTIAL_BADGE = {fontSize:13,fontWeight:700,color:"#FF9F0A",background:"rgba(255,159,10,0.1)",padding:"2px 7px",borderRadius:10};
+const TODAY_HERO = {backgroundColor:C.dark,color:"#fff",borderRadius:24,padding:"28px 24px",boxShadow:"0 4px 20px rgba(0,0,0,0.12)",border:"none"};
+const TODAY_GRID = {display:"grid",gridTemplateColumns:"1fr 1fr",gap:12};
+const STAT_LABEL = {fontSize:13,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:8};
+const STAT_NUMBER = {fontSize:28,fontWeight:800,lineHeight:1};
+const STAT_SUB = {fontSize:13,fontWeight:500,color:C.sub,marginTop:4};
+
 export function OrderCard({order,onClick}){
   const overdue=isOverdue(order);const dueToday=isDueToday(order);
   const status=orderStatus(order);const bal=getBalance(order);
@@ -210,23 +220,23 @@ export function OrderCard({order,onClick}){
   const badgeText=overdue?"Overdue":dueToday?"Due Today":status;
   const imgUrl=order.imageUrls?.[0];
   return(
-    <div className="tap" onClick={onClick} style={{...S.card,border:`1px solid ${borderColor}`,display:"flex",flexDirection:"row",alignItems:"center",gap:12}}>
+    <div className="tap" onClick={onClick} style={{...S.card,border:`1px solid ${borderColor}`,...S.row}}>
       {imgUrl?(
-        <img src={imgUrl} alt="" style={{width:80,height:80,borderRadius:12,objectFit:"cover",flexShrink:0,background:C.s3}}/>
+        <img src={imgUrl} alt="" style={ORDER_IMG}/>
       ):(
-        <div style={{width:80,height:80,borderRadius:12,background:C.s3,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>✂️</div>
+        <div style={ORDER_PLACEHOLDER}>✂️</div>
       )}
-      <div style={{flex:1,display:"flex",flexDirection:"column",gap:7}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+      <div style={ORDER_BODY}>
+        <div style={ORDER_ROW}>
           <div style={{fontSize:16,fontWeight:700,color:C.text}}>{order._cname||order.customerName||"—"}</div>
-          <div style={{...badgeStyle,fontSize:13,fontWeight:700,padding:"4px 10px",borderRadius:20,letterSpacing:"0.2px",flexShrink:0}}>{badgeText}</div>
+          <div style={{...badgeStyle,...BADGE_BASE}}>{badgeText}</div>
         </div>
         <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{order.type||"—"}</div>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
+        <div style={ORDER_META}>
           <div style={{fontSize:13,color:C.muted,fontWeight:600}}>📅 {fmtDate(order.date)}</div>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            {getPaymentState(order)==="partially_paid"&&<div style={{fontSize:13,fontWeight:700,color:"#FF9F0A",background:"rgba(255,159,10,0.1)",padding:"2px 7px",borderRadius:10}}>PARTIAL</div>}
-            {bal>0?<div style={{fontSize:14,fontWeight:700,color:C.red}}>{fmt(bal)} due</div>:<div style={{fontSize:14,fontWeight:700,color:C.green}}>Paid ✓</div>}
+          <div style={S.row}>
+            {getPaymentState(order)==="partially_paid"&&<div style={PARTIAL_BADGE}>PARTIAL</div>}
+            {bal>0?<div style={{...ORDER_BALANCE,color:C.red}}>{fmt(bal)} due</div>:<div style={{...ORDER_BALANCE,color:C.green}}>Paid ✓</div>}
           </div>
         </div>
       </div>

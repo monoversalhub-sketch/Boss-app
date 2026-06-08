@@ -45,6 +45,21 @@ const IconClients = ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="no
 const IconEarnings = ()=><span style={{fontSize:20,fontWeight:900,lineHeight:1}}>₦</span>;
 const IconProfile = ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
 
+// ── Static style objects ─────────────────────────────────────────────
+const BOSS_ROOT = {height:"100svh",overflow:"hidden"};
+const APP_ROOT  = {height:"100svh",display:"flex",flexDirection:"column",backgroundColor:C.bg,overflow:"hidden",position:"relative"};
+const NAV_BAR   = {position:"fixed",bottom:0,left:0,right:0,zIndex:50,display:"flex",justifyContent:"center",padding:"0 24px 32px"};
+const NAV_INNER = {display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",width:"100%",maxWidth:400,backgroundColor:"rgba(28,28,30,0.97)",borderRadius:32,border:"1px solid rgba(255,255,255,0.08)",boxShadow:"0 8px 32px rgba(0,0,0,0.3)"};
+const NAV_BTN   = {flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,backgroundColor:"transparent",border:"none",cursor:"pointer",padding:"10px 0",transition:"color 0.15s"};
+const NAV_ICON  = {transition:"transform 0.2s cubic-bezier(0.34,1.56,0.64,1)"};
+const NAV_LABEL = {fontSize:13,letterSpacing:"0px",textTransform:"none"};
+const ADD_BTN   = {width:56,height:56,backgroundColor:C.accent,borderRadius:20,border:"4px solid #2C2C2E",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#FFFFFF",boxShadow:"0 8px 24px rgba(0,102,204,0.4)",flexShrink:0,margin:"0 4px"};
+const OFFLINE_BANNER = {background:"#FFC107",color:"#000",fontSize:13,fontWeight:700,padding:"10px 16px",textAlign:"center",flexShrink:0};
+const ONLINE_BANNER  = {background:C.green,color:"#fff",fontSize:13,fontWeight:700,padding:"10px 16px",textAlign:"center",flexShrink:0};
+const SCROLLABLE_CONTENT = {flex:1,paddingBottom:140};
+const TAB_VISIBLE = {display:"flex",flexDirection:"column",height:"100%",overflow:"auto"};
+const TAB_HIDDEN  = {display:"none"};
+
 function BOSSApp(){
   const[screen,setScreen]=useState("splash"); // "splash" | "auth" | "setup" | "app"
   const[tailor,setTailorState]=useState(null);
@@ -311,19 +326,19 @@ function BOSSApp(){
 
   if(screen==="splash")return(
     <><GlobalStyles/>
-    <div id="boss-root" style={{height:"100svh",overflow:"hidden"}}><SplashScreen/></div></>
+    <div id="boss-root" style={BOSS_ROOT}><SplashScreen/></div></>
   );
   if(screen==="auth")return(
     <><GlobalStyles/>
-    <div id="boss-root" style={{height:"100svh",overflow:"hidden"}}><AuthScreen onAuthSuccess={handleAuthSuccess}/></div></>
+    <div id="boss-root" style={BOSS_ROOT}><AuthScreen onAuthSuccess={handleAuthSuccess}/></div></>
   );
   if(screen==="setup")return(
     <><GlobalStyles/>
-    <div id="boss-root" style={{height:"100svh",overflow:"hidden"}}><SetupScreen onComplete={handleSetupComplete} onCompleteAndAddOrder={handleSetupCompleteAndAddOrder}/></div></>
+    <div id="boss-root" style={BOSS_ROOT}><SetupScreen onComplete={handleSetupComplete} onCompleteAndAddOrder={handleSetupCompleteAndAddOrder}/></div></>
   );
   if(screen==="gate"&&pendingSession)return(
     <><GlobalStyles/>
-    <div id="boss-root" style={{height:"100svh",overflow:"hidden"}}>
+    <div id="boss-root" style={BOSS_ROOT}>
       <SessionGate session={pendingSession} onContinue={handleSessionContinue} onSwitch={handleSessionSwitch}/>
     </div></>
   );
@@ -344,7 +359,7 @@ function BOSSApp(){
     <BOSSContext.Provider value={bossCtx}>
     <>
       <GlobalStyles/>
-      <div id="boss-root" style={{height:"100svh",display:"flex",flexDirection:"column",backgroundColor:C.bg,overflow:"hidden",position:"relative"}}>
+      <div id="boss-root" style={APP_ROOT}>
 
         {/* ── MISSING-03: Sync + network status indicator ── */}
         {statusDisplay!=="idle"&&(
@@ -382,70 +397,40 @@ function BOSSApp(){
         )}
 
         {!isOnline && (
-          <div style={{background:"#FFC107",color:"#000",fontSize:13,fontWeight:700,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
+          <div style={OFFLINE_BANNER}>
             Offline — changes saved on your phone, will sync when back online
           </div>
         )}
         {justCameOnline && (
-          <div style={{background:C.green,color:"#fff",fontSize:13,fontWeight:700,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
+          <div style={ONLINE_BANNER}>
             Back online — syncing your data...
           </div>
         )}
 
         {/* ── SCROLLABLE CONTENT ── */}
-        <div className="scrollable" style={{flex:1,paddingBottom:140}}>
-          {tab==="today"    &&<TodayTab     tailor={tailor} onAddOrder={()=>openAddOrder(null)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)} onCalendar={()=>setCalendarOpen(true)} isLoading={loadingData}/>}
-          {tab==="customers"&&<CustomersTab onOpenCustomer={openCustomerDetail} onAddClient={()=>setAddClientOpen(true)}/>}
-          {tab==="earnings" &&<EarningsTab/>}
-          {tab==="profile"  &&<ProfileTab onFeedbackTrigger={handleFeedbackTrigger} onTour={()=>setTourOpen(true)}/>}
+        <div className="scrollable" style={SCROLLABLE_CONTENT}>
+          <div style={tab==="today" ? TAB_VISIBLE : TAB_HIDDEN}><TodayTab     tailor={tailor} onAddOrder={()=>openAddOrder(null)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)} onCalendar={()=>setCalendarOpen(true)} isLoading={loadingData}/></div>
+          <div style={tab==="customers" ? TAB_VISIBLE : TAB_HIDDEN}><CustomersTab onOpenCustomer={openCustomerDetail} onAddClient={()=>setAddClientOpen(true)}/></div>
+          <div style={tab==="earnings" ? TAB_VISIBLE : TAB_HIDDEN}><EarningsTab/></div>
+          <div style={tab==="profile" ? TAB_VISIBLE : TAB_HIDDEN}><ProfileTab onFeedbackTrigger={handleFeedbackTrigger} onTour={()=>setTourOpen(true)}/></div>
         </div>
 
         {/* ── BOTTOM NAV — exact reference design ── */}
-        <div style={{
-          position:"fixed",bottom:0,left:0,right:0,
-          zIndex:50,
-          display:"flex",justifyContent:"center",
-          padding:"0 24px 32px",
-        }}>
-          <div style={{
-            display:"flex",alignItems:"center",justifyContent:"space-between",
-            padding:"6px 10px",
-            width:"100%",maxWidth:400,
-            backgroundColor:"rgba(28,28,30,0.97)",
-            borderRadius:32,
-            border:"1px solid rgba(255,255,255,0.08)",
-            boxShadow:"0 8px 32px rgba(0,0,0,0.3)",
-          }}>
+        <div style={NAV_BAR}>
+          <div style={NAV_INNER}>
             {/* Left items */}
             {NAV_LEFT.map(n=>{
               const active=tab===n.id;
               return(
-                <button key={n.id} onClick={()=>{setTab(n.id);vibrate(4);}} style={{
-                  flex:1,display:"flex",flexDirection:"column",alignItems:"center",
-                  justifyContent:"center",gap:4,backgroundColor:"transparent",border:"none",
-                  cursor:"pointer",padding:"10px 0",
-                  color:active?"#FFFFFF":"rgba(255,255,255,0.4)",
-                  transition:"color 0.15s",
-                }}>
-                  <div style={{transform:active?"scale(1.1)":"scale(1)",transition:"transform 0.2s cubic-bezier(0.34,1.56,0.64,1)"}}>{n.icon}</div>
-                  <div style={{fontSize:13,fontWeight:active?800:600,letterSpacing:"0px",textTransform:"none"}}>{n.label}</div>
+                <button key={n.id} onClick={()=>{setTab(n.id);vibrate(4);}} style={{...NAV_BTN,color:active?"#FFFFFF":"rgba(255,255,255,0.4)"}}>
+                  <div style={{...NAV_ICON,transform:active?"scale(1.1)":"scale(1)"}}>{n.icon}</div>
+                  <div style={{...NAV_LABEL,fontWeight:active?800:600}}>{n.label}</div>
                 </button>
               );
             })}
 
             {/* Center + button — opens Add Order directly */}
-            <button className="tap" onClick={()=>openAddOrder(null)} style={{
-              width:56,height:56,
-              backgroundColor:C.accent,
-              borderRadius:20,
-              border:"4px solid #2C2C2E",
-              cursor:"pointer",
-              display:"flex",alignItems:"center",justifyContent:"center",
-              color:"#FFFFFF",
-              boxShadow:"0 8px 24px rgba(0,102,204,0.4)",
-              flexShrink:0,
-              margin:"0 4px",
-            }}>
+            <button className="tap" onClick={()=>openAddOrder(null)} style={ADD_BTN}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
                 <path d="M12 5v14M5 12h14" stroke="#fff" strokeWidth="3" strokeLinecap="round"/>
               </svg>
@@ -455,15 +440,9 @@ function BOSSApp(){
             {NAV_RIGHT.map(n=>{
               const active=tab===n.id;
               return(
-                <button key={n.id} onClick={()=>{setTab(n.id);vibrate(4);}} style={{
-                  flex:1,display:"flex",flexDirection:"column",alignItems:"center",
-                  justifyContent:"center",gap:4,backgroundColor:"transparent",border:"none",
-                  cursor:"pointer",padding:"10px 0",
-                  color:active?"#FFFFFF":"rgba(255,255,255,0.4)",
-                  transition:"color 0.15s",
-                }}>
-                  <div style={{transform:active?"scale(1.1)":"scale(1)",transition:"transform 0.2s cubic-bezier(0.34,1.56,0.64,1)"}}>{n.icon}</div>
-                  <div style={{fontSize:13,fontWeight:active?800:600,letterSpacing:"0px",textTransform:"none"}}>{n.label}</div>
+                <button key={n.id} onClick={()=>{setTab(n.id);vibrate(4);}} style={{...NAV_BTN,color:active?"#FFFFFF":"rgba(255,255,255,0.4)"}}>
+                  <div style={{...NAV_ICON,transform:active?"scale(1.1)":"scale(1)"}}>{n.icon}</div>
+                  <div style={{...NAV_LABEL,fontWeight:active?800:600}}>{n.label}</div>
                 </button>
               );
             })}
