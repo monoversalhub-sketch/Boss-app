@@ -283,7 +283,7 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
                   <div key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: `1px solid ${C.border}` }}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{f.name}</div>
-                      <div style={{ fontSize: 11, color: C.sub }}>{f.createdTime?.slice(0, 10)}</div>
+                      <div style={{ fontSize: 13, color: C.sub }}>{f.createdTime?.slice(0, 10)}</div>
                     </div>
                     <button onClick={() => restoreFromDrive(f.id)} disabled={driveBusy}
                       style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: C.s3, color: C.text, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
@@ -491,7 +491,7 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: C.sub, marginTop: 16,
+          <div style={{ fontSize: 13, color: C.sub, marginTop: 16,
             textTransform: "uppercase", letterSpacing: 1 }}>
             Your Referral Code
           </div>

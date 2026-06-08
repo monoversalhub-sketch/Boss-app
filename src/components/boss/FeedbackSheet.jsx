@@ -78,8 +78,8 @@ export function FeedbackSheet({ open, type, trigger, screen, onClose }) {
             ))}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "0 6px", marginBottom: 16 }}>
-            <div style={{ fontSize: 11, color: C.sub }}>Not at all</div>
-            <div style={{ fontSize: 11, color: C.sub }}>Definitely yes</div>
+            <div style={{ fontSize: 13, color: C.sub }}>Not at all</div>
+            <div style={{ fontSize: 13, color: C.sub }}>Definitely yes</div>
           </div>
           {score !== null && score <= 8 && (
             <textarea value={message} onChange={e => setMessage(e.target.value)}

@@ -53,8 +53,8 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
 
   async function save() {
     if (savingRef.current) return;
-    if (!name.trim()) { toast("⚠️ Enter customer name"); return; }
-    if (!date) { toast("⚠️ Set a delivery date"); return; }
+    if (!name.trim()) { toast("⚠️ Please add a customer name to continue"); return; }
+    if (!date) { toast("⚠️ When do you need to deliver this? Add a date."); return; }
     savingRef.current = true; setIsSaving(true);
     try {
       const order = { id: uid(), type, price: parseFloat(stripCommas(price)) || 0, deposit: parseFloat(stripCommas(deposit)) || 0, paid: 0, date, notes, status: "In Progress", createdAt: new Date().toISOString() };
@@ -121,7 +121,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
       else { onClose(); toast("✅ Order saved!"); }
     } catch (e) {
       console.error("[AddOrderFlow save]", e);
-      toast("❌ Could not save. Try again.");
+      toast("❌ Something went wrong. Your data is safe — try again.");
     } finally {
       savingRef.current = false; setIsSaving(false);
     }

@@ -249,7 +249,7 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
               <Input label="Account Number" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder="0123456789" />
               <Input label="Account Name" value={accountName} onChange={e => setAccountName(e.target.value)} placeholder="e.g. CHIDI OKONKWO" />
               <div style={{ backgroundColor: C.s2, borderRadius: 12, padding: "12px 14px", marginTop: 8, border: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 11, color: C.sub, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+                <div style={{ fontSize: 13, color: C.sub, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
                   PREVIEW — How customers see it
                 </div>
                 <div style={{ fontSize: 13, color: C.text }}>

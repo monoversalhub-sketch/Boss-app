@@ -82,7 +82,7 @@ export function CalendarFlow({open,onClose}){
       {/* Day headers */}
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,paddingBottom:6,marginBottom:4}}>
         {DAYS.map(d=>(
-          <div key={d} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700,color:C.sub,textTransform:"uppercase"}}>{d}</div>
+          <div key={d} style={{flex:1,textAlign:"center",fontSize:13,fontWeight:700,color:C.sub,textTransform:"uppercase"}}>{d}</div>
         ))}
       </div>
 
@@ -141,7 +141,7 @@ export function CalendarFlow({open,onClose}){
       </div>
 
       {/* Legend */}
-      <div style={{display:"flex",gap:12,padding:"12px 16px",borderTop:`1px solid ${C.border}`,marginTop:8,fontSize:11,color:C.sub,justifyContent:"center"}}>
+      <div style={{display:"flex",gap:12,padding:"12px 16px",borderTop:`1px solid ${C.border}`,marginTop:8,fontSize:13,color:C.sub,justifyContent:"center"}}>
         <span style={{display:"flex",alignItems:"center",gap:4}}>● Free</span>
         <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{color:DOT_COLORS[0]}}>●</span> Light (1)</span>
         <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{color:DOT_COLORS[1]}}>●</span> Busy (2)</span>

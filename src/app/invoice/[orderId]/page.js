@@ -148,7 +148,7 @@ export default async function InvoicePage({ params }) {
               }}>B</div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.3px" }}>BOSS</div>
-                <div style={{ fontSize: 11, color: C.sub }}>Build Trust. Grow Faster.</div>
+                <div style={{ fontSize: 13, color: C.sub }}>Build Trust. Grow Faster.</div>
               </div>
             </div>
             <div style={{
@@ -172,7 +172,7 @@ export default async function InvoicePage({ params }) {
             padding:      "20px",
             marginBottom: 16,
           }}>
-            <div style={{ fontSize: 11, color: C.sub, fontWeight: 600,
+            <div style={{ fontSize: 13, color: C.sub, fontWeight: 600,
               textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>
               From
             </div>
@@ -196,7 +196,7 @@ export default async function InvoicePage({ params }) {
             <div style={{ display: "flex", justifyContent: "space-between",
               alignItems: "flex-start", marginBottom: 16 }}>
               <div>
-                <div style={{ fontSize: 11, color: C.sub, fontWeight: 600,
+                <div style={{ fontSize: 13, color: C.sub, fontWeight: 600,
                   textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>
                   For
                 </div>
@@ -244,7 +244,7 @@ export default async function InvoicePage({ params }) {
             padding:      "20px",
             marginBottom: 20,
           }}>
-            <div style={{ fontSize: 11, color: C.sub, fontWeight: 600,
+            <div style={{ fontSize: 13, color: C.sub, fontWeight: 600,
               textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12 }}>
               Payment Summary
             </div>
@@ -293,7 +293,7 @@ export default async function InvoicePage({ params }) {
               padding:      "20px",
               marginBottom: 20,
             }}>
-              <div style={{ fontSize: 11, color: C.sub, fontWeight: 600,
+              <div style={{ fontSize: 13, color: C.sub, fontWeight: 600,
                 textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12 }}>
                 To pay {tailor.shop}
               </div>
