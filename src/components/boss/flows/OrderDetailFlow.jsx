@@ -21,6 +21,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
   const[heroIndex,setHeroIndex]=useState(0);
   const photoInputRef=useRef(null);
   const payRef=useRef(null);
+  const[receiptPrompt,setReceiptPrompt]=useState(null);
   const found=(()=>{for(const c of customers){const o=(c.orders||[]).find(x=>x.id===orderId);if(o)return{order:o,customer:c};}return null;})();
   if(!found||!open)return null;
   const{order,customer}=found;
@@ -63,6 +64,11 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
     if (state === "fully_paid") vibrate([8, 50, 8, 50, 16]);
     else vibrate([8, 60, 8]);
     toast(state==="fully_paid"?"✅ Fully paid! Great work. 🎉":"✅ Payment recorded — "+fmt(getBalance({...order,paid:newPaid}))+" remaining");
+
+    const hasPhone=!!(customer.phone||"").trim();
+    if(hasPhone){
+      setTimeout(()=>setReceiptPrompt({order:{...order,paid:newPaid},customer}),1000);
+    }
   }
   async function deleteOrder(){
     if (tailor?.google_drive_refresh_token && order.google_event_id) {
@@ -312,6 +318,25 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
           </div>
           <Btn variant="danger" onClick={deleteOrder} style={{marginBottom:12}}>Yes, Delete Order</Btn>
           <Btn variant="outline" onClick={()=>setConfirmDelete(false)}>Cancel</Btn>
+        </div>
+      </div>
+    )}
+    {receiptPrompt&&(
+      <div style={{position:"fixed",inset:0,zIndex:500,display:"flex",alignItems:"flex-end"}}>
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)"}} onClick={()=>setReceiptPrompt(null)}/>
+        <div className="anim-slide" style={{position:"relative",zIndex:1,background:C.s1,borderRadius:"32px 32px 0 0",padding:"28px 24px 48px",width:"100%"}}>
+          <div style={{fontSize:24,marginBottom:8,textAlign:"center"}}>🧾</div>
+          <div style={{fontSize:19,fontWeight:900,color:C.text,marginBottom:8,textAlign:"center"}}>
+            Send receipt to {receiptPrompt.customer.name}?
+          </div>
+          <div style={{fontSize:14,color:C.sub,lineHeight:1.6,marginBottom:24,textAlign:"center"}}>
+            A WhatsApp receipt with the updated payment info. One tap — they see it instantly.
+          </div>
+          <Btn variant="wa" onClick={()=>{
+            setReceiptPrompt(null);
+            waReceipt();
+          }} style={{marginBottom:12}}><span>💬</span> Send on WhatsApp</Btn>
+          <Btn variant="outline" onClick={()=>setReceiptPrompt(null)}>Skip</Btn>
         </div>
       </div>
     )}
