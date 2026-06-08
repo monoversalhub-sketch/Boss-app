@@ -1,54 +1,94 @@
 "use client";
 // src/components/boss/EarningsTab.jsx
-import { useMemo } from "react";
-import { C } from "../tokens";
+import { useMemo, useState } from "react";
+import { C, S } from "../tokens";
 import { computeEarnings, allOrders, fmt } from "../helpers";
 import { useBOSS } from "../context";
 import { SectionLabel, EmptyState } from "../ui";
 
+const PERIODS = [
+  {k:"week", l:"This Week"},
+  {k:"month", l:"This Month"},
+  {k:"all", l:"All Time"},
+];
+
 export function EarningsTab() {
   const { customers } = useBOSS();
+  const [period, setPeriod] = useState("month");
   const earnings = useMemo(() => computeEarnings(customers), [customers]);
-  const { totalCollected, totalOwed, debtors, thisMonth, bestJob, worstJob, totalOrders, paidOrders } = earnings;
+  const { totalCollected, totalOwed, debtors, bestJob, worstJob, totalOrders, paidOrders } = earnings;
   const orders = useMemo(() => allOrders(customers), [customers]);
 
   const now = new Date();
+  const filtered = useMemo(()=>{
+    const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate()-now.getDay()); startOfWeek.setHours(0,0,0,0);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return orders.filter(o=>{
+      if(period==="all") return true;
+      const ts = o.createdAt || o.created_at;
+      const d = ts ? new Date(ts) : null;
+      if(!d) return false;
+      const start = period==="week" ? startOfWeek : startOfMonth;
+      return d >= start;
+    });
+  },[orders,period]);
+
+  const periodCollected = filtered.reduce((s,o)=>s+(parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0),0);
+  const periodOwed = filtered.reduce((s,o)=>{const b=Math.max(0,(parseFloat(o.price)||0)-(parseFloat(o.deposit)||0)-(parseFloat(o.paid)||0));return s+b;},0);
+  const periodDebtors = (()=>{
+    const map={};
+    filtered.forEach(o=>{
+      const bal=Math.max(0,(parseFloat(o.price)||0)-(parseFloat(o.deposit)||0)-(parseFloat(o.paid)||0));
+      if(bal<=0)return;
+      const cid=o._cid||o.customer_id;
+      const c=(customers||[]).find(x=>x.id===cid);
+      if(!c)return;
+      if(!map[c.id]) map[c.id]={name:c.name,owed:0};
+      map[c.id].owed+=bal;
+    });
+    return Object.values(map).sort((a,b)=>b.owed-a.owed);
+  })();
+
   const monthLabel = now.toLocaleString("default", { month: "long", year: "numeric" });
 
   return (
     <div className="scrollable" style={{ padding: 16, paddingBottom: 40 }}>
-      <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: "-1px", color: C.text, marginBottom: 20 }}>
-        Earnings
+      <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: "-1px", color: C.text, marginBottom: 20, display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+        <span>Earnings</span>
+      </div>
+
+      {/* Filter pills */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {PERIODS.map(({k,l})=>(
+          <button key={k} className="tap" onClick={()=>setPeriod(k)} style={{
+            ...S.pillBtn(period===k),fontFamily:"inherit",
+          }}>{l}</button>
+        ))}
       </div>
 
       {/* Card 1 — Money Collected */}
       <div style={{ background: C.s1, borderRadius: 20, padding: 20, marginBottom: 12 }}>
         <div style={{ fontSize: 13, color: C.sub, fontWeight: 600, marginBottom: 6 }}>Money Collected</div>
-        <div style={{ fontSize: 36, fontWeight: 900, color: C.text, letterSpacing: "-1px" }}>{fmt(totalCollected)}</div>
-        <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Your total revenue from all orders</div>
+        <div style={{ fontSize: 36, fontWeight: 900, color: C.text, letterSpacing: "-1px" }}>{fmt(periodCollected)}</div>
+        <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>
+          {period==="all" ? "Total revenue from all orders" : period==="month" ? monthLabel : "This week"}
+        </div>
       </div>
 
-      {/* Card 2 — This Month */}
-      <div style={{ background: C.s1, borderRadius: 20, padding: 20, marginBottom: 12 }}>
-        <div style={{ fontSize: 13, color: C.sub, fontWeight: 600 }}>Collected This Month</div>
-        <div style={{ fontSize: 28, fontWeight: 800, color: C.text }}>{fmt(thisMonth)}</div>
-        <div style={{ fontSize: 13, color: C.muted }}>{monthLabel}</div>
-      </div>
-
-      {/* Card 3 — Still Owed */}
+      {/* Card 2 — Still Owed */}
       <div style={{ background: C.s1, borderRadius: 20, padding: 20, marginBottom: 20 }}>
         <div style={{ fontSize: 13, color: C.sub, fontWeight: 600 }}>Still Owed to You</div>
-        <div style={{ fontSize: 28, fontWeight: 800, color: totalOwed > 0 ? C.red : C.sub }}>{fmt(totalOwed)}</div>
+        <div style={{ fontSize: 28, fontWeight: 800, color: periodOwed > 0 ? C.red : C.sub }}>{fmt(periodOwed)}</div>
         <div style={{ fontSize: 13, color: C.muted }}>
-          {totalOwed > 0 ? `from ${debtors.length} customer${debtors.length === 1 ? "" : "s"}` : "You are all settled up 🎉"}
+          {periodOwed > 0 ? `from ${periodDebtors.length} customer${periodDebtors.length === 1 ? "" : "s"}` : "You are all settled up 🎉"}
         </div>
       </div>
 
       {/* Debtors list */}
-      {debtors.length > 0 && (
+      {periodDebtors.length > 0 && (
         <>
           <SectionLabel>Who Owes You</SectionLabel>
-          {debtors.map(d => (
+          {periodDebtors.map(d => (
             <div key={d.name} style={{
               background: C.s2, borderRadius: 14, padding: "14px 16px", marginBottom: 8,
               display: "flex", justifyContent: "space-between", alignItems: "center"
@@ -83,8 +123,15 @@ export function EarningsTab() {
 
       {/* Summary line */}
       <div style={{ fontSize: 13, color: C.muted, textAlign: "center", marginTop: 16 }}>
-        {totalOrders} orders total · {paidOrders} fully paid
+        {filtered.length} orders · {filtered.filter(o=>(parseFloat(o.deposit)||0)+(parseFloat(o.paid)||0)>=(parseFloat(o.price)||0)).length} fully paid
       </div>
+
+      {/* All-time summary */}
+      {period!=="all"&&(
+        <div style={{fontSize:12,color:C.sub,textAlign:"center",marginTop:4}}>
+          All time: {fmt(totalCollected)} collected · {totalOrders} orders
+        </div>
+      )}
 
       {/* Empty state */}
       {orders.length === 0 && (
