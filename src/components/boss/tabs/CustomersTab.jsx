@@ -39,6 +39,19 @@ export function CustomersTab({ onOpenCustomer, onAddClient }) {
       </div>
       <div style={{ height: 100 }} />
 
+      {/* FAB — Add Customer */}
+      <button className="tap" onClick={onAddClient} style={{
+        position:"fixed",bottom:140,right:20,zIndex:40,
+        width:56,height:56,backgroundColor:C.accent,borderRadius:20,
+        border:"none",cursor:"pointer",display:"flex",
+        alignItems:"center",justifyContent:"center",color:"#FFFFFF",
+        boxShadow:"0 8px 24px rgba(0,102,204,0.4)",
+      }}>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5v14M5 12h14" stroke="#fff" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      </button>
+
     </div>
   );
 }
