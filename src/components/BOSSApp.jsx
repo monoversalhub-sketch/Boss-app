@@ -63,6 +63,8 @@ function BOSSApp(){
   const[feedbackOpen,setFeedbackOpen]=useState(false);
   const[feedbackConfig,setFeedbackConfig]=useState(null);
   const[tourOpen,setTourOpen]=useState(false);
+  const[isOnline,setIsOnline]=useState(typeof navigator!=="undefined"?navigator.onLine:true);
+  const[justCameOnline,setJustCameOnline]=useState(false);
 
   useEffect(()=>{
     const minWait   = new Promise(r=>setTimeout(r,800));
@@ -242,6 +244,15 @@ function BOSSApp(){
     }
   },[screen]);
 
+  // Network status tracking
+  useEffect(()=>{
+    const handleOnline=()=>{setIsOnline(true);setJustCameOnline(true);setTimeout(()=>setJustCameOnline(false),2500);};
+    const handleOffline=()=>{setIsOnline(false);setJustCameOnline(false);};
+    window.addEventListener("online",handleOnline);
+    window.addEventListener("offline",handleOffline);
+    return()=>{window.removeEventListener("online",handleOnline);window.removeEventListener("offline",handleOffline);};
+  },[]);
+
   const pushPromptedRef = useRef(false);
   const prevOrderCountRef = useRef(allOrders(customers).length);
   const[pushConsentOpen,setPushConsentOpen]=useState(false);
@@ -355,6 +366,17 @@ function BOSSApp(){
             fontFamily:"inherit",whiteSpace:"nowrap",
           }}>
             ↻ Retry sync
+          </div>
+        )}
+
+        {!isOnline && (
+          <div style={{background:"#FFC107",color:"#000",fontSize:13,fontWeight:700,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
+            Offline — changes saved on your phone, will sync when back online
+          </div>
+        )}
+        {justCameOnline && (
+          <div style={{background:C.green,color:"#fff",fontSize:13,fontWeight:700,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
+            Back online — syncing your data...
           </div>
         )}
 
