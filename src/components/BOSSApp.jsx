@@ -17,7 +17,7 @@ import { FeedbackSheet } from "./boss/FeedbackSheet";
 import { OnboardingTour } from "./boss/OnboardingTour";
 
 import { C } from "./boss/tokens";
-import { allOrders } from "./boss/helpers";
+import { allOrders, vibrate } from "./boss/helpers";
 import { ErrorBoundary, BOSSContext } from "./boss/context";
 import { GlobalStyles, Toast, Sheet, Btn } from "./boss/ui";
 import { SplashScreen } from "./boss/SplashScreen";
@@ -386,7 +386,7 @@ function BOSSApp(){
             {NAV_LEFT.map(n=>{
               const active=tab===n.id;
               return(
-                <button key={n.id} onClick={()=>setTab(n.id)} style={{
+                <button key={n.id} onClick={()=>{setTab(n.id);vibrate(4);}} style={{
                   flex:1,display:"flex",flexDirection:"column",alignItems:"center",
                   justifyContent:"center",gap:4,backgroundColor:"transparent",border:"none",
                   cursor:"pointer",padding:"10px 0",
@@ -421,7 +421,7 @@ function BOSSApp(){
             {NAV_RIGHT.map(n=>{
               const active=tab===n.id;
               return(
-                <button key={n.id} onClick={()=>setTab(n.id)} style={{
+                <button key={n.id} onClick={()=>{setTab(n.id);vibrate(4);}} style={{
                   flex:1,display:"flex",flexDirection:"column",alignItems:"center",
                   justifyContent:"center",gap:4,backgroundColor:"transparent",border:"none",
                   cursor:"pointer",padding:"10px 0",

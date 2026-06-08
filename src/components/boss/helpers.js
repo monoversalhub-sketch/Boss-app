@@ -13,6 +13,12 @@ export const uid   = () => crypto.randomUUID();
 export const fmt   = (n) => "₦" + (Number(n) || 0).toLocaleString("en-NG");
 export const today = () => new Date().toISOString().slice(0, 10);
 
+export function vibrate(pattern) {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    navigator.vibrate(pattern);
+  }
+}
+
 export function fmtDate(d) {
   if (!d) return "—";
   return new Date(d + "T00:00:00").toLocaleDateString("en-NG", {

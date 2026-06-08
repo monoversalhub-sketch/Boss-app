@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { C } from "../tokens";
-import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, isOverdue, isDueToday, waLink, buildReceiptText, buildReminderMsg } from "../helpers";
+import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, isOverdue, isDueToday, vibrate, waLink, buildReceiptText, buildReminderMsg } from "../helpers";
 import { useBOSS } from "../context";
 import { Btn, Input } from "../ui";
 import { StatusStepper, MeasGrid } from "../cards";
@@ -60,6 +60,8 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
     }
 
     const state=getPaymentState({...order,paid:newPaid});
+    if (state === "fully_paid") vibrate([8, 50, 8, 50, 16]);
+    else vibrate([8, 60, 8]);
     toast(state==="fully_paid"?"✅ Fully paid! Great work. 🎉":"✅ Payment recorded — "+fmt(getBalance({...order,paid:newPaid}))+" remaining");
   }
   async function deleteOrder(){
@@ -69,6 +71,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
     const next=customers.map(c=>({...c,orders:(c.orders||[]).filter(o=>o.id!==orderId)}));
     setCustomers(next);
     await db.deleteOrder(orderId);
+    vibrate(40);
     onClose();
     toast("Order deleted");
   }
@@ -86,7 +89,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
     name:   tailor.account_name || "",
   } : null;
 
-  function waMsg(msg){window.open(waLink(customer.phone,msg),"_blank");}
+  function waMsg(msg){vibrate(6); window.open(waLink(customer.phone,msg),"_blank");}
   function waReady(){waMsg(`Hello *${customer.name}*! 🎉\n\nYour *${order.type||"order"}* is ready o! You can come pick it up anytime from *${shop}*.\n\nWe can't wait for you to see it! 🙏`);}
   function waReminder(){waMsg(buildReminderMsg(order,customer,shop,vaDetails));}
   function waReceipt(){
@@ -155,7 +158,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
       <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:12}}>
         {/* ── Zone 3: Status Stepper ── */}
         <div style={cardStyle}>
-          <StatusStepper status={orderStatus(order)} onChange={s=>{updateOrder({status:s});toast("✅ "+s);}}/>
+          <StatusStepper status={orderStatus(order)} onChange={s=>{vibrate(6);updateOrder({status:s});toast("✅ "+s);}}/>
         </div>
 
         {/* ── Zone 4: Record Cash Payment ── */}

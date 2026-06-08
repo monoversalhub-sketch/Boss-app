@@ -2,7 +2,7 @@
 // src/components/boss/flows/AddOrderFlow.jsx
 import { useState, useEffect, useMemo, useRef } from "react";
 import { C, S, CLOTH_TYPES } from "../tokens";
-import { uid, fmt, waLink, buildReceiptText } from "../helpers";
+import { uid, fmt, vibrate, waLink, buildReceiptText } from "../helpers";
 import { useBOSS } from "../context";
 import { Btn, Input, Select, Textarea, Flow, DatePicker } from "../ui";
 import { SmartPricingCalculator } from "../SmartPricingCalculator";
@@ -115,10 +115,11 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
       const hasPaid = (parseFloat(stripCommas(deposit)) || 0) > 0;
       const hasPhone = !!(cust.phone || "").trim();
       if (hasPaid && hasPhone) {
+        vibrate(8);
         toast("✅ Order saved!");
         setTimeout(() => setReceiptPrompt({ order, customer: { ...cust } }), 1000);
       }
-      else { onClose(); toast("✅ Order saved!"); }
+      else { vibrate(8); onClose(); toast("✅ Order saved!"); }
     } catch (e) {
       console.error("[AddOrderFlow save]", e);
       toast("❌ Something went wrong. Your data is safe — try again.");
