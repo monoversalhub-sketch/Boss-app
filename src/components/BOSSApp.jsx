@@ -283,6 +283,25 @@ function BOSSApp(){
   const pushPromptedRef = useRef(false);
   const prevOrderCountRef = useRef(allOrders(customers).length);
   const[pushConsentOpen,setPushConsentOpen]=useState(false);
+  const deferredPromptRef = useRef(null);
+  const[installOpen,setInstallOpen]=useState(false);
+  const installPromptedRef = useRef(false);
+
+  useEffect(()=>{
+    const handler=e=>{e.preventDefault();deferredPromptRef.current=e;};
+    window.addEventListener("beforeinstallprompt",handler);
+    return()=>window.removeEventListener("beforeinstallprompt",handler);
+  },[]);
+
+  useEffect(()=>{
+    if(screen!=="app"||!deferredPromptRef.current||installPromptedRef.current)return;
+    const count=allOrders(customers).length;
+    if(count>=2){
+      installPromptedRef.current=true;
+      const t=setTimeout(()=>setInstallOpen(true),5000);
+      return()=>clearTimeout(t);
+    }
+  },[customers,screen]);
 
   useEffect(()=>{
     if(screen!=="app")return;
@@ -480,6 +499,27 @@ function BOSSApp(){
             <Btn variant="primary" onClick={()=>{subscribeToPush();setPushConsentOpen(false);}} style={{marginBottom:12,width:"100%"}}>Allow notifications</Btn>
             <button onClick={()=>setPushConsentOpen(false)}
               style={{fontSize:14,color:C.sub,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Not now</button>
+          </div>
+        </Sheet>
+
+        <Sheet open={installOpen} onClose={()=>setInstallOpen(false)} title="">
+          <div style={{textAlign:"center",padding:"8px 0 16px"}}>
+            <div style={{fontSize:32,marginBottom:8}}>📲</div>
+            <div style={{fontSize:17,fontWeight:800,color:C.text,marginBottom:6}}>Install BOSS on your home screen?</div>
+            <div style={{fontSize:14,color:C.sub,lineHeight:1.6,marginBottom:20}}>
+              Faster access, works offline, feels like a real app. No app store needed.
+            </div>
+            <Btn variant="primary" onClick={async()=>{
+              if(deferredPromptRef.current){
+                deferredPromptRef.current.prompt();
+                const{outcome}=await deferredPromptRef.current.userChoice;
+                if(outcome==="accepted")toast("✅ BOSS installed!");
+                deferredPromptRef.current=null;
+              }
+              setInstallOpen(false);
+            }} style={{marginBottom:12,width:"100%"}}>Install BOSS</Btn>
+            <button onClick={()=>setInstallOpen(false)}
+              style={{fontSize:14,color:C.sub,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Maybe later</button>
           </div>
         </Sheet>
       </div>
