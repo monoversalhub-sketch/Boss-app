@@ -283,6 +283,7 @@ async function updateBosScore(tailorId) {
           notes: o.notes || "", createdAt: o.created_at,
           installmentHistory: o.installment_history || [],
           imageUrls: o.image_urls || [],
+          voiceNoteUrl: o.voice_note_url || "",
         })),
       }));
       lsSet("boss_customers", mapped);
@@ -364,6 +365,7 @@ async function updateBosScore(tailorId) {
       if (patch.notes              !== undefined) dbPatch.notes              = patch.notes;
       if (patch.date               !== undefined) dbPatch.delivery_date      = patch.date;
       if (patch.imageUrls !== undefined) dbPatch.image_urls = patch.imageUrls;
+      if (patch.voiceNoteUrl !== undefined) dbPatch.voice_note_url = patch.voiceNoteUrl;
       if (Object.keys(dbPatch).length > 0) {
         _syncCallback?.("syncing");
         const { error } = await client.from("orders").update(dbPatch).eq("id", orderId);
@@ -582,6 +584,7 @@ async function updateBosScore(tailorId) {
         status: order.status || "In Progress", notes: order.notes || "",
         installment_history: order.installmentHistory || [],
         image_urls: order.imageUrls || [],
+        voice_note_url: order.voiceNoteUrl || null,
       });
       if (error) throw error;
       _syncCallback?.("saved");
