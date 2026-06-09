@@ -22,8 +22,8 @@ export default function AdminLoginPage() {
       if (data?.user) {
         const { data: adminUser } = await client.from("admin_users")
           .select("id, role")
-          .eq("email", email)
-          .single();
+          .eq("email", data.user.email)
+          .maybeSingle();
         if (adminUser) {
           localStorage.setItem("boss_admin_user", JSON.stringify(adminUser));
           router.push("/admin");
