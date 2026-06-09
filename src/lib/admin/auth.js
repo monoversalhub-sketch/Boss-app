@@ -2,12 +2,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export function useAdminAuth() {
+export function useAdminAuth({ skip } = {}) {
   const [loading, setLoading] = useState(true);
   const [admin, setAdmin] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
+    if (skip) { setLoading(false); return; }
+
     async function check() {
       try {
         const cached = localStorage.getItem("boss_admin_user");
@@ -28,19 +30,15 @@ export function useAdminAuth() {
           if (adminUser) {
             localStorage.setItem("boss_admin_user", JSON.stringify(adminUser));
             setAdmin(adminUser);
-          } else {
-            router.replace("/admin/login");
           }
-        } else {
-          router.replace("/admin/login");
         }
       } catch {
-        router.replace("/admin/login");
+        // Not authenticated - show nothing, redirect will happen via router
       }
       setLoading(false);
     }
     check();
-  }, []);
+  }, [skip]);
 
   return { admin, loading };
 }

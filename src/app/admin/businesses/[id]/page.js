@@ -1,10 +1,10 @@
-"use client";
-import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
+import ClientRedirect from "./client";
 
-export default function BusinessDetailRedirect() {
-  const { id } = useParams();
-  const router = useRouter();
-  useEffect(() => { router.replace(`/admin/users/${id}`); }, [id, router]);
-  return null;
+export default function BusinessRedirect({ params }) {
+  return (
+    <Suspense fallback={null}>
+      <ClientRedirect id={params.id} />
+    </Suspense>
+  );
 }
