@@ -74,44 +74,53 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
       else { if (phone.trim()) cust.phone = phone.trim(); if (Object.keys(meas).length) cust.measurements = { ...(cust.measurements||{}), ...meas }; }
       cust.orders = [order, ...(cust.orders || [])];
       setCustomers(next);
-      let tailorId = null;
-      for (let i = 0; i < 3; i++) {
-        tailorId = await db.getTailorId();
-        if (tailorId) break;
-        await new Promise(r => setTimeout(r, 800));
+
+      const hasPaid = (parseFloat(stripCommas(deposit)) || 0) > 0;
+      const hasPhone = !!(cust.phone || "").trim();
+      if (hasPaid && hasPhone) {
+        vibrate(8);
+        toast("✅ Order saved!");
+        setReceiptPrompt({ order, customer: { ...cust } });
       }
+      else { vibrate(8); onClose(); toast("✅ Order saved!"); }
+
+      const tailorId = await db.getTailorId();
       if (tailorId) {
         let ok = true;
         if (isNewCustomer) { const r = await db.addCustomer(cust, tailorId); if (!r.ok) { ok = false; console.error("[AddOrderFlow] addCustomer failed", r.error); } }
         else if (phone.trim()) { await db.updateCustomer(cust.id, { phone: phone.trim() }); }
         if (ok) { const r = await db.addOrder(order, cust.id, tailorId); if (!r.ok) { ok = false; console.error("[AddOrderFlow] addOrder failed", r.error); } }
         if (!ok) toast("⚠️ Saved on your phone. Will update online when network is back.");
-      } else { toast("⚠️ Saved on this phone. Sign in to back up your data safely."); }
 
-      if (tailorId && selectedImages.length > 0) {
-        const urls = await db.uploadOrderImages(tailorId, order.id, selectedImages.map(i => i.file));
-        if (urls.length > 0) {
-          order.imageUrls = urls;
-          await db.updateOrder(order.id, { imageUrls: urls });
-          for (const c of next) {
-            const o = (c.orders || []).find(x => x.id === order.id);
-            if (o) { o.imageUrls = urls; break; }
-          }
-          setCustomers([...next]);
+        if (selectedImages.length > 0) {
+          db.uploadOrderImages(tailorId, order.id, selectedImages.map(i => i.file)).then(urls => {
+            if (urls.length > 0) {
+              order.imageUrls = urls;
+              db.updateOrder(order.id, { imageUrls: urls });
+              for (const c of next) {
+                const o = (c.orders || []).find(x => x.id === order.id);
+                if (o) { o.imageUrls = urls; break; }
+              }
+              setCustomers([...next]);
+            }
+          }).catch(e => console.error("[AddOrderFlow] image upload", e));
         }
-      }
 
-      if (tailorId && voiceBlob) {
-        const voiceUrl = await db.uploadVoiceNote(tailorId, order.id, voiceBlob);
-        if (voiceUrl) {
-          order.voiceNoteUrl = voiceUrl;
-          await db.updateOrder(order.id, { voiceNoteUrl: voiceUrl });
-          for (const c of next) {
-            const o = (c.orders || []).find(x => x.id === order.id);
-            if (o) { o.voiceNoteUrl = voiceUrl; break; }
-          }
-          setCustomers([...next]);
+        if (voiceBlob) {
+          db.uploadVoiceNote(tailorId, order.id, voiceBlob).then(voiceUrl => {
+            if (voiceUrl) {
+              order.voiceNoteUrl = voiceUrl;
+              db.updateOrder(order.id, { voiceNoteUrl: voiceUrl });
+              for (const c of next) {
+                const o = (c.orders || []).find(x => x.id === order.id);
+                if (o) { o.voiceNoteUrl = voiceUrl; break; }
+              }
+              setCustomers([...next]);
+            }
+          }).catch(e => console.error("[AddOrderFlow] voice upload", e));
         }
+      } else if (!hasPaid || !hasPhone) {
+        toast("⚠️ Saved on this phone. Sign in to back up your data safely.");
       }
 
       const totalOrders = next.reduce((sum, c) => sum + (c.orders || []).length, 0);
@@ -121,7 +130,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
       }
 
       if (tailorId) {
-        await referral.checkActivation(tailorId, totalOrders);
+        referral.checkActivation(tailorId, totalOrders).catch(() => {});
       }
 
       if (tailor?.google_drive_refresh_token) {
@@ -133,15 +142,6 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
           if (d.ok) toast("📅 Added to your Google Calendar with 3-day reminder");
         }).catch(e => console.error("[calendar] create failed", e));
       }
-
-      const hasPaid = (parseFloat(stripCommas(deposit)) || 0) > 0;
-      const hasPhone = !!(cust.phone || "").trim();
-      if (hasPaid && hasPhone) {
-        vibrate(8);
-        toast("✅ Order saved!");
-        setReceiptPrompt({ order, customer: { ...cust } });
-      }
-      else { vibrate(8); onClose(); toast("✅ Order saved!"); }
     } catch (e) {
       console.error("[AddOrderFlow save]", e);
       toast("❌ Something went wrong. Your data is safe — try again.");
@@ -345,10 +345,11 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
           <button className="tap" onClick={prevStep}
             style={{
               marginTop: 8, width: "100%", padding: "14px 0",
-              backgroundColor: C.s3, color: C.text, fontWeight: 700,
+              backgroundColor: C.dark, color: "#fff", fontWeight: 700,
               borderRadius: 14, fontSize: 15, border: "none", cursor: "pointer", fontFamily: "inherit",
+              display:"flex",alignItems:"center",justifyContent:"center",gap:6,
             }}>
-            ← Back
+            ‹ Back
           </button>
         )}
       </Flow>

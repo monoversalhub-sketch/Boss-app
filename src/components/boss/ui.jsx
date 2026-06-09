@@ -163,7 +163,7 @@ export function Flow({open,onClose,title,action,onAction,children}){
   return(
     <div style={{position:"fixed",inset:0,backgroundColor:C.bg,zIndex:300,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{height:64,display:"flex",alignItems:"center",padding:"0 20px",gap:14,flexShrink:0,borderBottom:`1px solid ${C.border}`,backgroundColor:C.s1}}>
-        <button aria-label="Go back" className="tap" onClick={onClose} style={{width:38,height:38,backgroundColor:C.s2,border:"none",borderRadius:12,fontSize:18,cursor:"pointer",color:C.text,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>←</button>
+        <button aria-label="Go back" className="tap" onClick={onClose} style={{width:40,height:40,backgroundColor:C.dark,border:"none",borderRadius:12,fontSize:20,fontWeight:900,cursor:"pointer",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 2px 8px rgba(0,0,0,0.1)"}}>‹</button>
         <div style={{flex:1,fontSize:17,fontWeight:800,letterSpacing:"-0.3px",color:C.text}}>{title}</div>
         {action&&(
         <button

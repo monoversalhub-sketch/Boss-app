@@ -157,7 +157,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
           <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:C.s3,fontSize:56}}>✂️</div>
         )}
         <div style={{position:"absolute",top:12,left:12,backgroundColor:"rgba(0,0,0,0.55)",color:"#fff",fontSize:13,fontWeight:800,padding:"5px 10px",borderRadius:20,textTransform:"uppercase",letterSpacing:"0.5px"}}>{orderStatus(order)}</div>
-        <div className="tap" onClick={onClose} style={{position:"absolute",top:12,right:12,width:36,height:36,borderRadius:18,backgroundColor:"rgba(0,0,0,0.45)",color:"#fff",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>←</div>
+        <div className="tap" onClick={onClose} style={{position:"absolute",top:12,right:12,width:40,height:40,borderRadius:20,backgroundColor:"rgba(0,0,0,0.55)",color:"#fff",fontSize:22,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}>‹</div>
         <div style={{position:"absolute",bottom:12,left:12,backgroundColor:bal>0?C.red:C.green,color:"#fff",fontSize:12,fontWeight:800,padding:"5px 12px",borderRadius:20}}>
           {bal>0?`${fmt(bal)} due`:"✅ Fully Paid"}
         </div>
