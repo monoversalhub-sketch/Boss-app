@@ -169,6 +169,7 @@ export const GLOBAL_CSS = `
   @keyframes slideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:none} }
   @keyframes toast   { 0%{opacity:0;transform:translateX(-50%) translateY(6px)} 15%{opacity:1;transform:translateX(-50%) translateY(0)} 80%{opacity:1} 100%{opacity:0;transform:translateX(-50%) translateY(6px)} }
   @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+  @keyframes voiceWave { 0%,100%{height:4px} 50%{height:16px} }
 
   html,body{height:100%;width:100%;margin:0;padding:0;overflow:hidden;background:#F5F5F7}
   #__next,#boss-root{height:100%;display:flex;flex-direction:column;overflow:hidden}

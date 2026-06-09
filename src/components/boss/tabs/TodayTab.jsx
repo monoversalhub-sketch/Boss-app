@@ -2,7 +2,7 @@
 // src/components/boss/tabs.jsx — TodayTab (sole remaining tab)
 import { useState, useMemo } from "react";
 import { C, S } from "../tokens";
-import { allOrders, orderStatus, isOverdue, isDueToday } from "../helpers";
+import { allOrders, orderStatus, isOverdue, isDueToday, isDueThisWeek } from "../helpers";
 import { useBOSS } from "../context";
 import { EmptyState, SkeletonCard } from "../ui";
 import { TrustScoreCard, TrustScoreSheet, TodayMoneyCard, OrderCard } from "../cards";
@@ -26,6 +26,8 @@ export function TodayTab({tailor,onAddOrder,onOpenOrder,onReminders,onCalendar,i
     if(isOverdue(a)&&!isOverdue(b))return -1;if(!isOverdue(a)&&isOverdue(b))return 1;
     if(isDueToday(a)&&!isDueToday(b))return -1;if(!isDueToday(a)&&isDueToday(b))return 1;return 0;
   }),[toShow]);
+  const dueThisWeekOrders = useMemo(()=>orders.filter(o=>isDueThisWeek(o)),[orders]);
+  const dueThisWeekCount  = dueThisWeekOrders.length;
   const hr=new Date().getHours();
   const greeting=hr<12?"Good morning ☀️":hr<17?"Good afternoon 👋":"Good evening 🌙";
   return(
@@ -57,6 +59,24 @@ export function TodayTab({tailor,onAddOrder,onOpenOrder,onReminders,onCalendar,i
           <div style={{fontSize:15,fontWeight:700,color:C.text}}>Send<br/>Reminder</div>
         </div>
       </div>
+
+      {/* Due This Week banner */}
+      {dueThisWeekCount > 0 && (
+        <div className="tap" onClick={()=>setFilter("all")} style={{
+          margin:"12px 20px 0",padding:"12px 16px",borderRadius:14,
+          background:"linear-gradient(135deg,#1a1a2e,#16213e)",
+          display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",
+        }}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:18}}>📅</span>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:"#fff"}}>{dueThisWeekCount} order{dueThisWeekCount!==1?"s":""} due this week</div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,0.6)",marginTop:1}}>Tap to view all</div>
+            </div>
+          </div>
+          <div style={{fontSize:16,color:"rgba(255,255,255,0.4)"}}>→</div>
+        </div>
+      )}
 
       {/* Filter pills */}
       <div style={{display:"flex",gap:8,padding:"16px 20px 0",overflowX:"auto",scrollbarWidth:"none"}}>

@@ -462,16 +462,19 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
         })}
       </div>
 
+      {/* VISUAL SEPARATOR */}
+      <div style={{ height: 8 }} />
+
       {/* REFERRAL CARD */}
       {referralCode && (
         <div style={{
           backgroundColor: C.s1, borderRadius: 20,
-          padding: 20, margin: "16px 16px 0",
+          padding: 20, margin: "0 16px",
           border: `1px solid ${C.border}`,
           boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
         }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: C.text }}>
-            Refer a Tailor 🤝
+            📣 Referral Programme
           </div>
           <div style={{ fontSize: 13, color: C.sub, marginTop: 3 }}>
             Earn rewards when your fellow tailors join BOSS
@@ -524,11 +527,10 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
             {copied ? "✅ Link copied!" : "📋 Copy Link"}
           </button>
           <div style={{
-            fontSize: 12, color: C.sub, marginTop: 16,
+            fontSize: 12, color: C.muted, marginTop: 16,
             lineHeight: 1.6, textAlign: "center",
           }}>
-            When a tailor you refer saves their first 3 orders,
-            your BOSS Trust Score goes up by +5 points. 🏆
+            Referral activity does not affect your Trust Score.
           </div>
         </div>
       )}

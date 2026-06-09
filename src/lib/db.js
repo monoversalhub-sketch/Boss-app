@@ -491,6 +491,15 @@ async function updateBosScore(tailorId) {
     return urls;
   },
 
+  async uploadVoiceNote(tailorId, orderId, blob) {
+    const client = await getBrowserClient();
+    const path = `${tailorId}/${orderId}/voice-${Date.now()}.webm`;
+    const { error } = await client.storage.from("voice-notes").upload(path, blob, { contentType: "audio/webm" });
+    if (error) { console.error("[db.uploadVoiceNote]", error); return null; }
+    const { data } = client.storage.from("voice-notes").getPublicUrl(path);
+    return data.publicUrl;
+  },
+
   async removeOrderImage(publicUrl) {
     const client = await getBrowserClient();
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

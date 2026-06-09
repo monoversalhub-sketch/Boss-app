@@ -1,19 +1,23 @@
 "use client";
 // src/components/boss/flows/AddOrderFlow.jsx
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { C, S, CLOTH_TYPES, MEAS_FIELDS } from "../tokens";
 import { uid, fmt, vibrate, waLink, buildReceiptText } from "../helpers";
 import { useBOSS } from "../context";
 import { Btn, Input, Select, Textarea, Flow, DatePicker, SectionLabel } from "../ui";
 import { SmartPricingCalculator } from "../SmartPricingCalculator";
 import { MeasGrid } from "../cards";
+import { VoiceNote } from "../VoiceNote";
 import { db } from "../../../lib/db";
 import { feedback } from "../../../lib/feedback";
 import { referral } from "../../../lib/referral";
 
+const STEP_LABELS = ["Customer", "Payment", "Delivery & Fit", "Review"];
+
 export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger }) {
   const { customers, setCustomers, toast, tailor } = useBOSS();
   const pre = customers.find(c => c.id === prefilledCid);
+  const [step, setStep] = useState(1);
   const [name, setName] = useState(pre?.name || ""); const [phone, setPhone] = useState(pre?.phone || "");
   const [type, setType] = useState(""); const [price, setPrice] = useState("");
   const [deposit, setDeposit] = useState(""); const [date, setDate] = useState("");
@@ -27,11 +31,12 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   const fileInputRef = useRef(null);
   const [meas, setMeas] = useState({});
   const [measOpen, setMeasOpen] = useState(false);
+  const [voiceBlob, setVoiceBlob] = useState(null);
 
   useEffect(() => {
     if (open) { const p = customers.find(c => c.id === prefilledCid);
       setName(p?.name || ""); setPhone(p?.phone || ""); setType(""); setPrice(""); setDeposit(""); setDate(""); setNotes(""); setMatches([]); setShowCalc(false); setIsSaving(false); savingRef.current = false;
-      setMeas({}); setMeasOpen(false);
+      setMeas({}); setMeasOpen(false); setStep(1); setVoiceBlob(null);
       setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; }); }
     return () => setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; });
   }, [open, prefilledCid]);
@@ -93,6 +98,14 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
             if (o) { o.imageUrls = urls; break; }
           }
           setCustomers([...next]);
+        }
+      }
+
+      if (tailorId && voiceBlob) {
+        const voiceUrl = await db.uploadVoiceNote(tailorId, order.id, voiceBlob);
+        if (voiceUrl) {
+          order.voiceNoteUrl = voiceUrl;
+          await db.updateOrder(order.id, { voiceNoteUrl: voiceUrl });
         }
       }
 
@@ -158,119 +171,199 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   function handleDateChange(val){setActiveShortcut(null);setDate(val);}
   const depositWarn = price && deposit && parseFloat(stripCommas(deposit)) > parseFloat(stripCommas(price))
     ? "⚠️ Deposit exceeds total price" : "";
-  const progress = useMemo(() => {
-    const fields = [
-      !!name.trim(),
-      !!type,
-      !!stripCommas(price),
-      !!date,
-    ];
-    return Math.round((fields.filter(Boolean).length / fields.length) * 100);
-  }, [name, type, price, date]);
+
+  const STEPS = [
+    { num: 1, label: "Customer" },
+    { num: 2, label: "Payment" },
+    { num: 3, label: "Delivery & Fit" },
+    { num: 4, label: "Review" },
+  ];
+
+  function canAdvance() {
+    if (step === 1) return !!name.trim();
+    if (step === 2) return true;
+    if (step === 3) return !!date;
+    return true;
+  }
+
+  function nextStep() {
+    if (!canAdvance()) { toast("⚠️ Please fill the required fields first"); return; }
+    setStep(s => Math.min(4, s + 1));
+  }
+
+  function prevStep() { setStep(s => Math.max(1, s - 1)); }
 
   return (
     <>
-      <Flow open={open} onClose={onClose} title="New Order" action={isSaving ? "Saving…" : "Save"} onAction={isSaving ? undefined : save}>
-        <div style={{ marginBottom: 4 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.sub }}>
-              {progress >= 100 ? "✓ Ready to save" : progress >= 60 ? "Almost ready to save" : "Keep going"}
-            </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: progress === 100 ? C.green : C.accent }}>{progress}%</span>
-          </div>
-          <div style={{ height: 4, background: C.s3, borderRadius: 4, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${progress}%`, borderRadius: 4, background: progress === 100 ? C.green : C.accent, transition: "width 0.3s ease" }} />
-          </div>
+      <Flow open={open} onClose={onClose} title="New Order"
+        action={step === 4 ? (isSaving ? "Saving…" : "Save") : "Next →"}
+        onAction={step === 4 ? (isSaving ? undefined : save) : nextStep}>
+
+        {/* Step indicator */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
+          {STEPS.map(s => (
+            <div key={s.num} style={{
+              flex: 1, height: 4, borderRadius: 2,
+              backgroundColor: step >= s.num ? C.accent : C.s3,
+              transition: "background-color 0.3s",
+            }} />
+          ))}
         </div>
-        <div style={{ position: "relative" }}>
-          <Input label="Customer Name" value={name} onChange={e => onNameChange(e.target.value)} placeholder="Type name to search or add new…" autoComplete="off" />
-          {!name.trim() && <div style={{ fontSize: 13, color: C.sub, padding: "4px 4px 0" }}>Type to search existing customers or add a new one</div>}
-          {name.length >= 1 && matches.length === 0 && customers.length > 0 && (
-            <div style={{ fontSize: 13, color: C.sub, padding: "5px 4px", fontWeight: 500 }}>No match — a new customer will be created</div>
-          )}
-          {matches.length > 0 && (
-            <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: C.s1, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.1)", marginTop: 4 }}>
-              <div style={{ padding: "8px 14px 4px", fontSize: 10, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: "0.5px" }}>Existing Customers</div>
-              {matches.map(c => (
-                <div key={c.id} className="tap" onMouseDown={() => pickExisting(c)}
-                  style={{ padding: "12px 14px", borderTop: `1px solid ${C.border}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: C.s3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, color: C.text, flexShrink: 0 }}>{c.name[0].toUpperCase()}</div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{c.name}</div>
-                    <div style={{ fontSize: 13, color: C.sub, marginTop: 1 }}>{c.phone || "No phone"} · {(c.orders || []).length} order{(c.orders || []).length !== 1 ? "s" : ""}</div>
-                  </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+          {STEPS.map(s => (
+            <div key={s.num} style={{
+              fontSize: 11, fontWeight: 700, color: step === s.num ? C.accent : C.muted,
+              textTransform: "uppercase", letterSpacing: "0.5px",
+            }}>
+              {s.label}
+            </div>
+          ))}
+        </div>
+
+        {/* ── Step 1: Customer ── */}
+        {step === 1 && (
+          <>
+            <div style={{ position: "relative" }}>
+              <Input label="Customer Name" value={name} onChange={e => onNameChange(e.target.value)} placeholder="Type name to search or add new…" autoComplete="off" />
+              {!name.trim() && <div style={{ fontSize: 13, color: C.sub, padding: "4px 4px 0" }}>Type to search existing customers or add a new one</div>}
+              {name.length >= 1 && matches.length === 0 && customers.length > 0 && (
+                <div style={{ fontSize: 13, color: C.sub, padding: "5px 4px", fontWeight: 500 }}>No match — a new customer will be created</div>
+              )}
+              {matches.length > 0 && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: C.s1, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.1)", marginTop: 4 }}>
+                  <div style={{ padding: "8px 14px 4px", fontSize: 10, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: "0.5px" }}>Existing Customers</div>
+                  {matches.map(c => (
+                    <div key={c.id} className="tap" onMouseDown={() => pickExisting(c)}
+                      style={{ padding: "12px 14px", borderTop: `1px solid ${C.border}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: C.s3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, color: C.text, flexShrink: 0 }}>{c.name[0].toUpperCase()}</div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{c.name}</div>
+                        <div style={{ fontSize: 13, color: C.sub, marginTop: 1 }}>{c.phone || "No phone"} · {(c.orders || []).length} order{(c.orders || []).length !== 1 ? "s" : ""}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Input label="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="080XXXXXXXX" />
+            <Select label="Cloth Type / Style" value={type} onChange={e => setType(e.target.value)} options={[{ value: "", label: "Select type…" }, ...CLOTH_TYPES]} />
+          </>
+        )}
+
+        {/* ── Step 2: Payment ── */}
+        {step === 2 && (
+          <>
+            <div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Input label="Total Price (₦)" value={price} onChange={e => setPrice(e.target.value)} type="text" inputMode="numeric" placeholder="0" onFocus={e => setPrice(stripCommas(e.target.value))} onBlur={e => setPrice(fmtPrice(e.target.value))} />
+                <Input label="Deposit Paid (₦)" value={deposit} onChange={e => setDeposit(e.target.value)} type="text" inputMode="numeric" placeholder="0" onFocus={e => setDeposit(stripCommas(e.target.value))} onBlur={e => setDeposit(fmtPrice(e.target.value))} />
+              </div>
+              {depositWarn && <div style={{fontSize:12,color:C.red,marginTop:4}}>{depositWarn}</div>}
+              <button className="tap" onClick={() => setShowCalc(v => !v)}
+                style={{ marginTop: 8, background: showCalc ? "rgba(0,102,204,0.1)" : C.s3, border: `1px solid ${showCalc ? "rgba(0,102,204,0.3)" : C.border}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, color: showCalc ? C.accent : C.sub, cursor: "pointer", width: "100%", fontFamily: "inherit" }}>
+                {showCalc ? "▲ Close Calculator" : "🧮 Use Smart Pricing Calculator"}
+              </button>
+              {showCalc && (
+                <div style={{ marginTop: 10, background: C.s2, borderRadius: 16, padding: 16 }}>
+                  <SmartPricingCalculator onUsePrice={p => { setPrice(String(Math.round(p))); setShowCalc(false); toast(`✅ Price set to ${fmt(p)}`); }} />
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Step 3: Delivery & Fit ── */}
+        {step === 3 && (
+          <>
+            <DatePicker label="Delivery Date *" value={date} onChange={handleDateChange} />
+            <div style={{display:"flex",gap:8,overflowX:"auto",scrollbarWidth:"none",WebkitOverflowScrolling:"touch",marginTop:8}}>
+              {[[1,"Tomorrow"],[7,"1 Week"],[14,"2 Weeks"]].map(([d,l])=>{
+                const active=activeShortcut===d;
+                return(
+                  <button key={d} className="tap" onClick={()=>applyDateShortcut(d)}
+                    style={{padding:"9px 16px",borderRadius:10,fontSize:13,fontWeight:active?700:500,border:"none",background:active?C.accent:C.s3,color:active?"#fff":C.text,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit"}}>
+                    {l}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{marginTop:16}}>
+              <button className="tap" onClick={()=>setMeasOpen(v=>!v)}
+                style={{background:measOpen?C.accent:C.s3,color:measOpen?"#fff":C.text,border:"none",borderRadius:12,padding:"12px 16px",fontSize:14,fontWeight:700,width:"100%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit"}}>
+                <span>{measOpen ? "▲" : "📏"} Measurements {Object.keys(meas).length > 0 && `(${Object.keys(meas).length})`}</span>
+                <span style={{fontSize:13,fontWeight:500,color:measOpen?"rgba(255,255,255,0.7)":C.sub}}>{measOpen ? "Hide" : "Add"}</span>
+              </button>
+              {measOpen && (
+                <div style={{marginTop:8}}>
+                  <MeasGrid measurements={meas} onChange={setMeas} />
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Step 4: Review ── */}
+        {step === 4 && (
+          <>
+            <div style={S.card}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 10 }}>Order Summary</div>
+              {[
+                { l: "Customer", v: name },
+                { l: "Phone", v: phone || "—" },
+                { l: "Style", v: type || "—" },
+                { l: "Price", v: price ? `₦${fmtPrice(price)}` : "—" },
+                { l: "Deposit", v: deposit ? `₦${fmtPrice(deposit)}` : "—" },
+                { l: "Delivery", v: date || "—" },
+                { l: "Measurements", v: Object.keys(meas).length > 0 ? `${Object.keys(meas).length} taken` : "None" },
+                { l: "Photos", v: selectedImages.length > 0 ? `${selectedImages.length} photo${selectedImages.length > 1 ? "s" : ""}` : "None" },
+                { l: "Notes", v: notes || "None" },
+              ].map((r, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: i < 8 ? `1px solid ${C.border}` : "none" }}>
+                  <div style={{ fontSize: 13, color: C.sub }}>{r.l}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text, textAlign: "right" }}>{r.v}</div>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-        <Input label="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="080XXXXXXXX" />
-        <Select label="Cloth Type / Style" value={type} onChange={e => setType(e.target.value)} options={[{ value: "", label: "Select type…" }, ...CLOTH_TYPES]} />
 
-        <div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Input label="Total Price (₦)" value={price} onChange={e => setPrice(e.target.value)} type="text" inputMode="numeric" placeholder="0" onFocus={e => setPrice(stripCommas(e.target.value))} onBlur={e => setPrice(fmtPrice(e.target.value))} />
-            <Input label="Deposit Paid (₦)" value={deposit} onChange={e => setDeposit(e.target.value)} type="text" inputMode="numeric" placeholder="0" onFocus={e => setDeposit(stripCommas(e.target.value))} onBlur={e => setDeposit(fmtPrice(e.target.value))} />
-          </div>
-          {depositWarn && <div style={{fontSize:12,color:C.red,marginTop:4}}>{depositWarn}</div>}
-          <button className="tap" onClick={() => setShowCalc(v => !v)}
-            style={{ marginTop: 8, background: showCalc ? "rgba(0,102,204,0.1)" : C.s3, border: `1px solid ${showCalc ? "rgba(0,102,204,0.3)" : C.border}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, color: showCalc ? C.accent : C.sub, cursor: "pointer", width: "100%", fontFamily: "inherit" }}>
-            {showCalc ? "▲ Close Calculator" : "🧮 Use Smart Pricing Calculator"}
-          </button>
-          {showCalc && (
-            <div style={{ marginTop: 10, background: C.s2, borderRadius: 16, padding: 16 }}>
-              <SmartPricingCalculator onUsePrice={p => { setPrice(String(Math.round(p))); setShowCalc(false); toast(`✅ Price set to ${fmt(p)}`); }} />
-            </div>
-          )}
-        </div>
-
-        <DatePicker label="Delivery Date *" value={date} onChange={handleDateChange} />
-        <div style={{display:"flex",gap:8,overflowX:"auto",scrollbarWidth:"none",WebkitOverflowScrolling:"touch",marginTop:8}}>
-          {[[1,"Tomorrow"],[7,"1 Week"],[14,"2 Weeks"]].map(([d,l])=>{
-            const active=activeShortcut===d;
-            return(
-              <button key={d} className="tap" onClick={()=>applyDateShortcut(d)}
-                style={{padding:"9px 16px",borderRadius:10,fontSize:13,fontWeight:active?700:500,border:"none",background:active?C.accent:C.s3,color:active?"#fff":C.text,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit"}}>
-                {l}
-              </button>
-            );
-          })}
-        </div>
-        <div>
-          <div style={{fontSize:13,fontWeight:700,color:C.sub,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:8}}>Style Photos (max 5)</div>
-          <input ref={fileInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleImageSelect} />
-          <div style={{display:"grid",gridTemplateColumns:"repeat(5, 1fr)",gap:6}}>
-            {selectedImages.map((img, i) => (
-              <div key={i} style={{position:"relative",aspectRatio:1,borderRadius:10,overflow:"hidden",background:C.s3}}>
-                <img src={img.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} />
-                <button onClick={() => removeSelectedImage(i)}
-                  style={{position:"absolute",top:2,right:2,width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.55)",color:"#fff",border:"none",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  ✕
-                </button>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:C.sub,letterSpacing:"0.5px",textTransform:"uppercase",marginBottom:8}}>Style Photos (max 5)</div>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleImageSelect} />
+              <div style={{display:"grid",gridTemplateColumns:"repeat(5, 1fr)",gap:6}}>
+                {selectedImages.map((img, i) => (
+                  <div key={i} style={{position:"relative",aspectRatio:1,borderRadius:10,overflow:"hidden",background:C.s3}}>
+                    <img src={img.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} />
+                    <button onClick={() => removeSelectedImage(i)}
+                      style={{position:"absolute",top:2,right:2,width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.55)",color:"#fff",border:"none",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                {selectedImages.length < 5 && (
+                  <button onClick={() => fileInputRef.current?.click()}
+                    style={{aspectRatio:1,borderRadius:10,border:`1.5px dashed ${C.border2}`,background:C.s2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
+                    +
+                  </button>
+                )}
               </div>
-            ))}
-            {selectedImages.length < 5 && (
-              <button onClick={() => fileInputRef.current?.click()}
-                style={{aspectRatio:1,borderRadius:10,border:`1.5px dashed ${C.border2}`,background:C.s2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:C.sub,cursor:"pointer",fontFamily:"inherit"}}>
-                +
-              </button>
-            )}
-          </div>
-        </div>
-        <Textarea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Style details, fabric colour, special requests…" />
-
-        <div style={{marginTop:4}}>
-          <button className="tap" onClick={()=>setMeasOpen(v=>!v)}
-            style={{background:measOpen?C.accent:C.s3,color:measOpen?"#fff":C.text,border:"none",borderRadius:12,padding:"12px 16px",fontSize:14,fontWeight:700,width:"100%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit"}}>
-            <span>{measOpen ? "▲" : "📏"} Measurements {Object.keys(meas).length > 0 && `(${Object.keys(meas).length})`}</span>
-            <span style={{fontSize:13,fontWeight:500,color:measOpen?"rgba(255,255,255,0.7)":C.sub}}>{measOpen ? "Hide" : "Add"}</span>
-          </button>
-          {measOpen && (
-            <div style={{marginTop:8}}>
-              <MeasGrid measurements={meas} onChange={setMeas} />
             </div>
-          )}
-        </div>
+            <Textarea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Style details, fabric colour, special requests…" />
+            <div style={{marginTop:12}}>
+              <VoiceNote onRecorded={b=>setVoiceBlob(b)} onRemove={()=>setVoiceBlob(null)} />
+            </div>
+          </>
+        )}
+
+        {/* Back button (not on step 1) */}
+        {step > 1 && (
+          <button className="tap" onClick={prevStep}
+            style={{
+              marginTop: 8, width: "100%", padding: "14px 0",
+              backgroundColor: C.s3, color: C.text, fontWeight: 700,
+              borderRadius: 14, fontSize: 15, border: "none", cursor: "pointer", fontFamily: "inherit",
+            }}>
+            ← Back
+          </button>
+        )}
       </Flow>
 
       {receiptPrompt && (

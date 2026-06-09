@@ -31,7 +31,6 @@ import { ProfileTab } from "./boss/tabs/ProfileTab";
 import { TodayTab } from "./boss/tabs/TodayTab";
 import { RemindersFlow } from "./boss/flows/RemindersFlow";
 import { CalendarFlow } from "./boss/flows/CalendarFlow";
-import { AddClientFlow } from "./boss/flows/AddClientFlow";
 import { CustomerDetailFlow } from "./boss/flows/CustomerDetailFlow";
 import { AddOrderFlow } from "./boss/flows/AddOrderFlow";
 import { OrderDetailFlow } from "./boss/flows/OrderDetailFlow";
@@ -172,7 +171,7 @@ function BOSSApp(){
     }
   }
 
-  const[addClientOpen,setAddClientOpen]=useState(false);
+
   // MISSING-03: Sync + network status indicator
   const[syncStatus,setSyncStatus]=useState("idle"); // "syncing"|"saved"|"error"|"idle"
   const[netStatus,setNetStatus]=useState("idle");   // "connected"|"offline"|"idle"
@@ -233,7 +232,7 @@ function BOSSApp(){
       const totalOrders = allOrders(customers).length;
       if (totalOrders < 3) return;
       const timer=setTimeout(()=>{
-        const anyFlowOpen = addOrderOpen || !!orderDetailId || !!customerDetailId || remindersOpen || calendarOpen || addClientOpen;
+        const anyFlowOpen = addOrderOpen || !!orderDetailId || !!customerDetailId || remindersOpen || calendarOpen;
         if (anyFlowOpen) return;
         setFeedbackConfig({type:"nps",trigger:"scheduled",screen:tab});
         setFeedbackOpen(true);
@@ -241,7 +240,7 @@ function BOSSApp(){
       },60000);
       return()=>clearTimeout(timer);
     }
-  },[screen, customers, addOrderOpen, orderDetailId, customerDetailId, remindersOpen, calendarOpen, addClientOpen]);
+  },[screen, customers, addOrderOpen, orderDetailId, customerDetailId, remindersOpen, calendarOpen]);
 
   // Web Push: register SW, update last_seen, prompt on first order
   useEffect(()=>{
@@ -442,7 +441,7 @@ function BOSSApp(){
         {/* ── SCROLLABLE CONTENT ── */}
         <div className="scrollable" style={SCROLLABLE_CONTENT}>
           <div style={tab==="today" ? TAB_VISIBLE : TAB_HIDDEN}><TodayTab     tailor={tailor} onAddOrder={()=>openAddOrder(null)} onOpenOrder={openOrderDetail} onReminders={()=>setRemindersOpen(true)} onCalendar={()=>setCalendarOpen(true)} isLoading={loadingData}/></div>
-          <div style={tab==="customers" ? TAB_VISIBLE : TAB_HIDDEN}><CustomersTab onOpenCustomer={openCustomerDetail} onAddClient={()=>setAddClientOpen(true)}/></div>
+          <div style={tab==="customers" ? TAB_VISIBLE : TAB_HIDDEN}><CustomersTab onOpenCustomer={openCustomerDetail}/></div>
           <div style={tab==="earnings" ? TAB_VISIBLE : TAB_HIDDEN}><EarningsTab/></div>
           <div style={tab==="profile" ? TAB_VISIBLE : TAB_HIDDEN}><ProfileTab onFeedbackTrigger={handleFeedbackTrigger} onTour={()=>setTourOpen(true)}/></div>
         </div>
@@ -483,7 +482,6 @@ function BOSSApp(){
 
         {/* ── FLOWS — all read customers/setCustomers/toast from BOSSContext ── */}
         <AddOrderFlow open={addOrderOpen} onClose={()=>setAddOrderOpen(false)} prefilledCid={prefilledCid} onFeedbackTrigger={handleFeedbackTrigger}/>
-        <AddClientFlow open={addClientOpen} onClose={()=>setAddClientOpen(false)} onDone={(cid)=>{setAddClientOpen(false);setCustomerDetailId(cid);}}/>
         <OrderDetailFlow open={!!orderDetailId} onClose={()=>setOrderDetailId(null)} orderId={orderDetailId} tailor={tailor} onFeedbackTrigger={handleFeedbackTrigger}/>
         <CustomerDetailFlow open={!!customerDetailId} onClose={()=>setCustomerDetailId(null)} customerId={customerDetailId}
           onAddOrder={()=>{setCustomerDetailId(null);openAddOrder(customerDetailId);}}

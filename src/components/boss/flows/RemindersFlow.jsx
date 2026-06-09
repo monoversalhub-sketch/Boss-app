@@ -31,7 +31,15 @@ export function RemindersFlow({ open, onClose }) {
               <div style={{ fontWeight: 700, fontSize: 15 }}>{o._cname}</div>
               <div style={{ fontWeight: 800, color: C.red }}>{fmt(getBalance(o))}</div>
             </div>
-            <div style={{ fontSize: 13, color: C.sub }}>{o.type || "—"} · {o._cphone || "No phone"}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, color: C.sub }}>{o.type || "—"} · {o._cphone || "No phone"}</span>
+              {o._cphone && (
+                <a href={`tel:${o._cphone}`} className="tap"
+                  style={{ fontSize: 12, color: C.accent, fontWeight: 700, textDecoration: "none" }}>
+                  📞 Call
+                </a>
+              )}
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
               <Btn variant="wa" onClick={() => send(o)}><span>📲</span> Remind + Send Link</Btn>
               <Btn variant="outline" onClick={() => copyLink(o)} style={{ width: "auto", padding: "12px 14px", fontSize: 13 }}>📋</Btn>

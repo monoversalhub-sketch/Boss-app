@@ -66,6 +66,18 @@ export function isDueToday(o) {
   if (!o.date || orderStatus(o) === "Delivered") return false;
   return o.date === today();
 }
+export function isDueThisWeek(o) {
+  if (!o.date || orderStatus(o) === "Delivered") return false;
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + diffToMonday);
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const yyyymmdd = (d) => d.toISOString().slice(0, 10);
+  return o.date >= yyyymmdd(mon) && o.date <= yyyymmdd(sun);
+}
 export function allOrders(customers) {
   return customers.flatMap(c =>
     (c.orders || []).map(o => ({ ...o, _cname: c.name, _cphone: c.phone, _cid: c.id }))
@@ -263,6 +275,12 @@ export function computeEarnings(customers) {
 // ─────────────────────────────────────────
 // TRUST SCORE ENGINE
 // ─────────────────────────────────────────
+// TRUST SCORE PURITY RULE:
+// This function accepts ONLY the customers array.
+// It must NEVER receive or use referral data, signup bonuses,
+// self-declared experience, or any data source other than
+// actual order and payment history.
+// Referral rewards are a separate system (src/lib/referral.js).
 export function computeTrustScore(customers) {
   const orders = allOrders(customers);
   if (!orders.length) return { score: 0, level: "New", readiness: "Low", breakdown: {} };
@@ -306,4 +324,43 @@ export function computeTrustScore(customers) {
       overdue,
     },
   };
+}
+
+// ─────────────────────────────────────────
+// DEVICE CALENDAR
+// ─────────────────────────────────────────
+
+export function addToDeviceCalendar({ title, date, notes, location }) {
+  const d = new Date(date);
+  const end = new Date(d);
+  end.setDate(end.getDate() + 1);
+
+  const fmt = (dt) =>
+    dt.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//BOSS//N//EN",
+    "BEGIN:VEVENT",
+    `DTSTART:${fmt(d)}`,
+    `DTEND:${fmt(end)}`,
+    `SUMMARY:${title}`,
+    notes ? `DESCRIPTION:${notes.replace(/\n/g, "\\n")}` : "",
+    location ? `LOCATION:${location}` : "",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ]
+    .filter(Boolean)
+    .join("\r\n");
+
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `boss-${d.toISOString().slice(0, 10)}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

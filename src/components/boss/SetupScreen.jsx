@@ -210,7 +210,7 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
               How long have you been sewing?
             </div>
             <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.6, marginBottom: 24 }}>
-              This gives you a starting BOSS score while your real record builds. Completely optional.
+              Helps us understand your experience level. Completely optional.
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <Select label="Years in business"
@@ -220,8 +220,8 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
               <Input label="Approx. monthly revenue (₦)" type="number" inputMode="numeric" value={monthlyRevenue} onChange={e => setMonthlyRevenue(e.target.value)} placeholder="e.g. 150000" />
               {hasSelfData && (
                 <div style={{ background: "rgba(52,199,89,0.08)", border: "1px solid rgba(52,199,89,0.2)", borderRadius: 10, padding: "10px 14px" }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: C.green }}>Starting BOSS score: {selfScore} / 30 ⭐</div>
-                  <div style={{ fontSize: 13, color: C.sub, marginTop: 2 }}>Self-reported · Grows automatically with real orders</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: C.green }}>✓ Experience recorded</div>
+                  <div style={{ fontSize: 13, color: C.sub, marginTop: 2 }}>This helps new customers trust you. Updates automatically with real orders.</div>
                 </div>
               )}
               <button onClick={() => setStep(3)} style={btnPrimary}>Continue →</button>

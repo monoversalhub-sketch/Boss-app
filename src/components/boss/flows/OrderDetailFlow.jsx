@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { C } from "../tokens";
-import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, isOverdue, isDueToday, vibrate, waLink, buildReceiptText, buildReminderMsg } from "../helpers";
+import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, isOverdue, isDueToday, vibrate, waLink, buildReceiptText, buildReminderMsg, addToDeviceCalendar } from "../helpers";
 import { useBOSS } from "../context";
 import { Btn, Input } from "../ui";
 import { StatusStepper, MeasGrid } from "../cards";
@@ -106,6 +106,25 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
       setTimeout(() => onFeedbackTrigger?.("first_receipt"), 2000);
     }
   }
+  const VoiceNotePlayer=({url})=>{
+    const [playing,setPlaying]=useState(false);
+    const audioRef=useRef(null);
+    return(
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 0",borderBottom:`1px solid ${C.border}`}}>
+        <audio ref={audioRef} src={url} preload="metadata" style={{display:"none"}}/>
+        <button className="tap" onClick={()=>{
+          if(!audioRef.current)return;
+          if(playing){audioRef.current.pause();setPlaying(false);return;}
+          audioRef.current.play();setPlaying(true);
+          audioRef.current.addEventListener("ended",()=>setPlaying(false),{once:true});
+        }} style={{width:36,height:36,borderRadius:"50%",backgroundColor:C.accent,color:"#fff",border:"none",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",flexShrink:0}}>
+          {playing?"⏸":"▶️"}
+        </button>
+        <div style={{fontSize:13,fontWeight:700,color:C.text}}>Voice note</div>
+        <div style={{fontSize:13,color:C.sub,marginLeft:"auto"}}>🔊</div>
+      </div>
+    );
+  };
   const Row=({label,value,valueStyle={}})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"11px 0",borderBottom:`1px solid ${C.border}`}}>
       <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{label}</div>
@@ -164,7 +183,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
       <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:12}}>
         {/* ── Zone 3: Status Stepper ── */}
         <div style={cardStyle}>
-          <StatusStepper status={orderStatus(order)} onChange={s=>{vibrate(6);updateOrder({status:s});toast("✅ "+s);}}/>
+          <StatusStepper status={orderStatus(order)} onChange={s=>{vibrate(6);updateOrder({status:s});toast("✅ "+s);fetch("/api/push/notify-ready",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:order.id,customerName:customer.name,orderType:order.type,status:s})}).catch(()=>{});}}/>
         </div>
 
         {/* ── Zone 4: Record Cash Payment ── */}
@@ -218,10 +237,25 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
         {/* ── Zone 5: Customer Info ── */}
         <div style={cardStyle}>
           <Row label="Customer" value={customer.name}/>
-          <Row label="Phone" value={customer.phone||"—"} valueStyle={{color:C.accent}}/>
+          <Row label="Phone" value={<span style={{display:"inline-flex",alignItems:"center",gap:8}}>{customer.phone||"—"}{customer.phone&&<a href={`tel:${customer.phone}`} className="tap" style={{fontSize:12,fontWeight:800,color:C.accent,textDecoration:"none"}}>📞</a>}</span>} valueStyle={{color:C.accent}}/>
           <Row label="Cloth Type" value={order.type||"—"}/>
           <Row label="Delivery" value={fmtDate(order.date)}/>
           {order.notes&&<Row label="Notes" value={order.notes} valueStyle={{fontSize:13,fontWeight:500,color:C.sub}}/>}
+          {order.voiceNoteUrl && <VoiceNotePlayer url={order.voiceNoteUrl} />}
+          {order.date && (
+            <button className="tap" onClick={()=>addToDeviceCalendar({
+              title:`${order.type||"Order"} for ${customer.name}`,
+              date:order.date,
+              notes:order.notes||"",
+              location:shop,
+            })} style={{
+              marginTop:12,width:"100%",padding:"12px 0",
+              backgroundColor:C.s3,color:C.text,fontWeight:700,
+              borderRadius:12,fontSize:13,border:"none",cursor:"pointer",fontFamily:"inherit",
+            }}>
+              📅 Add to Calendar
+            </button>
+          )}
         </div>
 
         {/* ── Style Photos ── */}
