@@ -153,6 +153,7 @@ async function updateBosScore(tailorId) {
   export const db = {
 
     setSyncCallback(fn) { _syncCallback = fn; },
+    getBrowserClient,
 
   // ── Auth ─────────────────────────────────────────────────────────
     async signInWithGoogle() {
