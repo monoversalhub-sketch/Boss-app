@@ -199,6 +199,11 @@ export function TodayMoneyCard({customers}){
 // ORDER CARD
 // ─────────────────────────────────────────
 // ── Static style objects ─────────────────────────────────────────────
+const TODAY_HERO = {background:"#1C1C1E",borderRadius:24,padding:24,display:"flex",flexDirection:"column"};
+const TODAY_GRID = {display:"grid",gridTemplateColumns:"1fr 1fr",gap:12};
+const STAT_LABEL = {fontSize:13,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:4};
+const STAT_NUMBER = {fontSize:32,fontWeight:800,color:C.text,lineHeight:1,letterSpacing:"-1px"};
+const STAT_SUB = {fontSize:13,color:C.sub,fontWeight:500,marginTop:4};
 const ORDER_IMG = {width:80,height:80,borderRadius:12,objectFit:"cover",flexShrink:0,background:C.s3};
 const ORDER_PLACEHOLDER = {width:80,height:80,borderRadius:12,background:C.s3,flexShrink:0,...S.flexCenter,fontSize:24};
 const ORDER_BODY = {flex:1,...S.col,gap:7};
