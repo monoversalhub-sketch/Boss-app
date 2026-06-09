@@ -10,10 +10,11 @@ import React, { createContext, useContext } from "react";
 // T-07: ERROR BOUNDARY
 // ─────────────────────────────────────────
 export class ErrorBoundary extends React.Component {
-  constructor(props){super(props);this.state={hasError:false,error:null};}
+  constructor(props){super(props);this.state={hasError:false,error:null,compStack:""};}
   static getDerivedStateFromError(error){return{hasError:true,error};}
   componentDidCatch(error,info){
     console.error("[BOSS ErrorBoundary]",error,info?.componentStack);
+    this.setState({compStack:info?.componentStack||""});
   }
   render(){
     if(!this.state.hasError)return this.props.children;
@@ -30,11 +31,11 @@ export class ErrorBoundary extends React.Component {
         >
           Reload App
         </button>
-        {process.env.NODE_ENV==="development"&&(
-          <pre style={{fontSize:10,color:"#FF3B30",maxWidth:360,overflowX:"auto",background:"#fff",padding:12,borderRadius:8,lineHeight:1.4}}>
-            {this.state.error?.message}
-          </pre>
-        )}
+        <pre style={{fontSize:11,color:"#FF3B30",maxWidth:360,overflowX:"auto",background:"#fff",padding:12,borderRadius:8,lineHeight:1.4,textAlign:"left",wordBreak:"break-word"}}>
+          {this.state.error?.message}
+          {"\n\n"}
+          {this.state.compStack?.slice(0,400)}
+        </pre>
       </div>
     );
   }
