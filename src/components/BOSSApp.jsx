@@ -197,7 +197,7 @@ function BOSSApp(){
 
   const reportSyncing=useCallback(()=>{clearTimeout(syncTimerRef.current);setSyncStatus("syncing");},[]);
   const reportSaved=useCallback(()=>{clearTimeout(syncTimerRef.current);setSyncStatus("saved");syncTimerRef.current=setTimeout(()=>setSyncStatus("idle"),2500);},[]);
-  const reportError=useCallback(()=>{clearTimeout(syncTimerRef.current);clearTimeout(networkTimerRef.current);setSyncStatus("error");},[]);
+  const reportError=useCallback(()=>{clearTimeout(syncTimerRef.current);clearTimeout(networkTimerRef.current);setSyncStatus("error");syncTimerRef.current=setTimeout(()=>setSyncStatus("idle"),5000);},[]);
   const reportConnected=useCallback(()=>{clearTimeout(networkTimerRef.current);setNetStatus("connected");networkTimerRef.current=setTimeout(()=>setNetStatus("idle"),1500);},[]);
   const reportOffline=useCallback(()=>{clearTimeout(syncTimerRef.current);clearTimeout(networkTimerRef.current);setNetStatus("offline");},[]);
 

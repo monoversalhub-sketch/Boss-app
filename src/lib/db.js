@@ -495,8 +495,9 @@ async function updateBosScore(tailorId) {
 
   async uploadVoiceNote(tailorId, orderId, blob) {
     const client = await getBrowserClient();
-    const path = `${tailorId}/${orderId}/voice-${Date.now()}.webm`;
-    const { error } = await client.storage.from("voice-notes").upload(path, blob, { contentType: "audio/webm" });
+    const ext = blob.type.includes("mp4") ? "m4a" : blob.type.includes("ogg") ? "ogg" : "webm";
+    const path = `${tailorId}/${orderId}/voice-${Date.now()}.${ext}`;
+    const { error } = await client.storage.from("voice-notes").upload(path, blob, { contentType: blob.type });
     if (error) { console.error("[db.uploadVoiceNote]", error); return null; }
     const { data } = client.storage.from("voice-notes").getPublicUrl(path);
     return data.publicUrl;

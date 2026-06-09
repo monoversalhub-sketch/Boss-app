@@ -34,7 +34,7 @@ export function VoiceNote({ onRecorded, onRemove, existingUrl, toast }) {
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => {
         if (!mountedRef.current) return;
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType });
         if (blob.size < 100) { toast?.("⚠️ Recording too short — try again"); setState("idle"); stream.getTracks().forEach(t => t.stop()); return; }
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);

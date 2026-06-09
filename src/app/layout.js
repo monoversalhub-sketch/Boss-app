@@ -40,10 +40,6 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={plusJakarta.variable}>
-      <head>
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
-        <link rel="apple-touch-icon" href="/favicon.svg"/>
-      </head>
       <body>{children}</body>
     </html>
   );

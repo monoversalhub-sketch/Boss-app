@@ -106,6 +106,11 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
         if (voiceUrl) {
           order.voiceNoteUrl = voiceUrl;
           await db.updateOrder(order.id, { voiceNoteUrl: voiceUrl });
+          for (const c of next) {
+            const o = (c.orders || []).find(x => x.id === order.id);
+            if (o) { o.voiceNoteUrl = voiceUrl; break; }
+          }
+          setCustomers([...next]);
         }
       }
 

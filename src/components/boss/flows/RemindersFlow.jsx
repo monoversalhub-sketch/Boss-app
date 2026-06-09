@@ -36,7 +36,7 @@ function VoiceRecorder({ onRecorded, toast }) {
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => {
         if (!mountedRef.current) return;
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType });
         if (blob.size < 100) { toast("⚠️ Recording too short — try again"); setState("idle"); stream.getTracks().forEach(t => t.stop()); return; }
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
@@ -131,7 +131,7 @@ export function RemindersFlow({ open, onClose }) {
       const publicUrl = await db.uploadVoiceNote(tailorId, "reminders", blob);
       if (!publicUrl) { toast("⚠️ Could not upload voice note"); return; }
       const msg = `🎤 Voice note from ${shop} regarding your order`;
-      window.open(waLink(o._cphone, msg + " " + publicUrl), "_blank");
+      window.location.href = waLink(o._cphone, msg + " " + publicUrl);
       removeVoiceBlob(o.id);
     } catch {
       toast("⚠️ Failed to send voice note");
