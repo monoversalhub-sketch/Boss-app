@@ -2,7 +2,7 @@
 // src/components/boss/flows/AddOrderFlow.jsx
 import { useState, useEffect, useRef } from "react";
 import { C, S, CLOTH_TYPES, MEAS_FIELDS } from "../tokens";
-import { uid, fmt, vibrate, waLink, buildReceiptText } from "../helpers";
+import { uid, fmt, vibrate, invoiceUrl } from "../helpers";
 import { useBOSS } from "../context";
 import { Btn, Input, Select, Textarea, Flow, DatePicker, SectionLabel } from "../ui";
 import { SmartPricingCalculator } from "../SmartPricingCalculator";
@@ -139,7 +139,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
       if (hasPaid && hasPhone) {
         vibrate(8);
         toast("✅ Order saved!");
-        setTimeout(() => setReceiptPrompt({ order, customer: { ...cust } }), 1000);
+        setReceiptPrompt({ order, customer: { ...cust } });
       }
       else { vibrate(8); onClose(); toast("✅ Order saved!"); }
     } catch (e) {
@@ -148,26 +148,6 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
     } finally {
       savingRef.current = false; setIsSaving(false);
     }
-  }
-
-  function sendReceipt() {
-    if (!receiptPrompt) return;
-    const { order, customer } = receiptPrompt;
-    const shop = tailor?.shop || "BOSS Shop";
-    const vaDetails = tailor?.account_number ? {
-      bank:   tailor.bank_name   || "",
-      number: tailor.account_number,
-      name:   tailor.account_name || "",
-    } : null;
-    const msg = buildReceiptText(order, customer, shop, vaDetails);
-    window.open(waLink(customer.phone, msg), "_blank");
-    setReceiptPrompt(null);
-    onClose(); toast("✅ Order saved + receipt sent!");
-  }
-
-  function skipReceipt() {
-    setReceiptPrompt(null);
-    onClose(); toast("✅ Order saved!");
   }
 
   function stripCommas(v){return v.replace(/,/g,"");}
@@ -375,17 +355,22 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
 
       {receiptPrompt && (
         <div style={{ position: "fixed", inset: 0, zIndex: 500, display: "flex", alignItems: "flex-end" }}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} onClick={skipReceipt} />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} onClick={()=>{setReceiptPrompt(null);onClose();}} />
           <div className="anim-slide" style={{ position: "relative", zIndex: 1, background: C.s1, borderRadius: "32px 32px 0 0", padding: "28px 24px 48px", width: "100%" }}>
             <div style={{ fontSize: 24, marginBottom: 8, textAlign: "center" }}>🧾</div>
             <div style={{ fontSize: 19, fontWeight: 900, color: C.text, marginBottom: 8, textAlign: "center" }}>
-              Send receipt to {receiptPrompt.customer.name}?
+              Receipt for {receiptPrompt.customer.name}
             </div>
             <div style={{ fontSize: 14, color: C.sub, lineHeight: 1.6, marginBottom: 24, textAlign: "center" }}>
-              A professional WhatsApp receipt with their order details and your payment account. One tap — they get it instantly.
+              Share the receipt link on WhatsApp — your customer sees a professional invoice with payment details.
             </div>
-            <Btn variant="wa" onClick={sendReceipt} style={{ marginBottom: 12 }}><span>💬</span> Send on WhatsApp</Btn>
-            <Btn variant="outline" onClick={skipReceipt}>Skip for now</Btn>
+            <Btn variant="wa" onClick={()=>{
+              const url = invoiceUrl(receiptPrompt.order.id);
+              window.open(url, "_blank");
+              setReceiptPrompt(null);
+              setTimeout(onClose, 500);
+            }} style={{ marginBottom: 12 }}><span>📤</span> Share Receipt on WhatsApp</Btn>
+            <Btn variant="outline" onClick={()=>{setReceiptPrompt(null);onClose();}}>Close</Btn>
           </div>
         </div>
       )}

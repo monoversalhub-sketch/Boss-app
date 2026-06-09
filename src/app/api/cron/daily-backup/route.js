@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { uploadBackup } from "@/lib/drive";
 import { NextResponse } from "next/server";
 
@@ -12,7 +12,8 @@ export async function GET(request) {
   const results = [];
 
   try {
-    const supabase = await createClient();
+    const supabase = getAdminClient();
+    if (!supabase) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
 
     const { data: tailors } = await supabase
       .from("tailors")

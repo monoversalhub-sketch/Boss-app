@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { C } from "../tokens";
-import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, isOverdue, isDueToday, vibrate, waLink, buildReceiptText, buildReminderMsg, addToDeviceCalendar } from "../helpers";
+import { uid, fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, orderStatus, isOverdue, isDueToday, vibrate, waLink, buildReceiptText, buildReminderMsg, addToDeviceCalendar, invoiceUrl } from "../helpers";
 import { useBOSS } from "../context";
 import { Btn, Input } from "../ui";
 import { StatusStepper, MeasGrid } from "../cards";
@@ -308,7 +308,10 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
           <div style={{height:10}}/>
           <Btn variant="wa" onClick={waReminder}><span>📲</span> Payment Reminder + Link</Btn>
           <div style={{height:10}}/>
-          <Btn variant="wa" onClick={waReceipt}><span>🧾</span> Full Receipt + Link</Btn>
+          <Btn variant="outline" onClick={()=>{
+            const url = invoiceUrl(order.id);
+            window.open(url, "_blank");
+          }} style={{padding:"14px 0",fontSize:14,textAlign:"center"}}><span>🧾</span> View Receipt</Btn>
         </div>
 
         {/* ── Zone 7: Measurements ── */}

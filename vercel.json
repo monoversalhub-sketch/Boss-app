@@ -1,8 +1,8 @@
 {
   "crons": [
-    { "path": "/api/cron/daily-backup",       "schedule": "0 6 * * *" },
-    { "path": "/api/cron/delivery-alerts",    "schedule": "0 7 * * *" },
-    { "path": "/api/push/send-ready",         "schedule": "0 8 * * *" },
+    { "path": "/api/cron/daily-briefing",    "schedule": "0 6 * * *" },
+    { "path": "/api/cron/daily-backup",       "schedule": "0 7 * * *" },
+    { "path": "/api/cron/delivery-alerts",    "schedule": "0 8 * * *" },
     { "path": "/api/cron/payment-nudges",     "schedule": "0 13 * * *" },
     { "path": "/api/cron/weekly-summary",     "schedule": "0 10 * * 1" },
     { "path": "/api/cron/auto-archive",       "schedule": "0 0 1 * *" }

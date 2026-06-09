@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { sendPushToTailor } from "@/lib/push";
 
 export const maxDuration = 120;
@@ -10,7 +10,8 @@ export async function GET(request) {
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = getAdminClient();
+    if (!supabase) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
 
     const { data: orders } = await supabase
       .from("orders")
