@@ -11,6 +11,7 @@ import { VoiceNote } from "../VoiceNote";
 import { db } from "../../../lib/db";
 import { feedback } from "../../../lib/feedback";
 import { referral } from "../../../lib/referral";
+import { Events } from "@/lib/admin/events";
 
 const STEP_LABELS = ["Customer", "Payment", "Delivery & Fit", "Review"];
 
@@ -26,6 +27,8 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
   const [receiptPrompt, setReceiptPrompt] = useState(null);
+  const startTime = useRef(null);
+  const openRef = useRef(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [activeShortcut, setActiveShortcut] = useState(null);
   const fileInputRef = useRef(null);
@@ -34,10 +37,20 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   const [voiceBlob, setVoiceBlob] = useState(null);
 
   useEffect(() => {
-    if (open) { const p = customers.find(c => c.id === prefilledCid);
+    if (open) {
+      const p = customers.find(c => c.id === prefilledCid);
       setName(p?.name || ""); setPhone(p?.phone || ""); setType(""); setPrice(""); setDeposit(""); setDate(""); setNotes(""); setMatches([]); setShowCalc(false); setIsSaving(false); savingRef.current = false;
       setMeas({}); setMeasOpen(false); setStep(1); setVoiceBlob(null);
-      setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; }); }
+      setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; });
+      startTime.current = Date.now();
+      openRef.current = true;
+      Events.startJourney("add_order");
+    } else if (openRef.current) {
+      openRef.current = false;
+      if (startTime.current && !savingRef.current) {
+        Events.abandonJourney("add_order", "step_" + step);
+      }
+    }
     return () => setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; });
   }, [open, prefilledCid]);
 
@@ -142,6 +155,11 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
           if (d.ok) toast("📅 Added to your Google Calendar with 3-day reminder");
         }).catch(e => console.error("[calendar] create failed", e));
       }
+      if (startTime.current) {
+        const duration = Date.now() - startTime.current;
+        Events.completeJourney("add_order", duration);
+      }
+      Events.featureUse("add_order", { hasVoice: !!voiceBlob, hasPhotos: selectedImages.length > 0, hasMeas: Object.keys(meas).length > 0, isNewCustomer });
     } catch (e) {
       console.error("[AddOrderFlow save]", e);
       toast("❌ Something went wrong. Your data is safe — try again.");
@@ -174,10 +192,16 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
 
   function nextStep() {
     if (!canAdvance()) { toast("⚠️ Please fill the required fields first"); return; }
-    setStep(s => Math.min(4, s + 1));
+    const next = Math.min(4, step + 1);
+    setStep(next);
+    Events.journeyStep("add_order", "step_" + next);
   }
 
-  function prevStep() { setStep(s => Math.max(1, s - 1)); }
+  function prevStep() {
+    const prev = Math.max(1, step - 1);
+    setStep(prev);
+    Events.journeyStep("add_order", "step_" + prev);
+  }
 
   return (
     <>
@@ -251,7 +275,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
               </button>
               {showCalc && (
                 <div style={{ marginTop: 10, background: C.s2, borderRadius: 16, padding: 16 }}>
-                  <SmartPricingCalculator onUsePrice={p => { setPrice(String(Math.round(p))); setShowCalc(false); toast(`✅ Price set to ${fmt(p)}`); }} />
+                  <SmartPricingCalculator onUsePrice={p => { setPrice(String(Math.round(p))); setShowCalc(false); toast(`✅ Price set to ${fmt(p)}`); Events.featureUse("smart_pricing_calculator"); }} />
                 </div>
               )}
             </div>

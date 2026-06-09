@@ -1,14 +1,16 @@
 "use client";
 // src/components/boss/CustomersTab.jsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { C, S } from "../tokens";
 import { getBalance, fmt } from "../helpers";
 import { useBOSS } from "../context";
 import { EmptyState } from "../ui";
+import { Events } from "@/lib/admin/events";
 
 export function CustomersTab({ onOpenCustomer }) {
   const { customers } = useBOSS();
   const [q, setQ] = useState("");
+  useEffect(()=>{Events.screenView("customers_tab");},[]);
   const list = useMemo(() =>
     customers
       .filter(c => !q || c.name.toLowerCase().includes(q.toLowerCase()) || (c.phone || "").includes(q))

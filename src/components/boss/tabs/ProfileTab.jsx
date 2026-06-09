@@ -9,10 +9,12 @@ import { SmartPricingCalculator } from "../SmartPricingCalculator";
 import { db } from "../../../lib/db";
 import { feedback } from "../../../lib/feedback";
 import { referral } from "../../../lib/referral";
+import { Events } from "@/lib/admin/events";
 
 export function ProfileTab({ onFeedbackTrigger, onTour }) {
   const { tailor, setTailor, customers } = useBOSS();
   const [section, setSection] = useState(null);
+  useEffect(()=>{Events.screenView("profile_tab");},[]);
   const [shop, setShop] = useState(tailor?.shop || "");
   const [phone, setPhone] = useState(tailor?.phone || "");
   const [city, setCity] = useState(tailor?.city || "");

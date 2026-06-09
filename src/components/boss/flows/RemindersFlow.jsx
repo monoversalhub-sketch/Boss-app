@@ -4,6 +4,7 @@ import { C, S } from "../tokens";
 import { allOrders, getBalance, orderStatus, buildReminderMsg, waLink, invoiceUrl, fmt } from "../helpers";
 import { useBOSS } from "../context";
 import { Flow, Btn, EmptyState } from "../ui";
+import { Events } from "@/lib/admin/events";
 
 export function RemindersFlow({ open, onClose }) {
   const { customers, tailor, toast } = useBOSS();
@@ -14,12 +15,14 @@ export function RemindersFlow({ open, onClose }) {
     if (!o._cphone) { toast("⚠️ Customer has no phone number"); return; }
     const msg = buildReminderMsg(o, { name: o._cname, phone: o._cphone }, shop);
     window.open(waLink(o._cphone, msg), "_blank");
+    Events.featureUse("reminder_send", { customerName: o._cname, orderId: o.id });
   }
 
   function copyLink(o) {
     const url = invoiceUrl(o.id);
     if (navigator.clipboard) { navigator.clipboard.writeText(url).then(() => toast("✅ Invoice link copied!")); }
     else { toast("Link: " + url); }
+    Events.featureUse("reminder_copy_link", { orderId: o.id });
   }
 
   return (

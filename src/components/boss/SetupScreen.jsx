@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { C, S, NG_BANKS } from "./tokens";
 import { Input, Select } from "./ui";
 import { db } from "../../lib/db";
+import { Events } from "@/lib/admin/events";
 
 const NIGERIAN_CITIES = [
   "Lagos","Abuja","Kano","Ibadan","Port Harcourt","Benin City","Kaduna",
@@ -83,7 +84,10 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
     localStorage.setItem("boss_onboarding_tour_slide", String(n));
   }
 
+  useEffect(() => { Events.startJourney("setup"); }, []);
+
   function setStep(n) {
+    if (n !== step) Events.journeyStep("setup", "step_" + n);
     setStepState(n);
   }
 
@@ -117,6 +121,7 @@ export function SetupScreen({ onComplete, onCompleteAndAddOrder }) {
     await db.setTailor(t);
     localStorage.setItem("boss_onboarding_v1_complete", "1");
     setSaving(false);
+    Events.completeJourney("setup", 0);
     if (addOrder) onCompleteAndAddOrder(t);
     else onComplete(t);
   }

@@ -7,6 +7,7 @@ import { useBOSS } from "../context";
 import { Btn, Input, Flow, SectionLabel, EmptyState } from "../ui";
 import { MeasGrid, OrderCard } from "../cards";
 import { db } from "../../../lib/db";
+import { Events } from "@/lib/admin/events";
 
 export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOpenOrder }) {
   const { customers, setCustomers, toast } = useBOSS();

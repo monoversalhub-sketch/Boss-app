@@ -7,6 +7,7 @@ import { Btn, Input } from "../ui";
 import { StatusStepper, MeasGrid } from "../cards";
 import { db } from "../../../lib/db";
 import { feedback } from "../../../lib/feedback";
+import { Events } from "@/lib/admin/events";
 
 const cardStyle = {
   backgroundColor: C.s1, borderRadius: 16, padding: 16, marginBottom: 12,
@@ -60,6 +61,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
       onFeedbackTrigger?.("payment_recorded");
     }
 
+    Events.featureUse("record_payment", { amount: amt, fullyPaid: amt >= bal });
     const state=getPaymentState({...order,paid:newPaid});
     if (state === "fully_paid") vibrate([8, 50, 8, 50, 16]);
     else vibrate([8, 60, 8]);
@@ -95,11 +97,11 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
     name:   tailor.account_name || "",
   } : null;
 
-  function waMsg(msg){vibrate(6); window.open(waLink(customer.phone,msg),"_blank");}
-  function waReady(){waMsg(`Hello *${customer.name}*! 🎉\n\nYour *${order.type||"order"}* is ready o! You can come pick it up anytime from *${shop}*.\n\nWe can't wait for you to see it! 🙏`);}
-  function waReminder(){waMsg(buildReminderMsg(order,customer,shop,vaDetails));}
+  function waMsg(msg, action){vibrate(6); window.open(waLink(customer.phone,msg),"_blank"); Events.featureUse("wa_message",{action: action || "generic"});}
+  function waReady(){waMsg(`Hello *${customer.name}*! 🎉\n\nYour *${order.type||"order"}* is ready o! You can come pick it up anytime from *${shop}*.\n\nWe can't wait for you to see it! 🙏`, "ready");}
+  function waReminder(){waMsg(buildReminderMsg(order,customer,shop,vaDetails), "reminder");}
   function waReceipt(){
-    waMsg(buildReceiptText(order,customer,shop,vaDetails));
+    waMsg(buildReceiptText(order,customer,shop,vaDetails), "receipt");
     const isFirstReceipt = !localStorage.getItem("boss_feedback_micro_receipt");
     if (isFirstReceipt) {
       feedback.markMicroShown("micro_first_receipt");
@@ -183,7 +185,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
       <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:12}}>
         {/* ── Zone 3: Status Stepper ── */}
         <div style={cardStyle}>
-          <StatusStepper status={orderStatus(order)} onChange={s=>{vibrate(6);updateOrder({status:s});toast("✅ "+s);fetch("/api/push/notify-ready",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:order.id,customerName:customer.name,orderType:order.type,status:s})}).catch(()=>{});}}/>
+          <StatusStepper status={orderStatus(order)} onChange={s=>{vibrate(6);updateOrder({status:s});toast("✅ "+s);Events.featureUse("status_change",{from:orderStatus(order),to:s});fetch("/api/push/notify-ready",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:order.id,customerName:customer.name,orderType:order.type,status:s})}).catch(()=>{});}}/>
         </div>
 
         {/* ── Zone 4: Record Cash Payment ── */}
@@ -243,12 +245,12 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
           {order.notes&&<Row label="Notes" value={order.notes} valueStyle={{fontSize:13,fontWeight:500,color:C.sub}}/>}
           {order.voiceNoteUrl && <VoiceNotePlayer url={order.voiceNoteUrl} />}
           {order.date && (
-            <button className="tap" onClick={()=>addToDeviceCalendar({
+            <button className="tap" onClick={()=>{addToDeviceCalendar({
               title:`${order.type||"Order"} for ${customer.name}`,
               date:order.date,
               notes:order.notes||"",
               location:shop,
-            })} style={{
+            });Events.featureUse("add_to_calendar");}} style={{
               marginTop:12,width:"100%",padding:"12px 0",
               backgroundColor:C.s3,color:C.text,fontWeight:700,
               borderRadius:12,fontSize:13,border:"none",cursor:"pointer",fontFamily:"inherit",
@@ -311,6 +313,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
           <Btn variant="outline" onClick={()=>{
             const url = invoiceUrl(order.id);
             window.open(url, "_blank");
+            Events.featureUse("view_receipt");
           }} style={{padding:"14px 0",fontSize:14,textAlign:"center"}}><span>🧾</span> View Receipt</Btn>
         </div>
 

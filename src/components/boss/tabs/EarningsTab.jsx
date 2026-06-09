@@ -1,10 +1,11 @@
 "use client";
 // src/components/boss/EarningsTab.jsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { C, S } from "../tokens";
 import { computeEarnings, allOrders, fmt } from "../helpers";
 import { useBOSS } from "../context";
 import { SectionLabel, EmptyState } from "../ui";
+import { Events } from "@/lib/admin/events";
 
 const PERIODS = [
   {k:"week", l:"This Week"},
@@ -13,6 +14,7 @@ const PERIODS = [
 ];
 
 export function EarningsTab() {
+  useEffect(()=>{Events.screenView("earnings_tab");},[]);
   const { customers } = useBOSS();
   const [period, setPeriod] = useState("month");
   const earnings = useMemo(() => computeEarnings(customers), [customers]);

@@ -5,6 +5,10 @@
     { "path": "/api/cron/delivery-alerts",    "schedule": "0 8 * * *" },
     { "path": "/api/cron/payment-nudges",     "schedule": "0 13 * * *" },
     { "path": "/api/cron/weekly-summary",     "schedule": "0 10 * * 1" },
-    { "path": "/api/cron/auto-archive",       "schedule": "0 0 1 * *" }
+    { "path": "/api/cron/auto-archive",       "schedule": "0 0 1 * *" },
+    { "path": "/api/admin/cron/compute-trust",  "schedule": "0 5 * * *" },
+    { "path": "/api/admin/cron/compute-health", "schedule": "30 5 * * *" },
+    { "path": "/api/admin/cron/compute-churn",  "schedule": "0 6 * * *" },
+    { "path": "/api/admin/cron/compute-credit", "schedule": "30 6 * * *" }
   ]
 }

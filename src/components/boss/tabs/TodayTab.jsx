@@ -1,11 +1,12 @@
 "use client";
 // src/components/boss/tabs.jsx — TodayTab (sole remaining tab)
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { C, S } from "../tokens";
 import { allOrders, orderStatus, isOverdue, isDueToday, isDueThisWeek } from "../helpers";
 import { useBOSS } from "../context";
 import { EmptyState, SkeletonCard } from "../ui";
 import { TrustScoreCard, TrustScoreSheet, TodayMoneyCard, OrderCard } from "../cards";
+import { Events } from "@/lib/admin/events";
 
 // ─────────────────────────────────────────
 // TODAY TAB
@@ -15,6 +16,9 @@ export function TodayTab({tailor,onAddOrder,onOpenOrder,onReminders,onCalendar,i
   const[scoreOpen,setScoreOpen]=useState(false);
   const[filter,setFilter]=useState("active");
   const[bannerDismissed,setBannerDismissed]=useState(false);
+
+  useEffect(()=>{Events.screenView("today_tab");},[]);
+
   // T-10: useMemo prevents recomputing allOrders on every keystroke/re-render
   const orders = useMemo(()=>allOrders(customers),[customers]);
   const toShow  = useMemo(()=>
@@ -82,7 +86,7 @@ export function TodayTab({tailor,onAddOrder,onOpenOrder,onReminders,onCalendar,i
       {/* Filter pills */}
       <div style={{display:"flex",gap:8,padding:"16px 20px 0",overflowX:"auto",scrollbarWidth:"none"}}>
         {[["active","Active"],["overdue","Overdue"],["today","Due Today"],["all","All"]].map(([k,l])=>(
-          <button key={k} className="tap" onClick={()=>setFilter(k)} style={{
+          <button key={k} className="tap" onClick={()=>{setFilter(k);Events.featureUse("order_filter",{filter:k});}} style={{
             padding:"12px 20px",borderRadius:20,fontSize:14,fontWeight:filter===k?700:600,
             minHeight:48, // U-16: minimum tap target (Apple HIG 44pt / Material 48dp)
             backgroundColor:filter===k?C.dark:C.s3,
