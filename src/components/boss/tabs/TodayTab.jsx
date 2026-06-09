@@ -14,6 +14,7 @@ export function TodayTab({tailor,onAddOrder,onOpenOrder,onReminders,onCalendar,i
   const{customers}=useBOSS();
   const[scoreOpen,setScoreOpen]=useState(false);
   const[filter,setFilter]=useState("active");
+  const[bannerDismissed,setBannerDismissed]=useState(false);
   // T-10: useMemo prevents recomputing allOrders on every keystroke/re-render
   const orders = useMemo(()=>allOrders(customers),[customers]);
   const toShow  = useMemo(()=>
@@ -61,8 +62,8 @@ export function TodayTab({tailor,onAddOrder,onOpenOrder,onReminders,onCalendar,i
       </div>
 
       {/* Due This Week banner */}
-      {dueThisWeekCount > 0 && (
-        <div className="tap" onClick={()=>setFilter("all")} style={{
+      {dueThisWeekCount > 0 && !bannerDismissed && (
+        <div className="tap" onClick={()=>{setFilter("all");setBannerDismissed(true);}} style={{
           margin:"12px 20px 0",padding:"12px 16px",borderRadius:14,
           background:"linear-gradient(135deg,#1a1a2e,#16213e)",
           display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",

@@ -5,6 +5,7 @@ import { C, S } from "../tokens";
 import { allOrders, getBalance, orderStatus, buildReminderMsg, waLink, invoiceUrl, fmt } from "../helpers";
 import { useBOSS } from "../context";
 import { Flow, Btn, EmptyState } from "../ui";
+import { db } from "../../../lib/db";
 
 const BAR_STYLE = (i) => ({
   width: 3, height: 4, borderRadius: 2, backgroundColor: C.accent,
@@ -12,7 +13,7 @@ const BAR_STYLE = (i) => ({
   animationDelay: `${i * 0.08}s`,
 });
 
-function VoiceRecorder({ onRecorded }) {
+function VoiceRecorder({ onRecorded, toast }) {
   const [state, setState] = useState("idle");
   const [audioUrl, setAudioUrl] = useState(null);
   const [playing, setPlaying] = useState(false);
@@ -21,6 +22,9 @@ function VoiceRecorder({ onRecorded }) {
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
   const audioRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
   async function start() {
     try {
@@ -31,7 +35,9 @@ function VoiceRecorder({ onRecorded }) {
       chunksRef.current = [];
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => {
+        if (!mountedRef.current) return;
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        if (blob.size < 100) { toast("⚠️ Recording too short — try again"); setState("idle"); stream.getTracks().forEach(t => t.stop()); return; }
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
         setState("done");
@@ -42,10 +48,15 @@ function VoiceRecorder({ onRecorded }) {
       };
       mr.start();
       setState("recording");
-    } catch { setState("idle"); }
+    } catch {
+      toast("⚠️ Microphone access needed to record voice");
+      setState("idle");
+    }
   }
 
-  function stop() { mrRef.current?.stop(); }
+  function stop() {
+    mrRef.current?.stop();
+  }
 
   function togglePlay() {
     if (!audioRef.current) return;
@@ -59,7 +70,11 @@ function VoiceRecorder({ onRecorded }) {
     setAudioUrl(null); setState("idle"); setDuration(0); setPlaying(false);
   }
 
-  useEffect(() => () => { streamRef.current?.getTracks().forEach(t => t.stop()); if (audioUrl) URL.revokeObjectURL(audioUrl); }, []);
+  useEffect(() => () => {
+    mrRef.current?.stop();
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+  }, []);
 
   if (state === "recording") {
     return (
@@ -102,18 +117,25 @@ export function RemindersFlow({ open, onClose }) {
   }
 
   function send(o) {
+    if (!o._cphone) { toast("⚠️ Customer has no phone number"); return; }
     const msg = buildReminderMsg(o, { name: o._cname, phone: o._cphone }, shop);
     window.open(waLink(o._cphone, msg), "_blank");
   }
 
-  function sendVoice(o) {
+  async function sendVoice(o) {
     const blob = voiceBlobs[o.id];
     if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const msg = `🎤 Voice note from ${shop} regarding your order`;
-    window.open(waLink(o._cphone, msg + " " + url), "_blank");
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-    removeVoiceBlob(o.id);
+    if (!o._cphone) { toast("⚠️ Customer has no phone number"); removeVoiceBlob(o.id); return; }
+    try {
+      const tailorId = await db.getTailorId();
+      const publicUrl = await db.uploadVoiceNote(tailorId, "reminders", blob);
+      if (!publicUrl) { toast("⚠️ Could not upload voice note"); return; }
+      const msg = `🎤 Voice note from ${shop} regarding your order`;
+      window.open(waLink(o._cphone, msg + " " + publicUrl), "_blank");
+      removeVoiceBlob(o.id);
+    } catch {
+      toast("⚠️ Failed to send voice note");
+    }
   }
 
   function copyLink(o) {
@@ -134,9 +156,13 @@ export function RemindersFlow({ open, onClose }) {
             </div>
             <div style={{ fontSize: 13, color: C.sub }}>{o.type || "—"} · {o._cphone || "No phone"}</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-              <a href={`tel:${o._cphone}`} className="tap" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 0", borderRadius: 12, backgroundColor: C.s3, color: C.text, fontWeight: 700, fontSize: 13, textDecoration: "none", fontFamily: "inherit", minHeight: 48 }}>
-                📞
-              </a>
+              {o._cphone ? (
+                <a href={`tel:${o._cphone.replace(/[^\d+]/g, "")}`} className="tap" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 0", borderRadius: 12, backgroundColor: C.s3, color: C.text, fontWeight: 700, fontSize: 13, textDecoration: "none", fontFamily: "inherit", minHeight: 48 }}>
+                  📞
+                </a>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 0", borderRadius: 12, backgroundColor: C.s3, color: C.muted, fontWeight: 700, fontSize: 13, minHeight: 48, opacity: 0.4 }}>📞</div>
+              )}
               <Btn variant="wa" onClick={() => send(o)} style={{ padding: "12px 0", fontSize: 13, textAlign: "center" }}>📲 WA</Btn>
               <Btn variant="outline" onClick={() => copyLink(o)} style={{ padding: "12px 0", fontSize: 13, textAlign: "center" }}>📋</Btn>
             </div>
@@ -150,7 +176,7 @@ export function RemindersFlow({ open, onClose }) {
                 </button>
               </div>
             ) : (
-              <VoiceRecorder onRecorded={(blob) => setVoiceBlob(o.id, blob)} />
+              <VoiceRecorder onRecorded={(blob) => setVoiceBlob(o.id, blob)} toast={toast} />
             )}
           </div>
         ))}

@@ -32,7 +32,7 @@ export async function POST(request) {
 
     await sendPushToTailor(supabase, tailor.id, title, body, "/");
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, sent: true });
   } catch (e) {
     console.error("[push/notify-ready]", e);
     return NextResponse.json({ error: e.message }, { status: 500 });

@@ -332,19 +332,14 @@ export function computeTrustScore(customers) {
 
 export function addToDeviceCalendar({ title, date, notes, location }) {
   const d = new Date(date);
-  const end = new Date(d);
-  end.setDate(end.getDate() + 1);
-
-  const fmt = (dt) =>
-    dt.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//BOSS//N//EN",
     "BEGIN:VEVENT",
-    `DTSTART:${fmt(d)}`,
-    `DTEND:${fmt(end)}`,
+    `DTSTART;VALUE=DATE:${date.replace(/-/g, "")}`,
+    `DTEND;VALUE=DATE:${(() => { const e = new Date(date); e.setDate(e.getDate() + 1); return e.toISOString().slice(0, 10).replace(/-/g, ""); })()}`,
     `SUMMARY:${title}`,
     notes ? `DESCRIPTION:${notes.replace(/\n/g, "\\n")}` : "",
     location ? `LOCATION:${location}` : "",

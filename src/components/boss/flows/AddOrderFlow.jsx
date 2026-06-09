@@ -169,6 +169,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   function fmtPrice(v){const n=parseFloat(stripCommas(v));return isNaN(n)?"":n.toLocaleString("en-US");}
   function applyDateShortcut(days){const d=new Date();d.setDate(d.getDate()+days);const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,"0");const dd=String(d.getDate()).padStart(2,"0");setDate(`${y}-${m}-${dd}`);setActiveShortcut(days);}
   function handleDateChange(val){setActiveShortcut(null);setDate(val);}
+  const dateError = date && date < new Date().toISOString().slice(0, 10) ? "⚠️ Delivery date is in the past" : "";
   const depositWarn = price && deposit && parseFloat(stripCommas(deposit)) > parseFloat(stripCommas(price))
     ? "⚠️ Deposit exceeds total price" : "";
 
@@ -182,7 +183,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   function canAdvance() {
     if (step === 1) return !!name.trim();
     if (step === 2) return true;
-    if (step === 3) return !!date;
+    if (step === 3) return !!date && date >= new Date().toISOString().slice(0, 10);
     return true;
   }
 
@@ -276,6 +277,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
         {step === 3 && (
           <>
             <DatePicker label="Delivery Date *" value={date} onChange={handleDateChange} />
+            {dateError && <div style={{fontSize:12,color:C.red,marginTop:4}}>{dateError}</div>}
             <div style={{display:"flex",gap:8,overflowX:"auto",scrollbarWidth:"none",WebkitOverflowScrolling:"touch",marginTop:8}}>
               {[[1,"Tomorrow"],[7,"1 Week"],[14,"2 Weeks"]].map(([d,l])=>{
                 const active=activeShortcut===d;
@@ -348,7 +350,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
             </div>
             <Textarea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Style details, fabric colour, special requests…" />
             <div style={{marginTop:12}}>
-              <VoiceNote onRecorded={b=>setVoiceBlob(b)} onRemove={()=>setVoiceBlob(null)} />
+              <VoiceNote onRecorded={b=>setVoiceBlob(b)} onRemove={()=>setVoiceBlob(null)} toast={toast} />
             </div>
           </>
         )}

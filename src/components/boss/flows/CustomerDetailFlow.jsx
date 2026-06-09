@@ -90,7 +90,7 @@ export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOp
         ) : (
           <>
             <div style={S.card}>
-              <Row label="Phone" value={<span style={{display:"inline-flex",alignItems:"center",gap:8}}>{customer.phone || "—"}{customer.phone&&<a href={`tel:${customer.phone}`} className="tap" style={{fontSize:12,fontWeight:800,color:C.accent,textDecoration:"none"}}>📞</a>}</span>} valueStyle={{ color: C.accent }} />
+              <Row label="Phone" value={<span style={{display:"inline-flex",alignItems:"center",gap:8}}>{customer.phone || "—"}{customer.phone&&<a href={`tel:${customer.phone.replace(/[^\d+]/g,"")}`} className="tap" style={{fontSize:12,fontWeight:800,color:C.accent,textDecoration:"none"}}>📞</a>}</span>} valueStyle={{ color: C.accent }} />
               <Row label="Total Orders" value={orders.length} />
               <Row label="Total Spent" value={fmt(totalSpent)} />
               <Row label="Outstanding" value={fmt(outstanding)} valueStyle={{ color: outstanding > 0 ? C.red : C.green }} />

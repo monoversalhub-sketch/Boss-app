@@ -237,7 +237,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
         {/* ── Zone 5: Customer Info ── */}
         <div style={cardStyle}>
           <Row label="Customer" value={customer.name}/>
-          <Row label="Phone" value={<span style={{display:"inline-flex",alignItems:"center",gap:8}}>{customer.phone||"—"}{customer.phone&&<a href={`tel:${customer.phone}`} className="tap" style={{fontSize:12,fontWeight:800,color:C.accent,textDecoration:"none"}}>📞</a>}</span>} valueStyle={{color:C.accent}}/>
+          <Row label="Phone" value={<span style={{display:"inline-flex",alignItems:"center",gap:8}}>{customer.phone||"—"}{customer.phone&&<a href={`tel:${customer.phone.replace(/[^\d+]/g,"")}`} className="tap" style={{fontSize:12,fontWeight:800,color:C.accent,textDecoration:"none"}}>📞</a>}</span>} valueStyle={{color:C.accent}}/>
           <Row label="Cloth Type" value={order.type||"—"}/>
           <Row label="Delivery" value={fmtDate(order.date)}/>
           {order.notes&&<Row label="Notes" value={order.notes} valueStyle={{fontSize:13,fontWeight:500,color:C.sub}}/>}

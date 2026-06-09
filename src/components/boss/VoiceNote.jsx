@@ -11,7 +11,7 @@ const BAR_STYLE = (i) => ({
   animationDelay: `${i * 0.08}s`,
 });
 
-export function VoiceNote({ onRecorded, onRemove, existingUrl }) {
+export function VoiceNote({ onRecorded, onRemove, existingUrl, toast }) {
   const [state, setState] = useState(existingUrl ? "done" : "idle");
   const [audioUrl, setAudioUrl] = useState(existingUrl || null);
   const [playing, setPlaying] = useState(false);
@@ -20,6 +20,9 @@ export function VoiceNote({ onRecorded, onRemove, existingUrl }) {
   const chunksRef = useRef([]);
   const audioRef = useRef(null);
   const streamRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
   async function startRecording() {
     try {
@@ -30,7 +33,9 @@ export function VoiceNote({ onRecorded, onRemove, existingUrl }) {
       chunksRef.current = [];
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => {
+        if (!mountedRef.current) return;
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        if (blob.size < 100) { toast?.("⚠️ Recording too short — try again"); setState("idle"); stream.getTracks().forEach(t => t.stop()); return; }
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
         setState("done");
@@ -42,6 +47,7 @@ export function VoiceNote({ onRecorded, onRemove, existingUrl }) {
       mr.start();
       setState("recording");
     } catch {
+      toast?.("⚠️ Microphone access needed to record voice");
       setState("idle");
     }
   }
@@ -69,6 +75,7 @@ export function VoiceNote({ onRecorded, onRemove, existingUrl }) {
 
   useEffect(() => {
     return () => {
+      mediaRecorderRef.current?.stop();
       streamRef.current?.getTracks().forEach(t => t.stop());
       if (audioUrl && !existingUrl) URL.revokeObjectURL(audioUrl);
     };

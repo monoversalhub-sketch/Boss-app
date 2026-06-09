@@ -3,13 +3,14 @@ import webpush from "web-push";
 let _vapidSet = false;
 function ensureVapid() {
   if (_vapidSet) return;
-  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
-    console.error("[push] VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY not set");
+  const pk = process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!pk || !process.env.VAPID_PRIVATE_KEY) {
+    console.error("[push] VAPID keys not set (need VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY)");
     return;
   }
   webpush.setVapidDetails(
     process.env.VAPID_EMAIL || "mailto:admin@boss-africa.vercel.app",
-    process.env.VAPID_PUBLIC_KEY,
+    pk,
     process.env.VAPID_PRIVATE_KEY,
   );
   _vapidSet = true;
