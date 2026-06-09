@@ -105,29 +105,7 @@ function BOSSApp(){
         }
       })();
     } else {
-      const minWait = new Promise(r=>setTimeout(r,600));
-      const hardLimit = new Promise(r=>setTimeout(r,5000));
-      const dataLoad = (async()=>{
-        try{
-          const session = await db.getSession();
-          const [t, c] = await Promise.all([db.getTailor(), db.getCustomers()]);
-          setTailorState(t);
-          setCustomersState(c || []);
-          return { session, t };
-        }catch(e){
-          console.error("BOSS load error:", e);
-          return { session: null, t: null };
-        }
-      })();
-      Promise.race([
-        Promise.all([minWait, dataLoad]).then(([, result])=>result),
-        hardLimit.then(()=>({ session: null, t: null, _timedOut: true })),
-      ]).then(({ session, t, _timedOut })=>{
-        if(_timedOut){ setScreen("auth"); return; }
-        if(!session){ setScreen("auth"); return; }
-        setPendingSession(session);
-        setScreen("gate");
-      });
+      setScreen("auth");
     }
   },[]);
 
@@ -285,6 +263,35 @@ function BOSSApp(){
     window.addEventListener("offline",handleOffline);
     return()=>{window.removeEventListener("online",handleOnline);window.removeEventListener("offline",handleOffline);};
   },[]);
+
+  // Supabase Realtime — live sync across devices
+  const realtimeRef = useRef(null);
+  useEffect(()=>{
+    if(screen!=="app" || !tailor?.id) return;
+    (async()=>{
+      try{
+        const client = await db.getBrowserClient();
+        const channel = client.channel("boss-live-"+tailor.id, { selfBroadcast: true });
+        channel.on("postgres_changes",{event:"*",schema:"public",table:"orders",filter:`tailor_id=eq.${tailor.id}`},()=>{
+          db.getCustomers().then(c=>{if(c) setCustomersState(c);}).catch(()=>{});
+        });
+        channel.on("postgres_changes",{event:"*",schema:"public",table:"customers",filter:`tailor_id=eq.${tailor.id}`},()=>{
+          db.getCustomers().then(c=>{if(c) setCustomersState(c);}).catch(()=>{});
+        });
+        channel.subscribe();
+        realtimeRef.current = { client, channel };
+      }catch(e){
+        console.warn("[realtime] subscription failed:", e);
+      }
+    })();
+    return ()=>{
+      if(realtimeRef.current){
+        const {client,channel} = realtimeRef.current;
+        client.removeChannel(channel);
+        realtimeRef.current = null;
+      }
+    };
+  },[screen, tailor?.id]);
 
   const pushPromptedRef = useRef(false);
   const prevOrderCountRef = useRef(allOrders(customers).length);
