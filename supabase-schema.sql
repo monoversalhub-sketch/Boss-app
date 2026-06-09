@@ -353,7 +353,8 @@ ALTER TABLE tailors
   ADD COLUMN IF NOT EXISTS self_declared_years         text;
 
 ALTER TABLE orders
-  ADD COLUMN IF NOT EXISTS updated_at  timestamptz DEFAULT now();
+  ADD COLUMN IF NOT EXISTS updated_at  timestamptz DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS voice_note_url text;
 
 UPDATE orders SET updated_at = created_at WHERE updated_at IS NULL;
 

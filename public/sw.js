@@ -1,5 +1,6 @@
 self.addEventListener("push", (event) => {
-  const data = event.data?.json() ?? {};
+  let data = {};
+  try { data = event.data?.json() ?? {}; } catch {}
   event.waitUntil(
     self.registration.showNotification(data.title || "BOSS", {
       body: data.body,
@@ -8,7 +9,7 @@ self.addEventListener("push", (event) => {
       data: { url: data.url || "/" },
       actions: data.actions || [],
       vibrate: [200, 100, 200],
-    })
+    }).catch(() => {})
   );
 });
 

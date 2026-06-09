@@ -87,6 +87,18 @@ function BOSSApp(){
 
     const cachedTailor = ls("boss_tailor", null);
     const cachedCustomers = ls("boss_customers", null);
+    const cachedVersion = ls("boss_cache_version", null);
+    const APP_CACHE_VERSION = "v2";
+
+    if (cachedVersion !== APP_CACHE_VERSION) {
+      localStorage.removeItem("boss_tailor");
+      localStorage.removeItem("boss_customers");
+      localStorage.removeItem("boss_cache_orders");
+      lsSet("boss_cache_version", APP_CACHE_VERSION);
+      setScreen("auth");
+      return;
+    }
+
     const hasValidCache = cachedTailor?.shop && Array.isArray(cachedCustomers);
 
     if (hasValidCache) {
@@ -94,13 +106,17 @@ function BOSSApp(){
       setCustomersState(cachedCustomers);
       setScreen("app");
       (async()=>{
-        try{
-          const [freshTailor, freshCustomers] = await Promise.all([db.getTailor(), db.getCustomers()]);
-          if (freshTailor) setTailorState(freshTailor);
-          if (freshCustomers) setCustomersState(freshCustomers);
-          if (freshTailor && freshCustomers) syncFromSupabase(freshTailor, freshCustomers).catch(()=>{});
-        }catch(e){
-          console.warn("[BOSS] Background refresh failed:", e);
+        for (let retry = 0; retry < 3; retry++) {
+          try{
+            const [freshTailor, freshCustomers] = await Promise.all([db.getTailor(), db.getCustomers()]);
+            if (freshTailor) setTailorState(freshTailor);
+            if (freshCustomers) setCustomersState(freshCustomers);
+            if (freshTailor && freshCustomers) syncFromSupabase(freshTailor, freshCustomers).catch(()=>{});
+            return;
+          }catch(e){
+            console.warn(`[BOSS] Background refresh attempt ${retry + 1} failed:`, e);
+            if (retry < 2) await new Promise(r => setTimeout(r, 2000 * (retry + 1)));
+          }
         }
       })();
     } else {
@@ -120,6 +136,7 @@ function BOSSApp(){
       if(t && c) syncFromSupabase(t, c).catch(()=>{});
       setPendingSession(null);
       if(t?.id) referral.attachReferral(t.id);
+      lsSet("boss_cache_version", "v2");
       setScreen(t?.id && t?.shop ? "app" : "setup");
       setLoadingData(false);
     }catch(e){
