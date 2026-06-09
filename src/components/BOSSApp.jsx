@@ -10,7 +10,7 @@
 // boss/flows/       — AddOrderFlow, OrderDetailFlow, RemindersFlow…
 // boss/tabs/        — TodayTab, EarningsTab, CustomersTab, ProfileTab…
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { db, ls } from "../lib/db";
+import { db, ls, lsSet } from "../lib/db";
 import { feedback } from "../lib/feedback";
 import { referral } from "../lib/referral";
 import { syncFromSupabase, initDB } from "../lib/localdb";
