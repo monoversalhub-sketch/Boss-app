@@ -13,6 +13,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { db, ls } from "../lib/db";
 import { feedback } from "../lib/feedback";
 import { referral } from "../lib/referral";
+import { syncFromSupabase, initDB } from "../lib/localdb";
 import { FeedbackSheet } from "./boss/FeedbackSheet";
 import { OnboardingTour } from "./boss/OnboardingTour";
 
@@ -82,6 +83,9 @@ function BOSSApp(){
   const[justCameOnline,setJustCameOnline]=useState(false);
 
   useEffect(()=>{
+    // Init IndexedDB on mount
+    if (typeof window !== "undefined") initDB().catch(()=>{});
+
     const cachedTailor = ls("boss_tailor", null);
     const cachedCustomers = ls("boss_customers", null);
     const hasValidCache = cachedTailor?.shop && Array.isArray(cachedCustomers);
@@ -95,6 +99,7 @@ function BOSSApp(){
           const [freshTailor, freshCustomers] = await Promise.all([db.getTailor(), db.getCustomers()]);
           if (freshTailor) setTailorState(freshTailor);
           if (freshCustomers) setCustomersState(freshCustomers);
+          if (freshTailor && freshCustomers) syncFromSupabase(freshTailor, freshCustomers).catch(()=>{});
         }catch(e){
           console.warn("[BOSS] Background refresh failed:", e);
         }
@@ -135,6 +140,7 @@ function BOSSApp(){
       const c=await db.getCustomers();
       if (!t) console.error("[BOSS] getTailor returned null — data may not load");
       setTailorState(t);setCustomersState(c||[]);
+      if(t && c) syncFromSupabase(t, c).catch(()=>{});
       setPendingSession(null);
       if(t?.id) referral.attachReferral(t.id);
       setScreen(t?.id && t?.shop ? "app" : "setup");

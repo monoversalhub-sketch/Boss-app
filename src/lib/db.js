@@ -13,6 +13,12 @@
 // ─────────────────────────────────────────────────────────────────
 
 // ── localStorage helpers (cache only — not the source of truth) ──
+let _localdb = null;
+async function getLocalDB() {
+  if (_localdb) return _localdb;
+  try { _localdb = await import("./localdb.js"); return _localdb; } catch { return null; }
+}
+
 function ls(key, fallback = null) {
   if (typeof window === "undefined") return fallback;
   try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
@@ -344,6 +350,8 @@ async function updateBosScore(tailorId) {
       ),
     }));
     lsSet("boss_customers", updated);
+    // Update IndexedDB
+    (async()=>{const l=await getLocalDB();if(l)l.updateOrder(orderId,patch);})();
 
     try {
       const client = await getBrowserClient();
@@ -376,6 +384,8 @@ async function updateBosScore(tailorId) {
       c.id === customerId ? { ...c, ...patch } : c
     );
     lsSet("boss_customers", updated);
+    // Update IndexedDB
+    (async()=>{const l=await getLocalDB();if(l)l.updateCustomer(customerId,patch);})();
 
     try {
       const client = await getBrowserClient();
@@ -435,6 +445,8 @@ async function updateBosScore(tailorId) {
   },
 
   async deleteOrder(orderId) {
+    // Remove from IndexedDB
+    (async()=>{const l=await getLocalDB();if(l)l.deleteOrder(orderId);})();
     try {
       const client = await getBrowserClient();
       _syncCallback?.("syncing");
