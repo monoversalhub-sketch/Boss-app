@@ -1,6 +1,7 @@
 // src/app/auth/callback/route.js
 // Google OAuth / Magic link callback — exchanges code for session, redirects appropriately
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
@@ -23,14 +24,16 @@ export async function GET(request) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user?.email) {
-      const { data: adminUser } = await supabase
-        .from("admin_users")
-        .select("id")
-        .eq("email", user.email)
-        .maybeSingle();
-
-      if (adminUser) {
-        return NextResponse.redirect(new URL("/admin", request.url));
+      const admin = getAdminClient();
+      if (admin) {
+        const { data: adminUser } = await admin
+          .from("admin_users")
+          .select("id")
+          .ilike("email", user.email)
+          .maybeSingle();
+        if (adminUser) {
+          return NextResponse.redirect(new URL("/admin", request.url));
+        }
       }
     }
 
