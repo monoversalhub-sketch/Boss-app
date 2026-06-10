@@ -13,24 +13,23 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError("");
     try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error || "Not an admin user"); setLoading(false); return; }
+
       const { getBrowserClient } = await import("@/lib/db");
       const client = await getBrowserClient();
-      const { data: adminUser } = await client
-        .from("admin_users")
-        .select("id, email, name, role")
-        .eq("email", email.trim())
-        .maybeSingle();
-      if (!adminUser) {
-        setError("Not an admin user");
-        setLoading(false);
-        return;
-      }
       const { error: magicError } = await client.auth.signInWithOtp({
         email: email.trim(),
         options: { shouldCreateUser: false },
       });
       if (magicError) throw magicError;
-      localStorage.setItem("boss_admin_user", JSON.stringify(adminUser));
+
+      localStorage.setItem("boss_admin_user", JSON.stringify(json.admin));
       setSent(true);
     } catch (err) {
       setError(err.message || "Failed to send magic link");
