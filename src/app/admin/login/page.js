@@ -1,14 +1,12 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { AdminC as C } from "@/components/admin/Layout";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -17,44 +15,54 @@ export default function AdminLoginPage() {
     try {
       const { getBrowserClient } = await import("@/lib/db");
       const client = await getBrowserClient();
-      const { data, error: authError } = await client.auth.signInWithPassword({ email, password });
-      if (authError) throw authError;
-      if (data?.user) {
-        const { data: adminUser } = await client.from("admin_users")
-          .select("id, role")
-          .eq("email", data.user.email)
-          .maybeSingle();
-        if (adminUser) {
-          localStorage.setItem("boss_admin_user", JSON.stringify(adminUser));
-          router.push("/admin");
-        } else {
-          setError("Not an admin user");
-          await client.auth.signOut();
-        }
+      const { data: adminUser } = await client
+        .from("admin_users")
+        .select("id, email, name, role")
+        .eq("email", email.trim())
+        .maybeSingle();
+      if (!adminUser) {
+        setError("Not an admin user");
+        setLoading(false);
+        return;
       }
+      const { error: magicError } = await client.auth.signInWithOtp({
+        email: email.trim(),
+        options: { shouldCreateUser: false },
+      });
+      if (magicError) throw magicError;
+      localStorage.setItem("boss_admin_user", JSON.stringify(adminUser));
+      setSent(true);
     } catch (err) {
-      setError(err.message || "Login failed");
+      setError(err.message || "Failed to send magic link");
     }
     setLoading(false);
   }
 
-  const containerStyle = {
-    display: "flex", alignItems: "center", justifyContent: "center",
-    minHeight: "100vh", backgroundColor: "#0A0A0B",
-    fontFamily: "var(--font-plus-jakarta), sans-serif",
-  };
+  if (sent) {
+    return (
+      <div style={containerStyle}>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>✉️</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#F5F5F7", marginBottom: 8, textAlign: "center" }}>
+            Check your email
+          </div>
+          <div style={{ fontSize: 14, color: "#8E8E93", textAlign: "center", lineHeight: 1.6 }}>
+            A magic link was sent to <strong style={{color: "#F5F5F7"}}>{email}</strong>.<br />
+            Click the link in the email to sign in.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={containerStyle}>
-      <div style={{
-        backgroundColor: "#141416", borderRadius: 20, padding: 40,
-        border: "1px solid #38383A", width: 380, maxWidth: "90vw",
-      }}>
+      <div style={cardStyle}>
         <div style={{ fontSize: 28, fontWeight: 900, color: "#F5F5F7", marginBottom: 4 }}>
           BOSS<span style={{ color: "#0066CC" }}> Admin</span>
         </div>
         <div style={{ fontSize: 14, color: "#8E8E93", marginBottom: 32 }}>
-          Sign in to Mission Control
+          Enter your email to receive a magic link
         </div>
         {error && (
           <div style={{
@@ -68,16 +76,7 @@ export default function AdminLoginPage() {
         <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <input
             type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="Email" required
-            style={{
-              padding: "14px 16px", borderRadius: 10, border: "1px solid #38383A",
-              backgroundColor: "#1C1C1E", color: "#F5F5F7", fontSize: 14,
-              fontFamily: "inherit", outline: "none",
-            }}
-          />
-          <input
-            type="password" value={password} onChange={e => setPassword(e.target.value)}
-            placeholder="Password" required
+            placeholder="admin@boss.app" required
             style={{
               padding: "14px 16px", borderRadius: 10, border: "1px solid #38383A",
               backgroundColor: "#1C1C1E", color: "#F5F5F7", fontSize: 14,
@@ -94,10 +93,21 @@ export default function AdminLoginPage() {
             }}
             className="tap"
           >
-            {loading ? "Signing in…" : "Sign In"}
+            {loading ? "Sending…" : "Send Magic Link"}
           </button>
         </form>
       </div>
     </div>
   );
 }
+
+const containerStyle = {
+  display: "flex", alignItems: "center", justifyContent: "center",
+  minHeight: "100vh", backgroundColor: "#0A0A0B",
+  fontFamily: "var(--font-plus-jakarta), sans-serif",
+};
+
+const cardStyle = {
+  backgroundColor: "#141416", borderRadius: 20, padding: 40,
+  border: "1px solid #38383A", width: 380, maxWidth: "90vw",
+};
