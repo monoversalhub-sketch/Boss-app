@@ -22,14 +22,15 @@ export function useAdminAuth({ skip } = {}) {
         const client = await getBrowserClient();
         const { data: { user } } = await client.auth.getUser();
         if (user) {
-          const { data: adminUser } = await client
-            .from("admin_users")
-            .select("id, email, name, role")
-            .eq("email", user.email)
-            .single();
-          if (adminUser) {
-            localStorage.setItem("boss_admin_user", JSON.stringify(adminUser));
-            setAdmin(adminUser);
+            const res = await fetch("/api/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: user.email }),
+          });
+          const json = await res.json();
+          if (res.ok && json.admin) {
+            localStorage.setItem("boss_admin_user", JSON.stringify(json.admin));
+            setAdmin(json.admin);
           }
         }
       } catch {

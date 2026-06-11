@@ -1,57 +1,47 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AdminC as C } from "@/components/admin/Layout";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   async function handleLogin(e) {
     e.preventDefault();
     setLoading(true);
     setError("");
     try {
+      const { getBrowserClient } = await import("@/lib/db");
+      const client = await getBrowserClient();
+      const { data: authData, error: authError } = await client.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (authError) throw authError;
+
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       });
       const json = await res.json();
-      if (!res.ok) { setError(json.error || "Not an admin user"); setLoading(false); return; }
-
-      const { getBrowserClient } = await import("@/lib/db");
-      const client = await getBrowserClient();
-      const { error: magicError } = await client.auth.signInWithOtp({
-        email: email.trim(),
-        options: { shouldCreateUser: false },
-      });
-      if (magicError) throw magicError;
+      if (!res.ok) {
+        await client.auth.signOut();
+        setError(json.error || "Not an admin user");
+        setLoading(false);
+        return;
+      }
 
       localStorage.setItem("boss_admin_user", JSON.stringify(json.admin));
-      setSent(true);
+      router.push("/admin");
     } catch (err) {
-      setError(err.message || "Failed to send magic link");
+      setError(err.message || "Login failed");
     }
     setLoading(false);
-  }
-
-  if (sent) {
-    return (
-      <div style={containerStyle}>
-        <div style={cardStyle}>
-          <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>✉️</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "#F5F5F7", marginBottom: 8, textAlign: "center" }}>
-            Check your email
-          </div>
-          <div style={{ fontSize: 14, color: "#8E8E93", textAlign: "center", lineHeight: 1.6 }}>
-            A magic link was sent to <strong style={{color: "#F5F5F7"}}>{email}</strong>.<br />
-            Click the link in the email to sign in.
-          </div>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -61,7 +51,7 @@ export default function AdminLoginPage() {
           BOSS<span style={{ color: "#0066CC" }}> Admin</span>
         </div>
         <div style={{ fontSize: 14, color: "#8E8E93", marginBottom: 32 }}>
-          Enter your email to receive a magic link
+          Sign in with your admin account
         </div>
         {error && (
           <div style={{
@@ -82,17 +72,26 @@ export default function AdminLoginPage() {
               fontFamily: "inherit", outline: "none",
             }}
           />
+          <input
+            type="password" value={password} onChange={e => setPassword(e.target.value)}
+            placeholder="Password" required minLength={6}
+            style={{
+              padding: "14px 16px", borderRadius: 10, border: "1px solid #38383A",
+              backgroundColor: "#1C1C1E", color: "#F5F5F7", fontSize: 14,
+              fontFamily: "inherit", outline: "none",
+            }}
+          />
           <button type="submit" disabled={loading}
             style={{
               padding: "14px", borderRadius: 10, border: "none",
               backgroundColor: "#0066CC", color: "#fff",
               fontSize: 15, fontWeight: 700, cursor: "pointer",
               fontFamily: "inherit", opacity: loading ? 0.6 : 1,
-              transition: "opacity 0.12s",
+              transition: "opacity 0.12s", minHeight: 48,
             }}
             className="tap"
           >
-            {loading ? "Sending…" : "Send Magic Link"}
+            {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
       </div>
