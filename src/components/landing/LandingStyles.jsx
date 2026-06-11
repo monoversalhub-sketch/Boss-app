@@ -3,6 +3,15 @@ import { useEffect } from "react";
 
 export default function LandingStyles() {
   useEffect(() => {
+    document.body.style.overflow = "auto";
+    document.documentElement.style.overflow = "auto";
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, []);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => entries.forEach(e => {
         if (e.isIntersecting) {
