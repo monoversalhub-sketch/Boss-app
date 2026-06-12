@@ -156,7 +156,8 @@ export default function HeroSection() {
           href="#how-it-works"
           onClick={e => {
             e.preventDefault();
-            document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+            const el = document.getElementById("how-it-works");
+            if (el) window.scrollTo({ top: el.offsetTop - 64, behavior: "smooth" });
           }}
           style={s.secondaryBtn}
           className="tap-target"

@@ -110,7 +110,7 @@ export default function GrowthSection() {
             href="#proof"
             onClick={e => {
               e.preventDefault();
-              document.getElementById("proof")?.scrollIntoView({ behavior: "smooth" });
+              const el = document.getElementById("proof"); if (el) window.scrollTo({ top: el.offsetTop - 64, behavior: "smooth" });
             }}
             style={s.microLink}
             className="tap-target"
