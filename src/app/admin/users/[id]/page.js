@@ -11,17 +11,19 @@ export default function UserDetailPage() {
   const [tab, setTab] = useState("overview");
 
   const load = useCallback(async () => {
-    const { getBrowserClient } = await import("@/lib/db");
-    const client = await getBrowserClient();
-    const [{ data: tailor }, { data: ordersData }, { data: health }, { data: churn }, { data: credit }] = await Promise.all([
-      client.from("tailors").select("*").eq("id", id).single(),
-      client.from("orders").select("*").eq("tailor_id", id).order("created_at", { ascending: false }),
-      client.from("business_health_scores").select("*").eq("tailor_id", id).single(),
-      client.from("churn_risk").select("*").eq("tailor_id", id).single(),
-      client.from("credit_readiness").select("*").eq("tailor_id", id).single(),
-    ]);
-    setUser({ ...tailor, health, churn, credit });
-    setOrders(ordersData || []);
+    try {
+      const { getBrowserClient } = await import("@/lib/db");
+      const client = await getBrowserClient();
+      const [{ data: tailor }, { data: ordersData }, { data: health }, { data: churn }, { data: credit }] = await Promise.all([
+        client.from("tailors").select("*").eq("id", id).maybeSingle(),
+        client.from("orders").select("*").eq("tailor_id", id).order("created_at", { ascending: false }),
+        client.from("business_health_scores").select("*").eq("tailor_id", id).maybeSingle(),
+        client.from("churn_risk").select("*").eq("tailor_id", id).maybeSingle(),
+        client.from("credit_readiness").select("*").eq("tailor_id", id).maybeSingle(),
+      ]);
+      if (tailor) setUser({ ...tailor, health, churn, credit });
+      setOrders(ordersData || []);
+    } catch (err) { console.error("User load error:", err); }
     setLoading(false);
   }, [id]);
 
@@ -109,7 +111,7 @@ export default function UserDetailPage() {
           columns={[
             { key: "cloth_type", label: "Item" },
             { key: "price", label: "Price", align: "right", render: (v) => v ? `₦${parseFloat(v).toLocaleString("en-NG")}` : "—" },
-            { key: "status", label: "Status", render: (v) => <StatusBadge status={v?.toLowerCase().replace(/ /g,"_")} /> },
+            { key: "status", label: "Status", render: (v) => <StatusBadge status={v ? v.toLowerCase().replace(/ /g,"_") : "unknown"} /> },
             { key: "delivery_date", label: "Delivery", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
             { key: "created_at", label: "Created", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
           ]}

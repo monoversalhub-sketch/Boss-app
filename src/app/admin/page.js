@@ -25,7 +25,6 @@ export default function MissionControlPage() {
   const [churn, setChurn] = useState(null);
   const [trust, setTrust] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [timeframe, setTimeframe] = useState("7d");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,7 +59,7 @@ export default function MissionControlPage() {
             animation: "shimmer 1.5s infinite",
           }} />
         ))}
-        <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
+        <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}@keyframes pulse{0%{opacity:1}50%{opacity:0.4}100%{opacity:1}}`}</style>
       </div>
     );
   }
@@ -72,31 +71,9 @@ export default function MissionControlPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.5px" }}>Mission Control</div>
-          <div style={{
-            display: "flex", gap: 4,
-            backgroundColor: C.s2, borderRadius: 8, padding: 2,
-          }}>
-            {["24h","7d","30d","all"].map(t => (
-              <div
-                key={t}
-                onClick={() => setTimeframe(t)}
-                style={{
-                  padding: "4px 12px", borderRadius: 6,
-                  fontSize: 12, fontWeight: 700, cursor: "pointer",
-                  backgroundColor: timeframe === t ? C.accent : "transparent",
-                  color: timeframe === t ? "#fff" : C.sub,
-                  transition: "all 0.12s",
-                  minHeight: 28, display: "flex", alignItems: "center",
-                }}
-                className="tap"
-              >
-                {t}
-              </div>
-            ))}
-          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <PulseDot color={PULSE_GREEN} />
@@ -150,7 +127,10 @@ export default function MissionControlPage() {
         <div style={S.card}>
           <SectionHeader title="Business Health Breakdown" />
           {["healthy","growing","at_risk","dormant"].map(cat => {
-            const count = cat === "healthy" ? metrics?.healthyBusinesses || 0 : 0;
+            const count = cat === "healthy" ? (metrics?.healthyBusinesses || 0)
+              : cat === "growing" ? (metrics?.growingBusinesses || 0)
+              : cat === "at_risk" ? (metrics?.atRiskBusinesses || 0)
+              : (metrics?.dormantBusinesses || 0);
             const total = metrics?.totalBusinesses || 1;
             const pct = total > 0 ? (count / total) * 100 : 0;
             const colors = { healthy: C.green, growing: C.accent, at_risk: C.amber, dormant: C.muted };

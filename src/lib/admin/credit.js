@@ -3,7 +3,7 @@ export async function computeCreditReadiness(tailorId) {
 
   const { data: orders } = await client
     .from("orders")
-    .select("created_at, price, deposit, paid, status, delivery_date")
+    .select("created_at, price, deposit, paid, status, delivery_date, customer_id")
     .eq("tailor_id", tailorId)
     .order("created_at", { ascending: true });
 

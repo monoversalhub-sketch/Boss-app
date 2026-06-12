@@ -1,28 +1,29 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { AdminC as C, AdminS as S, SectionHeader, AdminTable, MetricsRow, MetricCard, ScoreBar } from "@/components/admin/Layout";
-import { computeCreditReadiness } from "@/lib/admin/credit";
-import { creditReadiness } from "@/lib/admin/credit";
+
 
 export default function PaymentsPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { getBrowserClient } = await import("@/lib/db");
-    const client = await getBrowserClient();
-    const [{ data: ordersData }, { data: tailors }] = await Promise.all([
-      client.from("orders").select("*").order("created_at", { ascending: false }).limit(200),
-      client.from("tailors").select("id, name"),
-    ]);
-    const tailorMap = {};
-    tailors?.forEach(t => { tailorMap[t.id] = t.name; });
-    setOrders((ordersData || []).map(o => ({
-      ...o,
-      tailorName: tailorMap[o.tailor_id] || "—",
-      balance: (parseFloat(o.price) || 0) - (parseFloat(o.deposit) || 0) - (parseFloat(o.paid) || 0),
-      fullyPaid: ((parseFloat(o.price) || 0) - (parseFloat(o.deposit) || 0) - (parseFloat(o.paid) || 0)) <= 0,
-    })));
+    try {
+      const { getBrowserClient } = await import("@/lib/db");
+      const client = await getBrowserClient();
+      const [{ data: ordersData }, { data: tailors }] = await Promise.all([
+        client.from("orders").select("*").order("created_at", { ascending: false }).limit(200),
+        client.from("tailors").select("id, name"),
+      ]);
+      const tailorMap = {};
+      tailors?.forEach(t => { tailorMap[t.id] = t.name; });
+      setOrders((ordersData || []).map(o => ({
+        ...o,
+        tailorName: tailorMap[o.tailor_id] || "—",
+        balance: (parseFloat(o.price) || 0) - (parseFloat(o.deposit) || 0) - (parseFloat(o.paid) || 0),
+        fullyPaid: ((parseFloat(o.price) || 0) - (parseFloat(o.deposit) || 0) - (parseFloat(o.paid) || 0)) <= 0,
+      })));
+    } catch (err) { console.error("Payments load error:", err); }
     setLoading(false);
   }, []);
 

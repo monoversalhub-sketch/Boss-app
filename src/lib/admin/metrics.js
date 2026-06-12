@@ -118,7 +118,10 @@ export async function computeAggregateMetrics() {
 
   const churnRisks = churnData?.filter(c => c.risk_level === "high" || c.risk_level === "critical").length || 0;
   const healthyBiz = healthData?.filter(h => h.category === "healthy").length || 0;
-  const inactiveBiz = (totalTailors || 0) - activeBusinesses;
+  const growingBiz = healthData?.filter(h => h.category === "growing").length || 0;
+  const atRiskBiz = healthData?.filter(h => h.category === "at_risk").length || 0;
+  const dormantBiz = healthData?.filter(h => h.category === "dormant").length || 0;
+  const inactiveBiz = Math.max(0, (totalTailors || 0) - activeBusinesses);
 
   const totalOrdersCount = allOrders?.length || 0;
   const totalCustomersCount = allCustomers?.length || 0;
@@ -135,6 +138,9 @@ export async function computeAggregateMetrics() {
     trustScoreDistribution: scoreDistribution,
     churnRiskUsers: churnRisks,
     healthyBusinesses: healthyBiz,
+    growingBusinesses: growingBiz,
+    atRiskBusinesses: atRiskBiz,
+    dormantBusinesses: dormantBiz,
     totalOrders: totalOrdersCount,
     totalCustomers: totalCustomersCount,
     avgScore: trustData?.length

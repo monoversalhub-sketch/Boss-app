@@ -32,7 +32,7 @@ export default function ProductIntelligencePage() {
     ? Math.round(journeys.reduce((s, j) => s + j.completionRate, 0) / journeys.length)
     : 0;
 
-  const sortedFeatures = (features || []).sort((a, b) => b.usersReached - a.usersReached);
+  const sortedFeatures = [...(features || [])].sort((a, b) => b.usersReached - a.usersReached);
 
   return (
     <div>

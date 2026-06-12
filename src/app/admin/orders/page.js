@@ -29,7 +29,7 @@ export default function AdminOrdersPage() {
   const delivered = orders.filter(o => o.status === "Delivered");
 
   const filtered = orders.filter(o => {
-    if (statusFilter !== "all" && o.status?.toLowerCase().replace(/ /g, "_") !== statusFilter) return false;
+    if (statusFilter !== "all" && (o.status || "").toLowerCase().replace(/ /g, "_") !== statusFilter) return false;
     if (search && !o.cloth_type?.toLowerCase().includes(search.toLowerCase()) && !o.tailorName?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });

@@ -4,7 +4,7 @@ import { AdminC as C, AdminS as S, SectionHeader, AdminTable, MetricsRow, Metric
 import { MEAS_FIELDS } from "@/components/boss/tokens";
 
 export default function MeasurementsPage() {
-  const [customers, setCustomers] = useState([]);
+  const [customers, setCustomers] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {

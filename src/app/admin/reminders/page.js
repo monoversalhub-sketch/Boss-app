@@ -20,10 +20,10 @@ export default function AdminRemindersPage() {
     setOrders((ordersData || []).map(o => ({
       ...o,
       tailorName: tailorMap[o.tailor_id] || "—",
-      isDueSoon: o.delivery_date && !o.status?.includes("Delivered") &&
+      isDueSoon: o.delivery_date && o.status !== "Delivered" &&
         new Date(o.delivery_date) > now &&
         (new Date(o.delivery_date) - now) / 86400000 <= 7,
-      isOverdue: o.delivery_date && !o.status?.includes("Delivered") &&
+      isOverdue: o.delivery_date && o.status !== "Delivered" &&
         new Date(o.delivery_date) < now,
     })));
     setLoading(false);
@@ -48,7 +48,7 @@ export default function AdminRemindersPage() {
           columns={[
             { key: "tailorName", label: "Tailor" },
             { key: "cloth_type", label: "Item" },
-            { key: "status", label: "Status", render: (v) => <StatusBadge status={v?.toLowerCase().replace(/ /g,"_")} /> },
+            { key: "status", label: "Status", render: (v) => <StatusBadge status={v ? v.toLowerCase().replace(/ /g,"_") : "unknown"} /> },
             { key: "delivery_date", label: "Delivery Date", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
             { key: "isDueSoon", label: "Flag", render: (v, row) =>
               row.isOverdue ? <span style={{color: C.red, fontWeight: 700}}>OVERDUE</span> :
