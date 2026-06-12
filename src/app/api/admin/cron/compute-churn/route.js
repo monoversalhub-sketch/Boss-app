@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBrowserClient } from "@/lib/db";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { computeAndSaveChurnRisk } from "@/lib/admin/churn";
 
 export async function GET(request) {
@@ -9,7 +9,7 @@ export async function GET(request) {
   }
 
   try {
-    const client = await getBrowserClient();
+    const client = getAdminClient();
     const { data: tailors } = await client.from("tailors").select("id");
     const results = [];
     for (const t of tailors || []) {

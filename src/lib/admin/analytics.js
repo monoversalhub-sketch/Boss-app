@@ -8,7 +8,7 @@ export async function getJourneyAnalytics(daysBack = 30) {
     .gte("created_at", since)
     .order("created_at", { ascending: false });
 
-  if (!journeys?.length) return {};
+  if (!journeys?.length) return [];
 
   const byJourney = {};
   journeys.forEach(j => {
@@ -40,7 +40,7 @@ export async function getFeatureIntelligence(daysBack = 30) {
     .select("feature, action, tailor_id")
     .gte("created_at", since);
 
-  if (!events?.length) return {};
+  if (!events?.length) return [];
 
   const byFeature = {};
   const uniqueUsers = new Set();
