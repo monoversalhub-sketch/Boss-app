@@ -1,5 +1,5 @@
 export async function computeCreditReadiness(tailorId) {
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
 
   const { data: orders } = await client
     .from("orders")
@@ -100,7 +100,7 @@ export async function computeCreditReadiness(tailorId) {
 }
 
 export async function getCreditIntelligence() {
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
 
   const [{ data: creditData }, { data: tailors }] = await Promise.all([
     client.from("credit_readiness")

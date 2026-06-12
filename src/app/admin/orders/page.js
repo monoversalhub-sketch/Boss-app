@@ -9,8 +9,8 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
-    const { getBrowserClient } = await import("@/lib/db");
-    const client = await getBrowserClient();
+    const { getEffectiveClient } = await import("@/lib/db");
+    const client = await getEffectiveClient();
     const [{ data: ordersData }, { data: tailors }] = await Promise.all([
       client.from("orders").select("*").order("created_at", { ascending: false }).limit(200),
       client.from("tailors").select("id, name"),

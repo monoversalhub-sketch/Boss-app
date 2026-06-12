@@ -7,8 +7,8 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { getBrowserClient } = await import("@/lib/db");
-    const client = await getBrowserClient();
+    const { getEffectiveClient } = await import("@/lib/db");
+    const client = await getEffectiveClient();
     const { data } = await client.from("support_tickets")
       .select("*, tailor:tailors(name, email)")
       .order("created_at", { ascending: false });

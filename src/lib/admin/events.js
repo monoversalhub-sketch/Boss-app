@@ -1,5 +1,5 @@
 "use client";
-import { getBrowserClient, ls } from "../db";
+import { getEffectiveClient, ls } from "../db";
 
 const SESSION_ID = typeof crypto !== "undefined" ? crypto.randomUUID() : Date.now().toString(36);
 
@@ -11,7 +11,7 @@ async function flush() {
   _flushing = true;
   const batch = _queue.splice(0);
   try {
-    const client = await getBrowserClient();
+    const client = await getEffectiveClient();
     await client.from("feature_events").insert(batch);
   } catch {
     _queue.unshift(...batch);
@@ -45,7 +45,7 @@ export function trackJourney(journey, step, status, opts = {}) {
     metadata: opts.metadata || {},
     created_at: new Date().toISOString(),
   };
-  getBrowserClient().then(c =>
+  getEffectiveClient().then(c =>
     c.from("journey_analytics").insert(payload).catch(() => {})
   );
 }

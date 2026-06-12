@@ -1,5 +1,5 @@
 export async function computeMetrics(tailorId) {
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
   const now = new Date();
   const today = now.toISOString().split("T")[0];
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
@@ -64,7 +64,7 @@ export async function computeMetrics(tailorId) {
 }
 
 export async function computeAggregateMetrics() {
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
   const now = new Date();
   const today = now.toISOString().split("T")[0];
 

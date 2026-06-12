@@ -8,8 +8,8 @@ export default function MeasurementsPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { getBrowserClient } = await import("@/lib/db");
-    const client = await getBrowserClient();
+    const { getEffectiveClient } = await import("@/lib/db");
+    const client = await getEffectiveClient();
     const [{ data: customersData }, { data: tailors }] = await Promise.all([
       client.from("customers").select("*").order("created_at", { ascending: false }),
       client.from("tailors").select("id, name"),

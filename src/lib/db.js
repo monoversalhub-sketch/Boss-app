@@ -38,6 +38,15 @@ async function getBrowserClient() {
   return _browserClient;
 }
 
+// ── Get effective client: admin client (server) or browser client (client) ──
+export async function getEffectiveClient() {
+  if (typeof window === "undefined") {
+    const { getAdminClient } = await import("./supabase/admin");
+    return getAdminClient();
+  }
+  return await getBrowserClient();
+}
+
 // ── Session-scoped user cache (avoids redundant auth.getUser() calls) ──
 let _cachedUser = null;
 let _cachedTailorId = null;

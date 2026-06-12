@@ -59,7 +59,7 @@ export function computeChurnRisk(metrics, lastActiveDate) {
 }
 
 export async function computeAndSaveChurnRisk(tailorId) {
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
 
   const { data: tailor } = await client
     .from("tailors")
@@ -87,7 +87,7 @@ export async function computeAndSaveChurnRisk(tailorId) {
 }
 
 export async function getChurnIntelligence() {
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
 
   const [{ data: churnData }, { data: tailors }] = await Promise.all([
     client.from("churn_risk").select("*, tailor:tailors(name, email, phone)").order("risk_score", { ascending: false }),

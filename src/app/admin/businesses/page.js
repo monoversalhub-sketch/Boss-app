@@ -8,8 +8,8 @@ export default function BusinessesPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const load = useCallback(async () => {
-    const { getBrowserClient } = await import("@/lib/db");
-    const client = await getBrowserClient();
+    const { getEffectiveClient } = await import("@/lib/db");
+    const client = await getEffectiveClient();
     const [{ data: tailors }, { data: health }, { data: churn }] = await Promise.all([
       client.from("tailors").select("id, name, email, phone, bos_score, created_at, last_active_at").order("created_at", { ascending: false }),
       client.from("business_health_scores").select("*"),

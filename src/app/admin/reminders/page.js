@@ -7,8 +7,8 @@ export default function AdminRemindersPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { getBrowserClient } = await import("@/lib/db");
-    const client = await getBrowserClient();
+    const { getEffectiveClient } = await import("@/lib/db");
+    const client = await getEffectiveClient();
     const now = new Date();
     const [{ data: ordersData }, { data: tailors }] = await Promise.all([
       client.from("orders").select("*").order("delivery_date", { ascending: true }).limit(200),

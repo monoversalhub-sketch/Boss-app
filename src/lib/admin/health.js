@@ -25,7 +25,7 @@ export function categorizeHealth(metrics) {
 export async function computeAndSaveHealthScore(tailorId) {
   const metrics = await computeMetrics(tailorId);
   const { score, category } = categorizeHealth(metrics);
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
 
   await client.from("business_health_scores").upsert({
     tailor_id: tailorId,
@@ -43,7 +43,7 @@ export async function computeAndSaveHealthScore(tailorId) {
 }
 
 export async function computeAllHealthScores() {
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
   const { data: tailors } = await client.from("tailors").select("id");
   if (!tailors?.length) return [];
 

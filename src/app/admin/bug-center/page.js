@@ -7,8 +7,8 @@ export default function BugCenterPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { getBrowserClient } = await import("@/lib/db");
-    const client = await getBrowserClient();
+    const { getEffectiveClient } = await import("@/lib/db");
+    const client = await getEffectiveClient();
     const { data } = await client.from("bug_reports")
       .select("*, tailor:tailors(name)")
       .order("created_at", { ascending: false });

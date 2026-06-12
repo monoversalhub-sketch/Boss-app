@@ -1,5 +1,5 @@
 export async function getTrustScoreIntelligence() {
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
 
   const [{ data: tailors }, { data: history }] = await Promise.all([
     client.from("tailors")

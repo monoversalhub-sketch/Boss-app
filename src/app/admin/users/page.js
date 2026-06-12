@@ -8,8 +8,8 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
-    const { getBrowserClient } = await import("@/lib/db");
-    const client = await getBrowserClient();
+    const { getEffectiveClient } = await import("@/lib/db");
+    const client = await getEffectiveClient();
     const { data } = await client.from("tailors")
       .select("id, name, email, phone, bos_score, created_at, last_active_at")
       .order("created_at", { ascending: false });

@@ -1,5 +1,5 @@
 export async function getJourneyAnalytics(daysBack = 30) {
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
   const since = new Date(Date.now() - daysBack * 86400000).toISOString();
 
   const { data: journeys } = await client
@@ -32,7 +32,7 @@ export async function getJourneyAnalytics(daysBack = 30) {
 }
 
 export async function getFeatureIntelligence(daysBack = 30) {
-  const client = await (await import("../db")).getBrowserClient();
+  const client = await (await import("../db")).getEffectiveClient();
   const since = new Date(Date.now() - daysBack * 86400000).toISOString();
 
   const { data: events } = await client

@@ -12,8 +12,8 @@ export default function UserDetailPage() {
 
   const load = useCallback(async () => {
     try {
-      const { getBrowserClient } = await import("@/lib/db");
-      const client = await getBrowserClient();
+      const { getEffectiveClient } = await import("@/lib/db");
+      const client = await getEffectiveClient();
       const [{ data: tailor }, { data: ordersData }, { data: health }, { data: churn }, { data: credit }] = await Promise.all([
         client.from("tailors").select("*").eq("id", id).maybeSingle(),
         client.from("orders").select("*").eq("tailor_id", id).order("created_at", { ascending: false }),
