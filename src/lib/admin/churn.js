@@ -61,48 +61,29 @@ export function computeChurnRisk(metrics, lastActiveDate) {
 export async function computeAndSaveChurnRisk(tailorId) {
   const client = await (await import("../db")).getEffectiveClient();
 
-  const { data: tailors, error: tailorErr } = await client
+  const { data: tailors } = await client
     .from("tailors")
     .select("id, last_active_at")
     .eq("id", tailorId);
 
-  if (tailorErr) {
-    console.error("churn.js tailor query error:", tailorErr);
-    return null;
-  }
-
-  if (!tailors?.length) {
-    console.error("churn.js no tailor found for:", tailorId);
-    return null;
-  }
+  if (!tailors?.length) return null;
 
   const tailor = tailors[0];
+  const metrics = await computeMetrics(tailorId);
+  const risk = computeChurnRisk(metrics, tailor.last_active_at);
 
-  try {
-    const metrics = await computeMetrics(tailorId);
-    const risk = computeChurnRisk(metrics, tailor.last_active_at);
+  await client.from("churn_risk").upsert({
+    tailor_id: tailorId,
+    risk_score: risk.riskScore,
+    risk_level: risk.riskLevel,
+    days_since_last_active: risk.daysSinceLastActive,
+    orders_declining: risk.ordersDeclining,
+    payments_declining: risk.paymentsDeclining,
+    intervention_recommended: risk.interventionRecommended,
+    computed_at: new Date().toISOString(),
+  }, { onConflict: "tailor_id" });
 
-    const { error: upsertErr } = await client.from("churn_risk").upsert({
-      tailor_id: tailorId,
-      risk_score: risk.riskScore,
-      risk_level: risk.riskLevel,
-      days_since_last_active: risk.daysSinceLastActive,
-      orders_declining: risk.ordersDeclining,
-      payments_declining: risk.paymentsDeclining,
-      intervention_recommended: risk.interventionRecommended,
-      computed_at: new Date().toISOString(),
-    }, { onConflict: "tailor_id" });
-
-    if (upsertErr) {
-      console.error("churn.js upsert error:", upsertErr);
-      return null;
-    }
-
-    return { tailorId, ...risk, metrics };
-  } catch (err) {
-    console.error("churn.js compute error:", err);
-    return null;
-  }
+  return { tailorId, ...risk, metrics };
 }
 
 export async function getChurnIntelligence() {

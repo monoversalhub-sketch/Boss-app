@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { computeAndSaveChurnRisk } from "@/lib/admin/churn";
 
 export async function GET(request) {
   const authHeader = request.headers.get("authorization");
@@ -8,27 +9,21 @@ export async function GET(request) {
   }
 
   try {
-    const admin = getAdminClient();
-    const { data: tIds, error: tErr } = await admin.from("tailors").select("id");
-    if (tErr) return NextResponse.json({ success: false, error: "Tailor list: " + tErr.message });
-
-    // Test: query each tailor directly with admin client
-    const diagnostics = [];
-    for (const t of tIds || []) {
-      const { data: direct, error: dErr } = await admin
-        .from("tailors")
-        .select("id, last_active_at")
-        .eq("id", t.id)
-        .maybeSingle();
-      diagnostics.push({
-        tailorId: t.id,
-        directFound: !!direct,
-        directError: dErr?.message || null,
-        lastActive: direct?.last_active_at || null,
-      });
+    const client = getAdminClient();
+    const { data: tailors } = await client.from("tailors").select("id");
+    const results = [];
+    for (const t of tailors || []) {
+      try {
+        const r = await computeAndSaveChurnRisk(t.id);
+        if (r) results.push(r);
+      } catch { /* skip */ }
     }
-
-    return NextResponse.json({ success: true, total: tIds?.length || 0, diagnostics });
+    return NextResponse.json({
+      success: true,
+      computed: results.length,
+      critical: results.filter(r => r.riskLevel === "critical").length,
+      high: results.filter(r => r.riskLevel === "high").length,
+    });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
