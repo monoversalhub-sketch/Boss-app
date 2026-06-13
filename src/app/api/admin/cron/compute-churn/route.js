@@ -10,17 +10,26 @@ export async function GET(request) {
 
   try {
     const client = getAdminClient();
-    const { data: tailors } = await client.from("tailors").select("id");
+    const { data: tailors, error: tErr } = await client.from("tailors").select("id");
+    if (tErr) return NextResponse.json({ error: "Tailor query failed: " + tErr.message }, { status: 500 });
+
+    const errors = [];
     const results = [];
     for (const t of tailors || []) {
       try {
         const r = await computeAndSaveChurnRisk(t.id);
         if (r) results.push(r);
-      } catch { /* skip */ }
+        else errors.push({ tailorId: t.id, error: "returned null" });
+      } catch (e) {
+        errors.push({ tailorId: t.id, error: e.message || String(e) });
+      }
     }
+
     return NextResponse.json({
       success: true,
       computed: results.length,
+      total: tailors?.length || 0,
+      errors,
       critical: results.filter(r => r.riskLevel === "critical").length,
       high: results.filter(r => r.riskLevel === "high").length,
     });
