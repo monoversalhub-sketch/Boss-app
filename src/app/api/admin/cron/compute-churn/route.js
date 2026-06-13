@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
-import { computeAndSaveChurnRisk } from "@/lib/admin/churn";
 
 export async function GET(request) {
   const authHeader = request.headers.get("authorization");
@@ -9,30 +8,27 @@ export async function GET(request) {
   }
 
   try {
-    const client = getAdminClient();
-    const { data: tailors, error: tErr } = await client.from("tailors").select("id");
-    if (tErr) return NextResponse.json({ error: "Tailor query failed: " + tErr.message }, { status: 500 });
+    const admin = getAdminClient();
+    const { data: tIds, error: tErr } = await admin.from("tailors").select("id");
+    if (tErr) return NextResponse.json({ success: false, error: "Tailor list: " + tErr.message });
 
-    const errors = [];
-    const results = [];
-    for (const t of tailors || []) {
-      try {
-        const r = await computeAndSaveChurnRisk(t.id);
-        if (r) results.push(r);
-        else errors.push({ tailorId: t.id, error: "returned null" });
-      } catch (e) {
-        errors.push({ tailorId: t.id, error: e.message || String(e) });
-      }
+    // Test: query each tailor directly with admin client
+    const diagnostics = [];
+    for (const t of tIds || []) {
+      const { data: direct, error: dErr } = await admin
+        .from("tailors")
+        .select("id, last_active_at")
+        .eq("id", t.id)
+        .maybeSingle();
+      diagnostics.push({
+        tailorId: t.id,
+        directFound: !!direct,
+        directError: dErr?.message || null,
+        lastActive: direct?.last_active_at || null,
+      });
     }
 
-    return NextResponse.json({
-      success: true,
-      computed: results.length,
-      total: tailors?.length || 0,
-      errors,
-      critical: results.filter(r => r.riskLevel === "critical").length,
-      high: results.filter(r => r.riskLevel === "high").length,
-    });
+    return NextResponse.json({ success: true, total: tIds?.length || 0, diagnostics });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
