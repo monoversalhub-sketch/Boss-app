@@ -7,12 +7,15 @@ export default function FeatureRequestsPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { getEffectiveClient } = await import("@/lib/db");
-    const client = await getEffectiveClient();
-    const { data } = await client.from("feature_requests")
-      .select("*, tailor:tailors(name)")
-      .order("votes", { ascending: false });
-    setRequests(data || []);
+    const res = await fetch("/api/admin/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queries: [
+        { key: "requests", table: "feature_requests", select: "*, tailor:tailors(name)", order: "votes desc" },
+      ]}),
+    });
+    const json = await res.json();
+    setRequests(json.results?.[0]?.data || []);
     setLoading(false);
   }, []);
 

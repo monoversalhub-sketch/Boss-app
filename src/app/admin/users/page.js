@@ -8,12 +8,16 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
-    const { getEffectiveClient } = await import("@/lib/db");
-    const client = await getEffectiveClient();
-    const { data } = await client.from("tailors")
-      .select("id, name, email, phone, bos_score, created_at, last_active_at")
-      .order("created_at", { ascending: false });
-    setTailors(data || []);
+    const res = await fetch("/api/admin/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queries: [
+        { key: "tailors", table: "tailors", select: "id, name, email, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
+      ]}),
+    });
+    const json = await res.json();
+    const data = json.results?.[0]?.data || [];
+    setTailors(data);
     setLoading(false);
   }, []);
 

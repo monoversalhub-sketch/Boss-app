@@ -12,17 +12,22 @@ export default function UserDetailPage() {
 
   const load = useCallback(async () => {
     try {
-      const { getEffectiveClient } = await import("@/lib/db");
-      const client = await getEffectiveClient();
-      const [{ data: tailor }, { data: ordersData }, { data: health }, { data: churn }, { data: credit }] = await Promise.all([
-        client.from("tailors").select("*").eq("id", id).maybeSingle(),
-        client.from("orders").select("*").eq("tailor_id", id).order("created_at", { ascending: false }),
-        client.from("business_health_scores").select("*").eq("tailor_id", id).maybeSingle(),
-        client.from("churn_risk").select("*").eq("tailor_id", id).maybeSingle(),
-        client.from("credit_readiness").select("*").eq("tailor_id", id).maybeSingle(),
-      ]);
-      if (tailor) setUser({ ...tailor, health, churn, credit });
-      setOrders(ordersData || []);
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries: [
+          { key: "tailor", table: "tailors", select: "*", filters: [{ method: "eq", column: "id", value: id }], single: true },
+          { key: "orders", table: "orders", select: "*", filters: [{ method: "eq", column: "tailor_id", value: id }], order: "created_at desc" },
+          { key: "health", table: "business_health_scores", select: "*", filters: [{ method: "eq", column: "tailor_id", value: id }], single: true },
+          { key: "churn", table: "churn_risk", select: "*", filters: [{ method: "eq", column: "tailor_id", value: id }], single: true },
+          { key: "credit", table: "credit_readiness", select: "*", filters: [{ method: "eq", column: "tailor_id", value: id }], single: true },
+        ]}),
+      });
+      const json = await res.json();
+      const results = {};
+      (json.results || []).forEach(r => { results[r.key] = r.data; });
+      if (results.tailor) setUser({ ...results.tailor, health: results.health, churn: results.churn, credit: results.credit });
+      setOrders(results.orders || []);
     } catch (err) { console.error("User load error:", err); }
     setLoading(false);
   }, [id]);

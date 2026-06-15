@@ -1,8 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { AdminC as C, AdminS as S, SectionHeader, AdminTable, MetricsRow, MetricCard, StatusBadge, ScoreBar } from "@/components/admin/Layout";
-import { getProductMetrics } from "@/lib/admin/analytics";
-import { getFeatureIntelligence } from "@/lib/admin/analytics";
 
 export default function ProductIntelligencePage() {
   const [data, setData] = useState(null);
@@ -12,12 +10,11 @@ export default function ProductIntelligencePage() {
 
   const load = useCallback(async () => {
     try {
-      const [d, f] = await Promise.all([
-        getProductMetrics(30),
-        getFeatureIntelligence(30),
-      ]);
-      setData(d);
-      setFeatures(f);
+      const res = await fetch("/api/admin/product-intelligence");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setData({ journeys: json.journeys || [] });
+      setFeatures(json.features || []);
     } catch (err) { console.error(err); }
     setLoading(false);
   }, []);

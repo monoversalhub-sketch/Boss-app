@@ -7,12 +7,15 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { getEffectiveClient } = await import("@/lib/db");
-    const client = await getEffectiveClient();
-    const { data } = await client.from("support_tickets")
-      .select("*, tailor:tailors(name, email)")
-      .order("created_at", { ascending: false });
-    setTickets(data || []);
+    const res = await fetch("/api/admin/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queries: [
+        { key: "tickets", table: "support_tickets", select: "*, tailor:tailors(name, email)", order: "created_at desc" },
+      ]}),
+    });
+    const json = await res.json();
+    setTickets(json.results?.[0]?.data || []);
     setLoading(false);
   }, []);
 

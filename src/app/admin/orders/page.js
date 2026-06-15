@@ -9,15 +9,20 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
-    const { getEffectiveClient } = await import("@/lib/db");
-    const client = await getEffectiveClient();
-    const [{ data: ordersData }, { data: tailors }] = await Promise.all([
-      client.from("orders").select("*").order("created_at", { ascending: false }).limit(200),
-      client.from("tailors").select("id, name"),
-    ]);
+    const res = await fetch("/api/admin/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queries: [
+        { key: "orders", table: "orders", select: "*", order: "created_at desc" },
+        { key: "tailors", table: "tailors", select: "id, name" },
+      ]}),
+    });
+    const json = await res.json();
+    const results = {};
+    (json.results || []).forEach(r => { results[r.key] = r.data || []; });
     const tailorMap = {};
-    tailors?.forEach(t => { tailorMap[t.id] = t.name; });
-    setOrders((ordersData || []).map(o => ({ ...o, tailorName: tailorMap[o.tailor_id] || "—" })));
+    (results.tailors || []).forEach(t => { tailorMap[t.id] = t.name; });
+    setOrders((results.orders || []).map(o => ({ ...o, tailorName: tailorMap[o.tailor_id] || "—" })));
     setLoading(false);
   }, []);
 

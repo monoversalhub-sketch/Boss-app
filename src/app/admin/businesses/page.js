@@ -8,33 +8,25 @@ export default function BusinessesPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const load = useCallback(async () => {
-    const { getEffectiveClient } = await import("@/lib/db");
-    const client = await getEffectiveClient();
-    const { data: { session }, error: sessErr } = await client.auth.getSession();
-    console.log("[biz] session:", session?.user?.email, "error:", sessErr?.message);
-
-    const { data: tailors, error: tailorErr } = await client
-      .from("tailors")
-      .select("id, name, email, phone, bos_score, created_at, last_active_at")
-      .order("created_at", { ascending: false });
-    console.log("[biz] tailors:", tailors?.length, "error:", tailorErr?.message);
-
-    const { data: health, error: healthErr } = await client
-      .from("business_health_scores")
-      .select("*");
-    console.log("[biz] health:", health?.length, "error:", healthErr?.message);
-
-    const { data: churn, error: churnErr } = await client
-      .from("churn_risk")
-      .select("*");
-    console.log("[biz] churn:", churn?.length, "error:", churnErr?.message);
+    const res = await fetch("/api/admin/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queries: [
+        { key: "tailors", table: "tailors", select: "id, name, email, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
+        { key: "health", table: "business_health_scores", select: "*" },
+        { key: "churn", table: "churn_risk", select: "*" },
+      ]}),
+    });
+    const json = await res.json();
+    const results = {};
+    (json.results || []).forEach(r => { results[r.key] = r.data || []; });
 
     const healthMap = {};
-    health?.forEach(h => { healthMap[h.tailor_id] = h; });
+    (results.health || []).forEach(h => { healthMap[h.tailor_id] = h; });
     const churnMap = {};
-    churn?.forEach(c => { churnMap[c.tailor_id] = c; });
+    (results.churn || []).forEach(c => { churnMap[c.tailor_id] = c; });
 
-    setBusinesses((tailors || []).map(t => ({
+    setBusinesses((results.tailors || []).map(t => ({
       ...t,
       health: healthMap[t.id]?.category || "unknown",
       healthScore: healthMap[t.id]?.score || 0,

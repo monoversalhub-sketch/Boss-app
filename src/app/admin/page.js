@@ -1,9 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { AdminC as C, AdminS as S, MetricsRow, MetricCard, SectionHeader, ScoreBar, AdminTable, StatusBadge } from "@/components/admin/Layout";
-import { computeAggregateMetrics } from "@/lib/admin/metrics";
-import { getChurnIntelligence } from "@/lib/admin/churn";
-import { getTrustScoreIntelligence } from "@/lib/admin/trust-score";
 
 const PULSE_RED = "#FF453A";
 const PULSE_AMBER = "#FF9F0A";
@@ -29,14 +26,12 @@ export default function MissionControlPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [m, c, t] = await Promise.all([
-        computeAggregateMetrics(),
-        getChurnIntelligence(),
-        getTrustScoreIntelligence(),
-      ]);
-      setMetrics(m);
-      setChurn(c);
-      setTrust(t);
+      const res = await fetch("/api/admin/dashboard");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setMetrics(json.metrics);
+      setChurn(json.churn);
+      setTrust(json.trust);
     } catch (err) {
       console.error("Mission Control load error:", err);
     }

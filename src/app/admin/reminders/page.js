@@ -7,17 +7,22 @@ export default function AdminRemindersPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { getEffectiveClient } = await import("@/lib/db");
-    const client = await getEffectiveClient();
     const now = new Date();
-    const [{ data: ordersData }, { data: tailors }] = await Promise.all([
-      client.from("orders").select("*").order("delivery_date", { ascending: true }).limit(200),
-      client.from("tailors").select("id, name"),
-    ]);
+    const res = await fetch("/api/admin/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queries: [
+        { key: "orders", table: "orders", select: "*", order: "delivery_date asc" },
+        { key: "tailors", table: "tailors", select: "id, name" },
+      ]}),
+    });
+    const json = await res.json();
+    const results = {};
+    (json.results || []).forEach(r => { results[r.key] = r.data || []; });
     const tailorMap = {};
-    tailors?.forEach(t => { tailorMap[t.id] = t.name; });
+    (results.tailors || []).forEach(t => { tailorMap[t.id] = t.name; });
 
-    setOrders((ordersData || []).map(o => ({
+    setOrders((results.orders || []).map(o => ({
       ...o,
       tailorName: tailorMap[o.tailor_id] || "—",
       isDueSoon: o.delivery_date && o.status !== "Delivered" &&

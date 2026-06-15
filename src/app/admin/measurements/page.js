@@ -8,16 +8,24 @@ export default function MeasurementsPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { getEffectiveClient } = await import("@/lib/db");
-    const client = await getEffectiveClient();
-    const [{ data: customersData }, { data: tailors }] = await Promise.all([
-      client.from("customers").select("*").order("created_at", { ascending: false }),
-      client.from("tailors").select("id, name"),
-    ]);
-    const tailorMap = {};
-    tailors?.forEach(t => { tailorMap[t.id] = t.name; });
+    const res = await fetch("/api/admin/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queries: [
+        { key: "customers", table: "customers", select: "*", order: "created_at desc" },
+        { key: "tailors", table: "tailors", select: "id, name" },
+      ]}),
+    });
+    const json = await res.json();
+    const results = {};
+    (json.results || []).forEach(r => { results[r.key] = r.data || []; });
+    const customersData = results.customers || [];
+    const tailorsData = results.tailors || [];
 
-    const withMeas = (customersData || []).filter(c => c.measurements && Object.keys(c.measurements).length > 0);
+    const tailorMap = {};
+    tailorsData.forEach(t => { tailorMap[t.id] = t.name; });
+
+    const withMeas = customersData.filter(c => c.measurements && Object.keys(c.measurements).length > 0);
     const totalMeas = withMeas.reduce((s, c) => s + Object.keys(c.measurements).length, 0);
     const measFieldsPopulated = {};
     withMeas.forEach(c => {
@@ -25,9 +33,9 @@ export default function MeasurementsPage() {
     });
 
     setCustomers({
-      all: customersData || [],
+      all: customersData,
       withMeasurements: withMeas,
-      totalCustomers: customersData?.length || 0,
+      totalCustomers: customersData.length || 0,
       totalWithMeasurements: withMeas.length,
       totalMeasurements: totalMeas,
       measFieldsPopulated,

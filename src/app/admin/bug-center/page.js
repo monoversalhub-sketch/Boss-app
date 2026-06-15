@@ -7,12 +7,15 @@ export default function BugCenterPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { getEffectiveClient } = await import("@/lib/db");
-    const client = await getEffectiveClient();
-    const { data } = await client.from("bug_reports")
-      .select("*, tailor:tailors(name)")
-      .order("created_at", { ascending: false });
-    setBugs(data || []);
+    const res = await fetch("/api/admin/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queries: [
+        { key: "bugs", table: "bug_reports", select: "*, tailor:tailors(name)", order: "created_at desc" },
+      ]}),
+    });
+    const json = await res.json();
+    setBugs(json.results?.[0]?.data || []);
     setLoading(false);
   }, []);
 
