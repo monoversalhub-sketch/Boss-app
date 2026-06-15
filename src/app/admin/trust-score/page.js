@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { AdminC as C, AdminS as S, MetricsRow, MetricCard, SectionHeader, ScoreBar, AdminTable, StatusBadge, AdminLayout } from "@/components/admin/Layout";
-import { getTrustScoreIntelligence } from "@/lib/admin/trust-score";
 
 export default function TrustScorePage() {
   const [data, setData] = useState(null);
@@ -9,8 +8,10 @@ export default function TrustScorePage() {
 
   const load = useCallback(async () => {
     try {
-      const result = await getTrustScoreIntelligence();
-      setData(result);
+      const res = await fetch("/api/admin/trust-intelligence");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setData(json);
     } catch (err) { console.error(err); }
     setLoading(false);
   }, []);

@@ -106,7 +106,7 @@ export async function getCreditIntelligence() {
     client.from("credit_readiness")
       .select("*, tailor:tailors(name, email, phone)")
       .order("monthly_revenue_avg", { ascending: false }),
-    client.from("tailors").select("id, name"),
+    client.from("tailors").select("id, shop"),
   ]);
 
   const creditReady = creditData?.filter(c => c.credit_ready) || [];

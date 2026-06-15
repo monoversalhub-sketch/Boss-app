@@ -83,7 +83,7 @@ export async function computeAggregateMetrics() {
     client.from("customers").select("id, tailor_id"),
     client.from("business_health_scores").select("*"),
     client.from("churn_risk").select("tailor_id, risk_level"),
-    client.from("tailors").select("id, bos_score, name, created_at, last_active_at"),
+    client.from("tailors").select("id, bos_score, shop, created_at, last_active_at"),
   ]);
 
   const activeBusinesses = trustData?.filter(t =>

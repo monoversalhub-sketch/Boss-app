@@ -13,14 +13,14 @@ export default function AdminRemindersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ queries: [
         { key: "orders", table: "orders", select: "*", order: "delivery_date asc" },
-        { key: "tailors", table: "tailors", select: "id, name" },
+        { key: "tailors", table: "tailors", select: "id, shop" },
       ]}),
     });
     const json = await res.json();
     const results = {};
     (json.results || []).forEach(r => { results[r.key] = r.data || []; });
     const tailorMap = {};
-    (results.tailors || []).forEach(t => { tailorMap[t.id] = t.name; });
+    (results.tailors || []).forEach(t => { tailorMap[t.id] = t.shop; });
 
     setOrders((results.orders || []).map(o => ({
       ...o,

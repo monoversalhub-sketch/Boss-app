@@ -90,7 +90,7 @@ export async function getChurnIntelligence() {
   const client = await (await import("../db")).getEffectiveClient();
 
   const [{ data: churnData }, { data: tailors }] = await Promise.all([
-    client.from("churn_risk").select("*, tailor:tailors(name, email, phone)").order("risk_score", { ascending: false }),
+    client.from("churn_risk").select("*, tailor:tailors(shop, phone)").order("risk_score", { ascending: false }),
     client.from("tailors").select("id, last_active_at"),
   ]);
 

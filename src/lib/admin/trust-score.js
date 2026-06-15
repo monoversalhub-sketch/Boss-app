@@ -3,7 +3,7 @@ export async function getTrustScoreIntelligence() {
 
   const [{ data: tailors }, { data: history }] = await Promise.all([
     client.from("tailors")
-      .select("id, name, email, phone, bos_score, bos_score_updated_at, created_at")
+      .select("id, shop, phone, bos_score, bos_score_updated_at, created_at")
       .order("bos_score", { ascending: false }),
     client.from("trust_score_history")
       .select("*")
@@ -12,7 +12,7 @@ export async function getTrustScoreIntelligence() {
   ]);
 
   const scores = tailors?.map(t => ({
-    id: t.id, name: t.name, email: t.email, phone: t.phone,
+    id: t.id, name: t.shop, email: t.email, phone: t.phone,
     score: t.bos_score || 0,
     lastUpdated: t.bos_score_updated_at,
     joined: t.created_at,

@@ -12,7 +12,7 @@ export default function BusinessesPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ queries: [
-        { key: "tailors", table: "tailors", select: "id, name, email, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
+        { key: "tailors", table: "tailors", select: "id, shop, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
         { key: "health", table: "business_health_scores", select: "*" },
         { key: "churn", table: "churn_risk", select: "*" },
       ]}),

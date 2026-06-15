@@ -153,7 +153,7 @@ export default function MissionControlPage() {
           } />
           <AdminTable
             columns={[
-              { key: "tailor", label: "Business", render: (_, row) => row.tailor?.name || "—" },
+              { key: "tailor", label: "Business", render: (_, row) => row.tailor?.shop || "—" },
               { key: "risk_level", label: "Risk", render: (v) => <StatusBadge status={v} /> },
               { key: "days_since_last_active", label: "Days Inactive", align: "right" },
             ]}

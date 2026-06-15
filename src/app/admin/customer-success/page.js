@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { AdminC as C, AdminS as S, MetricsRow, MetricCard, SectionHeader, AdminTable, StatusBadge, ScoreBar } from "@/components/admin/Layout";
-import { getChurnIntelligence } from "@/lib/admin/churn";
 
 export default function CustomerSuccessPage() {
   const [data, setData] = useState(null);
@@ -10,8 +9,10 @@ export default function CustomerSuccessPage() {
 
   const load = useCallback(async () => {
     try {
-      const result = await getChurnIntelligence();
-      setData(result);
+      const res = await fetch("/api/admin/churn-intelligence");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setData(json);
     } catch (err) { console.error(err); }
     setLoading(false);
   }, []);
@@ -104,7 +105,7 @@ export default function CustomerSuccessPage() {
         } />
         <AdminTable
           columns={[
-            { key: "tailor", label: "Business", render: (_, r) => r.tailor?.name || "—" },
+            { key: "tailor", label: "Business", render: (_, r) => r.tailor?.shop || "—" },
             { key: "risk_level", label: "Risk Level", render: (v) => <StatusBadge status={v} /> },
             { key: "risk_score", label: "Score", render: (v) => <ScoreBar score={v || 0} showLabel height={6} /> },
             { key: "days_since_last_active", label: "Days Inactive", align: "right" },

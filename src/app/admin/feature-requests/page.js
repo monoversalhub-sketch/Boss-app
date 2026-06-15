@@ -11,7 +11,7 @@ export default function FeatureRequestsPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ queries: [
-        { key: "requests", table: "feature_requests", select: "*, tailor:tailors(name)", order: "votes desc" },
+        { key: "requests", table: "feature_requests", select: "*, tailor:tailors(shop)", order: "votes desc" },
       ]}),
     });
     const json = await res.json();
@@ -42,7 +42,7 @@ export default function FeatureRequestsPage() {
         <AdminTable
           columns={[
             { key: "title", label: "Request" },
-            { key: "tailor", label: "From", render: (v) => v?.name || "—" },
+            { key: "tailor", label: "From", render: (v) => v?.shop || "—" },
             { key: "category", label: "Category", render: (v) => v || "—" },
             { key: "votes", label: "Votes", align: "right" },
             { key: "status", label: "Status", render: (v) => <StatusBadge status={v === "under_review" ? "open" : v} /> },

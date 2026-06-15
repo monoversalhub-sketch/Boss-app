@@ -12,7 +12,7 @@ export default function UsersPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ queries: [
-        { key: "tailors", table: "tailors", select: "id, name, email, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
+        { key: "tailors", table: "tailors", select: "id, shop, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
       ]}),
     });
     const json = await res.json();
@@ -24,8 +24,7 @@ export default function UsersPage() {
   useEffect(() => { load(); }, [load]);
 
   const filtered = tailors.filter(t =>
-    !search || t.name?.toLowerCase().includes(search.toLowerCase()) ||
-    t.email?.toLowerCase().includes(search.toLowerCase())
+    !search || t.shop?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -48,8 +47,7 @@ export default function UsersPage() {
       } />
       <AdminTable
         columns={[
-          { key: "name", label: "Name" },
-          { key: "email", label: "Email" },
+          { key: "shop", label: "Business" },
           { key: "phone", label: "Phone" },
           { key: "bos_score", label: "Trust Score", render: (v) => <ScoreBar score={v || 0} showLabel height={6} /> },
           { key: "total_orders", label: "Orders", align: "right" },

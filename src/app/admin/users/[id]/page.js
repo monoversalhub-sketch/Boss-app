@@ -51,11 +51,11 @@ export default function UserDetailPage() {
           backgroundColor: C.accent, display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 20, fontWeight: 900, color: "#fff", flexShrink: 0,
         }}>
-          {user.name?.charAt(0) || "?"}
+          {user.shop?.charAt(0) || "?"}
         </div>
         <div>
-          <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.3px" }}>{user.name || "Unnamed"}</div>
-          <div style={{ fontSize: 13, color: C.sub }}>{user.email} · {user.phone || "No phone"}</div>
+          <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.3px" }}>{user.shop || "Unnamed"}</div>
+          <div style={{ fontSize: 13, color: C.sub }}>{user.phone || "No phone"}</div>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           <ScoreBar score={user.bos_score || 0} showLabel height={8} />

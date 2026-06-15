@@ -11,7 +11,7 @@ export default function BugCenterPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ queries: [
-        { key: "bugs", table: "bug_reports", select: "*, tailor:tailors(name)", order: "created_at desc" },
+        { key: "bugs", table: "bug_reports", select: "*, tailor:tailors(shop)", order: "created_at desc" },
       ]}),
     });
     const json = await res.json();
@@ -40,7 +40,7 @@ export default function BugCenterPage() {
         <AdminTable
           columns={[
             { key: "title", label: "Bug" },
-            { key: "tailor", label: "Reporter", render: (v) => v?.name || "—" },
+            { key: "tailor", label: "Reporter", render: (v) => v?.shop || "—" },
             { key: "severity", label: "Severity", render: (v) => <StatusBadge status={v === "critical" ? "critical" : v === "major" ? "high" : v === "minor" ? "medium" : "low"} /> },
             { key: "status", label: "Status", render: (v) => <StatusBadge status={v} /> },
             { key: "created_at", label: "Reported", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },

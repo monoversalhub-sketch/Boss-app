@@ -11,7 +11,7 @@ export default function SupportPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ queries: [
-        { key: "tickets", table: "support_tickets", select: "*, tailor:tailors(name, email)", order: "created_at desc" },
+        { key: "tickets", table: "support_tickets", select: "*, tailor:tailors(shop)", order: "created_at desc" },
       ]}),
     });
     const json = await res.json();
@@ -40,7 +40,7 @@ export default function SupportPage() {
         <AdminTable
           columns={[
             { key: "subject", label: "Subject" },
-            { key: "tailor", label: "Business", render: (v) => v?.name || "—" },
+            { key: "tailor", label: "Business", render: (v) => v?.shop || "—" },
             { key: "priority", label: "Priority", render: (v) => <StatusBadge status={v === "critical" ? "critical" : v} /> },
             { key: "status", label: "Status", render: (v) => <StatusBadge status={v} /> },
             { key: "assigned_to", label: "Assigned To", render: (v) => v?.substring(0, 8) || "Unassigned" },

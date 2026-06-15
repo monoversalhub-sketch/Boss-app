@@ -13,7 +13,7 @@ export default function MeasurementsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ queries: [
         { key: "customers", table: "customers", select: "*", order: "created_at desc" },
-        { key: "tailors", table: "tailors", select: "id, name" },
+        { key: "tailors", table: "tailors", select: "id, shop" },
       ]}),
     });
     const json = await res.json();
@@ -23,7 +23,7 @@ export default function MeasurementsPage() {
     const tailorsData = results.tailors || [];
 
     const tailorMap = {};
-    tailorsData.forEach(t => { tailorMap[t.id] = t.name; });
+    tailorsData.forEach(t => { tailorMap[t.id] = t.shop; });
 
     const withMeas = customersData.filter(c => c.measurements && Object.keys(c.measurements).length > 0);
     const totalMeas = withMeas.reduce((s, c) => s + Object.keys(c.measurements).length, 0);
