@@ -10,11 +10,24 @@ export default function BusinessesPage() {
   const load = useCallback(async () => {
     const { getEffectiveClient } = await import("@/lib/db");
     const client = await getEffectiveClient();
-    const [{ data: tailors }, { data: health }, { data: churn }] = await Promise.all([
-      client.from("tailors").select("id, name, email, phone, bos_score, created_at, last_active_at").order("created_at", { ascending: false }),
-      client.from("business_health_scores").select("*"),
-      client.from("churn_risk").select("*"),
-    ]);
+    const { data: { session }, error: sessErr } = await client.auth.getSession();
+    console.log("[biz] session:", session?.user?.email, "error:", sessErr?.message);
+
+    const { data: tailors, error: tailorErr } = await client
+      .from("tailors")
+      .select("id, name, email, phone, bos_score, created_at, last_active_at")
+      .order("created_at", { ascending: false });
+    console.log("[biz] tailors:", tailors?.length, "error:", tailorErr?.message);
+
+    const { data: health, error: healthErr } = await client
+      .from("business_health_scores")
+      .select("*");
+    console.log("[biz] health:", health?.length, "error:", healthErr?.message);
+
+    const { data: churn, error: churnErr } = await client
+      .from("churn_risk")
+      .select("*");
+    console.log("[biz] churn:", churn?.length, "error:", churnErr?.message);
 
     const healthMap = {};
     health?.forEach(h => { healthMap[h.tailor_id] = h; });
