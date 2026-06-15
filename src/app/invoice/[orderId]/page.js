@@ -59,7 +59,8 @@ async function getInvoice(orderId) {
 }
 
 export async function generateMetadata({ params }) {
-  const data = await getInvoice(params.orderId);
+  const { orderId } = await params;
+  const data = await getInvoice(orderId);
   if (!data) return { title: "Invoice — BOSS" };
   const { order, customer, tailor } = data;
   const balance = Math.max(0, order.price - order.deposit - order.paid);
@@ -75,7 +76,8 @@ export async function generateMetadata({ params }) {
 }
 
 async function InvoiceContent({ params }) {
-  const data = await getInvoice(params.orderId);
+  const { orderId } = await params;
+  const data = await getInvoice(orderId);
 
   if (!data) {
     return (
