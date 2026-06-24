@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { AdminC as C, AdminS as S, MetricsRow, MetricCard, SectionHeader, ScoreBar, AdminTable, StatusBadge, AdminLayout } from "@/components/admin/Layout";
+import { AdminC as C, AdminS as S, MetricsRow, MetricCard, SectionHeader, ScoreBar, AdminTable, StatusBadge } from "@/components/admin/Layout";
 
 export default function TrustScorePage() {
   const [data, setData] = useState(null);

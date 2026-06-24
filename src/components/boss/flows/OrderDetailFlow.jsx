@@ -14,6 +14,26 @@ const cardStyle = {
   boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
 };
 
+function VoiceNotePlayer({url}){
+  const[playing,setPlaying]=useState(false);
+  const audioRef=useRef(null);
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 0",borderBottom:`1px solid ${C.border}`}}>
+      <audio ref={audioRef} src={url} preload="metadata" style={{display:"none"}}/>
+      <button className="tap" onClick={()=>{
+        if(!audioRef.current)return;
+        if(playing){audioRef.current.pause();setPlaying(false);return;}
+        audioRef.current.play();setPlaying(true);
+        audioRef.current.addEventListener("ended",()=>setPlaying(false),{once:true});
+      }} style={{width:36,height:36,borderRadius:"50%",backgroundColor:C.accent,color:"#fff",border:"none",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",flexShrink:0}}>
+        {playing?"⏸":"▶️"}
+      </button>
+      <div style={{fontSize:13,fontWeight:700,color:C.text}}>Voice note</div>
+      <div style={{fontSize:13,color:C.sub,marginLeft:"auto"}}>🔊</div>
+    </div>
+  );
+}
+
 export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger}){
   const{customers,setCustomers,toast}=useBOSS();
   const[payAmt,setPayAmt]=useState("");
@@ -108,25 +128,6 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
       setTimeout(() => onFeedbackTrigger?.("first_receipt"), 2000);
     }
   }
-  const VoiceNotePlayer=({url})=>{
-    const [playing,setPlaying]=useState(false);
-    const audioRef=useRef(null);
-    return(
-      <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 0",borderBottom:`1px solid ${C.border}`}}>
-        <audio ref={audioRef} src={url} preload="metadata" style={{display:"none"}}/>
-        <button className="tap" onClick={()=>{
-          if(!audioRef.current)return;
-          if(playing){audioRef.current.pause();setPlaying(false);return;}
-          audioRef.current.play();setPlaying(true);
-          audioRef.current.addEventListener("ended",()=>setPlaying(false),{once:true});
-        }} style={{width:36,height:36,borderRadius:"50%",backgroundColor:C.accent,color:"#fff",border:"none",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",flexShrink:0}}>
-          {playing?"⏸":"▶️"}
-        </button>
-        <div style={{fontSize:13,fontWeight:700,color:C.text}}>Voice note</div>
-        <div style={{fontSize:13,color:C.sub,marginLeft:"auto"}}>🔊</div>
-      </div>
-    );
-  };
   const Row=({label,value,valueStyle={}})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"11px 0",borderBottom:`1px solid ${C.border}`}}>
       <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{label}</div>

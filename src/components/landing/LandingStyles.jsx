@@ -21,8 +21,10 @@ export default function LandingStyles() {
       }),
       { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
     );
-    document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
-    return () => observer.disconnect();
+    const raf = requestAnimationFrame(() => {
+      document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
+    });
+    return () => { cancelAnimationFrame(raf); observer.disconnect(); };
   }, []);
 
   return (
