@@ -255,29 +255,64 @@ async function InvoiceContent({ params }) {
         </div>
       )}
 
+      {/* WhatsApp contact line — not a button */}
       {waHref ? (
         <a
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ textDecoration: "none", display: "block", marginBottom: 20 }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            textDecoration: "none",
+            marginBottom: 20,
+            padding: "14px 0",
+          }}
         >
-          <div style={{
-            background: "#25D366", color: "#fff", borderRadius: 14,
-            padding: "16px 20px", textAlign: "center", fontWeight: 700,
-            fontSize: 16, letterSpacing: "-0.3px",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          <svg
+            width={20}
+            height={20}
+            viewBox="0 0 24 24"
+            fill="#25D366"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M20.52 3.48A11.93 11.93 0 0 0 12 0C5.37 0 0 5.37 0
+              12c0 2.11.55 4.16 1.6 5.97L0 24l6.18-1.62A11.94 11.94 0 0
+              0 12 24c6.63 0 12-5.37 12-12 0-3.2-1.25-6.21-3.48-8.52zM12
+              22c-1.85 0-3.66-.5-5.24-1.44l-.37-.22-3.87 1.02 1.03-3.78
+              -.24-.39A9.93 9.93 0 0 1 2 12C2 6.48 6.48 2 12 2c2.65 0
+              5.15 1.03 7.03 2.9A9.93 9.93 0 0 1 22 12c0 5.52-4.48
+              10-10 10zm5.47-7.37c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47
+              -.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3
+              -.15-1.26-.46-2.4-1.48-.89-.79-1.48-1.77-1.66-2.07-.17
+              -.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1
+              -.2.05-.37-.02-.52-.07-.15-.67-1.6-.92-2.2-.24-.58-.49-.5
+              -.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.04 1.01-1.04
+              2.47s1.06 2.87 1.21 3.07c.15.2 2.09 3.2 5.07 4.48.71.31
+              1.26.49 1.69.63.71.22 1.36.19 1.87.11.57-.08 1.76-.72
+              2.01-1.41.25-.69.25-1.28.17-1.41-.07-.12-.27-.19-.57-.34z"
+            />
+          </svg>
+          <span style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: "#25D366",
+            letterSpacing: "-0.2px",
           }}>
-            💬 Message {tailor.shop} on WhatsApp
-          </div>
+            WhatsApp {tailor.shop}
+          </span>
         </a>
       ) : tailor.phone ? (
         <div style={{
-          background: C.s1, border: `1px solid ${C.border2}`, borderRadius: 14,
-          padding: "14px 20px", textAlign: "center", fontSize: 14,
-          color: C.sub, marginBottom: 20,
+          textAlign: "center",
+          fontSize: 13,
+          color: "#666",
+          marginBottom: 20,
+          padding: "14px 0",
         }}>
-          📞 Contact: {tailor.phone}
+          📞 {tailor.phone}
         </div>
       ) : null}
 

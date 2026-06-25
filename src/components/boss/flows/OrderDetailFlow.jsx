@@ -8,6 +8,7 @@ import { StatusStepper, MeasGrid } from "../cards";
 import { db } from "../../../lib/db";
 import { feedback } from "../../../lib/feedback";
 import { Events } from "@/lib/admin/events";
+import { useShareReceipt } from "../useShareReceipt";
 
 const cardStyle = {
   backgroundColor: C.s1, borderRadius: 16, padding: 16, marginBottom: 12,
@@ -43,6 +44,7 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
   const photoInputRef=useRef(null);
   const payRef=useRef(null);
   const[receiptPrompt,setReceiptPrompt]=useState(null);
+  const { status: shareStatus, sharing, shareReceipt } = useShareReceipt();
   const found=(()=>{for(const c of customers){const o=(c.orders||[]).find(x=>x.id===orderId);if(o)return{order:o,customer:c};}return null;})();
   if(!found||!open)return null;
   const{order,customer}=found;
@@ -309,7 +311,35 @@ export function OrderDetailFlow({open,onClose,orderId,tailor,onFeedbackTrigger})
           <div style={{fontSize:13,fontWeight:700,color:C.sub,marginBottom:12}}>WhatsApp Messages</div>
           <Btn variant="wa" onClick={waReady}><span>💬</span> Order Ready for Pickup</Btn>
           <div style={{height:10}}/>
-          <Btn variant="wa" onClick={waReminder}><span>📲</span> Payment Reminder + Link</Btn>
+          <button
+            className="tap"
+            onClick={() => shareReceipt(order, customer, tailor)}
+            disabled={sharing}
+            style={{
+              width: "100%",
+              padding: "16px 20px",
+              background: sharing ? "#1da851" : "#25D366",
+              color: "#fff",
+              border: "none",
+              borderRadius: 14,
+              fontSize: 15,
+              fontWeight: 700,
+              letterSpacing: "-0.3px",
+              fontFamily: "inherit",
+              cursor: sharing ? "default" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              transition: "background 0.2s",
+            }}
+          >
+            {shareStatus === "capturing" && "📸 Generating receipt…"}
+            {shareStatus === "sharing"   && "⏳ Opening share sheet…"}
+            {shareStatus === "done"      && "✅ Receipt shared!"}
+            {shareStatus === "error"     && "❌ Failed — tap to retry"}
+            {shareStatus === "idle"      && "📤 Share Receipt"}
+          </button>
           <div style={{height:10}}/>
           <Btn variant="outline" onClick={()=>{
             const url = invoiceUrl(order.id);
