@@ -41,10 +41,10 @@ export default function MeasurementsPage() {
       totalMeasurements: totalMeas,
       measFieldsPopulated,
       tailorMap,
-    }));
-    } catch (e) { console.error("Failed to load measurements", e); }
-    setLoading(false);
-  }, []);
+    });
+  } catch (e) { console.error("Failed to load measurements", e); }
+  setLoading(false);
+}, []);
 
   useEffect(() => { load(); }, [load]);
 
