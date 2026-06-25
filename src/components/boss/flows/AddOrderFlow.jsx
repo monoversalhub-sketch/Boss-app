@@ -20,6 +20,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   const pre = customers.find(c => c.id === prefilledCid);
   const [step, setStep] = useState(1);
   const [name, setName] = useState(pre?.name || ""); const [phone, setPhone] = useState(pre?.phone || "");
+  const [gender, setGender] = useState("female");
   const [type, setType] = useState(""); const [price, setPrice] = useState("");
   const [deposit, setDeposit] = useState(""); const [date, setDate] = useState("");
   const [notes, setNotes] = useState(""); const [matches, setMatches] = useState([]);
@@ -39,7 +40,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   useEffect(() => {
     if (open) {
       const p = customers.find(c => c.id === prefilledCid);
-      setName(p?.name || ""); setPhone(p?.phone || ""); setType(""); setPrice(""); setDeposit(""); setDate(""); setNotes(""); setMatches([]); setShowCalc(false); setIsSaving(false); savingRef.current = false;
+      setName(p?.name || ""); setPhone(p?.phone || ""); setGender(p?.gender || "female"); setType(""); setPrice(""); setDeposit(""); setDate(""); setNotes(""); setMatches([]); setShowCalc(false); setIsSaving(false); savingRef.current = false;
       setMeas({}); setMeasOpen(false); setStep(1); setVoiceBlob(null);
       setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; });
       startTime.current = Date.now();
@@ -55,7 +56,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   }, [open, prefilledCid]);
 
   function onNameChange(v) { setName(v); if (v.length < 1) { setMatches([]); return; } setMatches(customers.filter(c => c.name.toLowerCase().includes(v.toLowerCase())).slice(0, 5)); }
-  function pickExisting(c) { setName(c.name); setPhone(c.phone || ""); setMatches([]); }
+  function pickExisting(c) { setName(c.name); setPhone(c.phone || ""); setGender(c.gender || "female"); setMatches([]); }
 
   function handleImageSelect(e) {
     const files = Array.from(e.target.files || []);
@@ -83,7 +84,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
       const next = [...customers];
       let cust = next.find(c => c.id === prefilledCid) || next.find(c => c.name.toLowerCase() === name.trim().toLowerCase());
       const isNewCustomer = !cust;
-      if (isNewCustomer) { cust = { id: uid(), name: name.trim(), phone: phone.trim(), measurements: meas, orders: [] }; next.push(cust); }
+      if (isNewCustomer) { cust = { id: uid(), name: name.trim(), phone: phone.trim(), gender, measurements: meas, orders: [] }; next.push(cust); }
       else { if (phone.trim()) cust.phone = phone.trim(); if (Object.keys(meas).length) cust.measurements = { ...(cust.measurements||{}), ...meas }; }
       cust.orders = [order, ...(cust.orders || [])];
       setCustomers(next);
@@ -256,6 +257,47 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
               )}
             </div>
             <Input label="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="080XXXXXXXX" />
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.sub, marginBottom: 10 }}>
+                Gender
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                {[
+                  ["female", "👗", "Female"],
+                  ["male",   "👔", "Male"  ],
+                ].map(([val, icon, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setGender(val)}
+                    style={{
+                      flex: 1,
+                      padding: "14px 0",
+                      borderRadius: 14,
+                      border: gender === val
+                        ? `2px solid ${C.accent}`
+                        : `1.5px solid ${C.border}`,
+                      background: gender === val
+                        ? `${C.accent}15`
+                        : C.s2,
+                      color: gender === val ? C.accent : C.sub,
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <span style={{ fontSize: 20 }}>{icon}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <Select label="Cloth Type / Style" value={type} onChange={e => setType(e.target.value)} options={[{ value: "", label: "Select type…" }, ...CLOTH_TYPES]} />
           </>
         )}
@@ -306,7 +348,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
               </button>
               {measOpen && (
                 <div style={{marginTop:8}}>
-                  <MeasGrid measurements={meas} onChange={setMeas} />
+                  <MeasGrid measurements={meas} onChange={setMeas} gender={gender} />
                 </div>
               )}
             </div>
