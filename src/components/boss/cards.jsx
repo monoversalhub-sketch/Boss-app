@@ -7,6 +7,7 @@ import { C, S, STATUSES, MEAS_FIELDS } from "./tokens";
 import { fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, allOrders, orderStatus, isOverdue, isDueToday, computeTrustScore } from "./helpers";
 import { Sheet, SectionLabel } from "./ui";
 import { useBOSS } from "./context";
+import { db } from "../../lib/db";
 
 export function TrustScoreCard({customers,onPress}){
   const ts=computeTrustScore(customers);const pct=ts.score;
@@ -279,8 +280,9 @@ export function StatusStepper({status,onChange}){
 // MEASUREMENT GRID
 // ─────────────────────────────────────────
 export function MeasGrid({measurements,onChange}){
-  // Debounce: hold local state, fire onChange only 500ms after last keystroke.
-  // Prevents a targeted db.updateCustomer() call on every character typed.
+  const{tailor,setTailor,toast}=useBOSS();
+  const activeFields=(tailor?.custom_meas_fields?.length>0)?tailor.custom_meas_fields:MEAS_FIELDS;
+  const unit=tailor?.meas_unit||"inches";
   const[local,setLocal]=useState(measurements);
   const timerRef=useRef(null);
   useEffect(()=>{setLocal(measurements);},[measurements]);
@@ -291,16 +293,32 @@ export function MeasGrid({measurements,onChange}){
     clearTimeout(timerRef.current);
     timerRef.current=setTimeout(()=>onChange(next),500);
   }
+  async function toggleUnit(){
+    const next=unit==="inches"?"cm":"inches";
+    const t={...(tailor||{}),meas_unit:next};
+    setTailor(t);
+    await db.setTailor(t);
+    toast?.(`📏 Switched to ${next}`);
+  }
   return(
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-      {MEAS_FIELDS.map(f=>(
-        <div key={f.k} style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:14,padding:"10px 13px"}}>
-          <label style={{fontSize:13,fontWeight:600,color:C.sub,letterSpacing:"0.4px",textTransform:"uppercase"}}>{f.l}</label>
-          <input type="number" inputMode="decimal" placeholder="—" value={local[f.k]||""} onChange={e=>handleChange(f.k,e.target.value)}
-            style={{background:"none",border:"none",outline:"none",fontSize:20,fontWeight:700,color:C.text,width:"100%",padding:0,fontFamily:"inherit",display:"block",marginTop:2}}/>
-          <div style={{fontSize:13,color:C.muted,fontWeight:600}}>inches</div>
-        </div>
-      ))}
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.sub,textTransform:"uppercase",letterSpacing:"0.4px"}}>Measurements</div>
+        <button className="tap" onClick={toggleUnit}
+          style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 11px",fontSize:12,fontWeight:700,color:C.text,cursor:"pointer",fontFamily:"inherit"}}>
+          {unit==="inches"?"📏 in":"📐 cm"}
+        </button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        {activeFields.map(f=>(
+          <div key={f.k} style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:14,padding:"10px 13px"}}>
+            <label style={{fontSize:13,fontWeight:600,color:C.sub,letterSpacing:"0.4px",textTransform:"uppercase"}}>{f.l}</label>
+            <input type="number" inputMode="decimal" placeholder="—" value={local[f.k]||""} onChange={e=>handleChange(f.k,e.target.value)}
+              style={{background:"none",border:"none",outline:"none",fontSize:20,fontWeight:700,color:C.text,width:"100%",padding:0,fontFamily:"inherit",display:"block",marginTop:2}}/>
+            <div style={{fontSize:13,color:C.muted,fontWeight:600}}>{unit}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

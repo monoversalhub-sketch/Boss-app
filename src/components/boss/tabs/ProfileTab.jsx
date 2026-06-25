@@ -22,6 +22,8 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
   const [accountNumber, setAccountNumber] = useState(tailor?.account_number || "");
   const [accountName, setAccountName] = useState(tailor?.account_name || "");
   const [saved, setSaved] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef(null);
 
   const [driveFiles, setDriveFiles] = useState([]);
   const [driveBusy, setDriveBusy] = useState(false);
@@ -58,6 +60,32 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
 
   const ts = computeTrustScore(customers);
   const orders = useMemo(() => allOrders(customers), [customers]);
+
+  async function handleLogoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast?.("⚠️ Logo must be under 2MB");
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const url = await db.uploadLogo(file);
+      if (url) {
+        const t = { ...(tailor || {}), logo_url: url };
+        await db.setTailor(t);
+        setTailor(t);
+        toast?.("✅ Logo saved!");
+      } else {
+        toast?.("❌ Logo upload failed. Try again.");
+      }
+    } catch {
+      toast?.("❌ Logo upload failed. Try again.");
+    } finally {
+      setLogoUploading(false);
+      e.target.value = "";
+    }
+  }
 
   async function saveProfile() {
     const t = {
@@ -139,6 +167,56 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <SubHeader title="Edit Profile" />
       <div className="scrollable" style={{ flex: 1, padding: "20px", display: "flex", flexDirection: "column", gap: 14, paddingBottom: 80 }}>
+        {/* Logo */}
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.sub, marginBottom: 10 }}>
+            Shop Logo (appears on customer invoices)
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {tailor?.logo_url ? (
+              <img
+                src={tailor.logo_url}
+                alt="logo"
+                style={{ width: 64, height: 64, borderRadius: 16,
+                  objectFit: "cover", border: `1px solid ${C.border}` }}
+              />
+            ) : (
+              <div style={{
+                width: 64, height: 64, borderRadius: 16,
+                background: C.s3, border: `1px solid ${C.border}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 24, color: C.sub,
+              }}>🏪</div>
+            )}
+            <div style={{ flex: 1 }}>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                style={{ display: "none" }}
+                onChange={handleLogoUpload}
+              />
+              <button
+                className="tap"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={logoUploading}
+                style={{
+                  width: "100%", padding: "12px 16px",
+                  background: C.s2, border: `1px solid ${C.border}`,
+                  borderRadius: 12, fontSize: 14, fontWeight: 700,
+                  color: logoUploading ? C.sub : C.text,
+                  cursor: logoUploading ? "default" : "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                {logoUploading ? "Uploading…" : tailor?.logo_url ? "Change Logo" : "Upload Logo"}
+              </button>
+              <div style={{ fontSize: 12, color: C.sub, marginTop: 6 }}>
+                PNG or JPG · max 2MB · square image works best
+              </div>
+            </div>
+          </div>
+        </div>
         <Input label="Shop / Business Name *" value={shop} onChange={e => setShop(e.target.value)} placeholder="e.g. Chidi's Fashion House" />
         <Input label="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} type="tel" placeholder="080XXXXXXXX" />
         <Input label="City" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Lagos" />

@@ -37,7 +37,9 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.redirect(new URL("/app", request.url));
+    const response = NextResponse.redirect(new URL("/app", request.url));
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (err) {
     console.error("[auth/callback] Unexpected error:", err);
     return NextResponse.redirect(new URL("/app?auth_error=callback_failed", request.url));

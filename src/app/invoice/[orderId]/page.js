@@ -109,30 +109,54 @@ async function InvoiceContent({ params }) {
                     : C.sub;
 
   const waPhone = (tailor.phone || "").replace(/\D/g, "");
-  const waNum = waPhone.startsWith("0") ? "234" + waPhone.slice(1)
-              : waPhone.startsWith("234") ? waPhone
-              : "234" + waPhone;
-  const waHref = waNum.length > 10 ? `https://wa.me/${waNum}` : null;
+  let waNum = "";
+  if (waPhone.startsWith("234")) {
+    waNum = waPhone;
+  } else if (waPhone.startsWith("0") && waPhone.length >= 11) {
+    waNum = "234" + waPhone.slice(1);
+  } else if (waPhone.length >= 7) {
+    waNum = "234" + waPhone;
+  }
+  const waHref = waNum.length >= 12 ? `https://wa.me/${waNum}` : null;
 
   return (
     <div style={{
       maxWidth: 460, margin: "0 auto", padding: "24px 20px 48px",
       display: "flex", flexDirection: "column", gap: 0,
     }}>
+      {/* Header — tailor's shop identity, not BOSS branding */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         marginBottom: 28, paddingBottom: 16, borderBottom: `1px solid ${C.border}`,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: C.gold, display: "flex", alignItems: "center",
-            justifyContent: "center", fontFamily: "Georgia, serif",
-            fontWeight: 900, fontSize: 20, color: "#000", fontStyle: "italic",
-          }}>B</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {tailor.logo_url ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={tailor.logo_url}
+              alt={tailor.shop}
+              style={{
+                width: 44, height: 44, borderRadius: 12,
+                objectFit: "cover", border: `1px solid ${C.border2}`,
+              }}
+            />
+          ) : (
+            <div style={{
+              width: 44, height: 44, borderRadius: 12,
+              background: "#1a1a1a", border: `1px solid ${C.border2}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 20, fontWeight: 900, color: C.gold,
+              fontFamily: "Georgia, serif",
+            }}>
+              {(tailor.shop || "S")[0].toUpperCase()}
+            </div>
+          )}
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.3px" }}>BOSS</div>
-            <div style={{ fontSize: 13, color: C.sub }}>Build Trust. Grow Faster.</div>
+            <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: "-0.4px",
+              color: "#fff", lineHeight: 1.1 }}>{tailor.shop}</div>
+            {tailor.city && (
+              <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>📍 {tailor.city}</div>
+            )}
           </div>
         </div>
         <div style={{
@@ -141,17 +165,6 @@ async function InvoiceContent({ params }) {
           padding: "5px 10px", fontWeight: 600,
           textTransform: "uppercase", letterSpacing: "0.5px",
         }}>Invoice</div>
-      </div>
-
-      <div style={{
-        background: C.s1, border: `1px solid ${C.border2}`,
-        borderRadius: 16, padding: "20px", marginBottom: 16,
-      }}>
-        <div style={{ fontSize: 13, color: C.sub, fontWeight: 600,
-          textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>From</div>
-        <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-0.5px",
-          fontFamily: "Georgia, serif", color: C.gold, marginBottom: 4 }}>{tailor.shop}</div>
-        {tailor.city && <div style={{ fontSize: 13, color: C.sub }}>📍 {tailor.city}</div>}
       </div>
 
       <div style={{
@@ -242,18 +255,31 @@ async function InvoiceContent({ params }) {
         </div>
       )}
 
-      {waHref && (
-        <a href={waHref} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+      {waHref ? (
+        <a
+          href={waHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ textDecoration: "none", display: "block", marginBottom: 20 }}
+        >
           <div style={{
             background: "#25D366", color: "#fff", borderRadius: 14,
             padding: "16px 20px", textAlign: "center", fontWeight: 700,
-            fontSize: 16, letterSpacing: "-0.3px", marginBottom: 20,
+            fontSize: 16, letterSpacing: "-0.3px",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
             💬 Message {tailor.shop} on WhatsApp
           </div>
         </a>
-      )}
+      ) : tailor.phone ? (
+        <div style={{
+          background: C.s1, border: `1px solid ${C.border2}`, borderRadius: 14,
+          padding: "14px 20px", textAlign: "center", fontSize: 14,
+          color: C.sub, marginBottom: 20,
+        }}>
+          📞 Contact: {tailor.phone}
+        </div>
+      ) : null}
 
       <div style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: C.sub, lineHeight: 1.6 }}>
         <div>Powered by <span style={{ color: C.gold, fontWeight: 700 }}>BOSS</span> · Build Trust. Grow Faster.</div>
@@ -272,6 +298,8 @@ export default function InvoicePage({ params }) {
         margin: 0, padding: 0, background: C.bg, color: "#fff",
         fontFamily: "system-ui, -apple-system, sans-serif",
         minHeight: "100vh",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
       }}>
         <Suspense fallback={<Loading />}>
           <InvoiceContent params={params} />

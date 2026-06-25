@@ -30,7 +30,8 @@ export async function GET(request, { params }) {
       customers ( id, name ),
       tailors (
         id, shop, city, phone,
-        bank_name, account_number, account_name
+        bank_name, account_number, account_name,
+        logo_url
       )
     `)
     .eq("id", orderId)
@@ -70,6 +71,7 @@ export async function GET(request, { params }) {
       bank_name:        t.bank_name        || "",
       account_number:   t.account_number   || "",
       account_name:     t.account_name     || "",
+      logo_url:         t.logo_url         || null,
     },
   });
 }

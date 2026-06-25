@@ -169,7 +169,14 @@ async function updateBosScore(tailorId) {
       const client = await getBrowserClient();
       const { data, error } = await client.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            prompt: "select_account",
+            access_type: "offline",
+          },
+          scopes: "email profile",
+        },
       });
       if (error) return { error: { message: error.message } };
       return { data, error: null };
@@ -207,7 +214,7 @@ async function updateBosScore(tailorId) {
       if (!authUser) return null;
       const { data } = await client
         .from("tailors")
-        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at,google_drive_refresh_token,notif_delivery,notif_payments,notif_briefing")
+        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at,google_drive_refresh_token,notif_delivery,notif_payments,notif_briefing,logo_url,meas_unit,custom_meas_fields")
         .eq("user_id", authUser.id)
         .single();
       if (data) { lsSet("boss_tailor", data); _cachedTailorId = data.id; }
@@ -254,6 +261,9 @@ async function updateBosScore(tailorId) {
       if (profile.self_declared_years  !== undefined) payload.self_declared_years  = profile.self_declared_years || null;
       if (profile.self_declared_score  !== undefined && profile.self_declared_score > 0)
         payload.self_declared_at = new Date().toISOString();
+      if (profile.logo_url           !== undefined) payload.logo_url           = profile.logo_url           || null;
+      if (profile.meas_unit          !== undefined) payload.meas_unit          = profile.meas_unit          || "inches";
+      if (profile.custom_meas_fields !== undefined) payload.custom_meas_fields = profile.custom_meas_fields || null;
 
       _syncCallback?.("syncing");
       await client.from("tailors").upsert(payload, { onConflict: "user_id" });
@@ -483,6 +493,25 @@ async function updateBosScore(tailorId) {
     } catch (e) {
       console.error("[db.deleteCustomer]", e);
       _syncCallback?.("error");
+    }
+  },
+
+  async uploadLogo(file) {
+    try {
+      const client = await getBrowserClient();
+      const authUser = await getCachedUser();
+      if (!authUser) return null;
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `logos/${authUser.id}/shop-logo.${ext}`;
+      const { error } = await client.storage
+        .from("boss-assets")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (error) { console.error("[db.uploadLogo]", error); return null; }
+      const { data } = client.storage.from("boss-assets").getPublicUrl(path);
+      return `${data.publicUrl}?v=${Date.now()}`;
+    } catch (e) {
+      console.error("[db.uploadLogo]", e);
+      return null;
     }
   },
 
