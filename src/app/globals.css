@@ -1,3 +1,34 @@
+/* ── Mobile-only viewport enforcement ───────────────────────────────
+   Caps layout to mobile width regardless of viewport
+   state. Critical safety net for the OAuth redirect
+   viewport reset bug on Android Chrome.
+─────────────────────────────────────────────────── */
+html {
+  max-width: 480px;
+  margin: 0 auto;
+  overflow-x: hidden;
+  min-height: 100svh;
+}
+
+body {
+  max-width: 480px;
+  margin: 0 auto;
+  overflow-x: hidden;
+  min-height: 100svh;
+  position: relative;
+}
+
+* {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+
 /* src/app/globals.css */
 html, body, #__next {
   height: 100%;

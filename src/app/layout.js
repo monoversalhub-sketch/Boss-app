@@ -13,6 +13,14 @@ export const metadata = {
   title:       "BOSS — Build Trust. Grow Faster.",
   description: "The operating system for artisan businesses. Manage orders, clients, payments and grow your craft business.",
   manifest:    "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BOSS",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   verification: {
     google: "googlec15a44381ada5908",
   },
@@ -33,6 +41,7 @@ export const viewport = {
   width:        "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
   viewportFit:  "cover",
   themeColor:   "#1C1C1E",
 };

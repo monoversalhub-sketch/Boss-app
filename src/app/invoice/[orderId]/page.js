@@ -327,7 +327,7 @@ export default function InvoicePage({ params }) {
   return (
     <html lang="en">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
       </head>
       <body style={{
         margin: 0, padding: 0, background: C.bg, color: "#fff",
@@ -335,6 +335,8 @@ export default function InvoicePage({ params }) {
         minHeight: "100vh",
         overflowY: "auto",
         WebkitOverflowScrolling: "touch",
+        maxWidth: "100%",
+        overflowX: "hidden",
       }}>
         <Suspense fallback={<Loading />}>
           <InvoiceContent params={params} />

@@ -81,6 +81,32 @@ function BOSSApp(){
   const[isOnline,setIsOnline]=useState(typeof navigator!=="undefined"?navigator.onLine:true);
   const[justCameOnline,setJustCameOnline]=useState(false);
 
+  // Layer 3: Viewport enforcer — corrects mobile viewport
+  // if OAuth redirect caused it to snap to desktop width.
+  useEffect(() => {
+    const CORRECT = [
+      "width=device-width",
+      "initial-scale=1",
+      "maximum-scale=1",
+      "user-scalable=no",
+      "viewport-fit=cover",
+    ].join(", ");
+
+    let meta = document.querySelector("meta[name='viewport']");
+
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "viewport";
+      document.head.appendChild(meta);
+    }
+
+    if (meta.content !== CORRECT) {
+      meta.content = CORRECT;
+    }
+
+    window.scrollTo(0, 0);
+  }, []);
+
   useEffect(()=>{
     // Init IndexedDB on mount
     if (typeof window !== "undefined") initDB().catch(()=>{});
