@@ -289,9 +289,26 @@ export function MeasGrid({
   onUnitToggle,
 }) {
   // Priority: tailor's saved config > gender default
-  const configKey    = gender === "male" ? "male" : "female";
-  const activeFields =
-    measConfig?.[configKey] ?? getDefaultMeasFields(gender);
+  const configKey = gender === "male" ? "male" : "female";
+
+  // Local state so UI updates instantly without waiting
+  // for parent to re-render with new measConfig prop.
+  const [fields, setFields] = useState(() =>
+    measConfig?.[configKey] ?? getDefaultMeasFields(gender)
+  );
+
+  // Sync if the incoming measConfig changes from outside
+  // (e.g. navigating to a different customer).
+  useEffect(() => {
+    const incoming =
+      measConfig?.[configKey] ?? getDefaultMeasFields(gender);
+    setFields(incoming);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configKey, gender]);
+
+  // Use local `fields` everywhere activeFields was used.
+  const activeFields = fields;
+
   const suggestions  = getMeasSuggestions(gender);
 
   // ── State ────────────────────────────────────────────
@@ -324,6 +341,9 @@ export function MeasGrid({
 
   // ── Config persistence ───────────────────────────────
   function saveConfig(updatedFields) {
+    // 1. Update local state immediately — UI responds now
+    setFields(updatedFields);
+    // 2. Persist to DB in background — no await needed
     const newConfig = {
       ...(measConfig || {}),
       [configKey]: updatedFields,
@@ -334,6 +354,8 @@ export function MeasGrid({
   // ── Rename ───────────────────────────────────────────
   function startRename(field) {
     if (!onConfigChange) return;
+    // field.l from the rendered list is always current
+    // because activeFields now reflects local state
     setRenamingKey(field.k);
     setRenameDraft(field.l);
     setShowPicker(false);
@@ -345,7 +367,8 @@ export function MeasGrid({
       setRenamingKey(null);
       return;
     }
-    const updated = activeFields.map(f =>
+    // Use `fields` (local state) not `activeFields`
+    const updated = fields.map(f =>
       f.k === renamingKey ? { ...f, l: label } : f
     );
     saveConfig(updated);
@@ -354,19 +377,20 @@ export function MeasGrid({
 
   // ── Remove field ─────────────────────────────────────
   function removeField(key) {
-    if (activeFields.length <= 1) return;
-    const updated = activeFields.filter(f => f.k !== key);
+    if (fields.length <= 1) return;
+    const updated = fields.filter(f => f.k !== key);
     saveConfig(updated);
     const next = { ...local };
     delete next[key];
     setLocal(next);
+    clearTimeout(timerRef.current);
     onChange(next);
   }
 
   // ── Add from suggestion ──────────────────────────────
   function addSuggestion(s) {
-    if (activeFields.find(f => f.k === s.k)) return;
-    saveConfig([...activeFields, s]);
+    if (fields.find(f => f.k === s.k)) return;
+    saveConfig([...fields, s]);
     setShowPicker(false);
   }
 
@@ -379,8 +403,8 @@ export function MeasGrid({
       .replace(/\s+/g, "_")
       .replace(/[^a-z0-9_]/g, "")
       .slice(0, 40);
-    if (!key || activeFields.find(f => f.k === key)) return;
-    saveConfig([...activeFields, { k: key, l: label }]);
+    if (!key || fields.find(f => f.k === key)) return;
+    saveConfig([...fields, { k: key, l: label }]);
     setCustomInput("");
   }
 
@@ -388,11 +412,22 @@ export function MeasGrid({
   function resetToDefault() {
     saveConfig(getDefaultMeasFields(gender));
     setShowPicker(false);
+    const defaultKeys = getDefaultMeasFields(gender)
+      .map(f => f.k);
+    const next = Object.fromEntries(
+      Object.entries(local).filter(([k]) =>
+        defaultKeys.includes(k)
+      )
+    );
+    setLocal(next);
+    clearTimeout(timerRef.current);
+    onChange(next);
   }
 
-  // Available suggestions = suggestions not already active
+  // Filter against local fields state so already-added
+  // chips disappear from the picker immediately
   const available = suggestions.filter(
-    s => !activeFields.find(f => f.k === s.k)
+    s => !fields.find(f => f.k === s.k)
   );
 
   // ─────────────────────────────────────────────────────
@@ -491,7 +526,10 @@ export function MeasGrid({
             {/* Remove × button */}
             {onConfigChange && renamingKey !== f.k && (
               <button
-                onClick={() => removeField(f.k)}
+                onClick={e => {
+                  e.stopPropagation();
+                  removeField(f.k);
+                }}
                 style={{
                   position: "absolute",
                   top: 6, right: 7,
