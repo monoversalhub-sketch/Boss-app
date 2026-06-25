@@ -166,8 +166,8 @@ export default function PrivacyPage() {
         <p style={s.body}>Customer personal information (name, phone number, measurements) is never shown on public invoice pages.</p>
         <p style={s.body}>You control whether to share invoice links — BOSS generates them but you decide who receives them.</p>
 
-        <h2 style={s.h2}>7. Your Customers' Data — Your Responsibility</h2>
-        <p style={s.body}>When you enter customers' names, phone numbers, and measurements into BOSS, you are the <strong>data controller</strong> for that information. You are responsible for:</p>
+        <h2 style={s.h2}>7. Your Customers&rsquo; Data — Your Responsibility</h2>
+        <p style={s.body}>When you enter customers&rsquo; names, phone numbers, and measurements into BOSS, you are the <strong>data controller</strong> for that information. You are responsible for:</p>
         <ul style={{ ...s.body, paddingLeft: 24, margin: 0 }}>
           <li style={{ marginBottom: 6 }}>Informing your customers that their details are stored digitally</li>
           <li style={{ marginBottom: 6 }}>Obtaining consent where required</li>
@@ -214,7 +214,7 @@ export default function PrivacyPage() {
         </ul>
         <p style={s.body}>In the event of a data breach, we will notify you within 72 hours as required by the NDPA 2023.</p>
 
-        <h2 style={s.h2}>11. Children's Privacy</h2>
+        <h2 style={s.h2}>11. Children&rsquo;s Privacy</h2>
         <p style={s.body}>BOSS is for adults operating businesses. We do not knowingly collect data from anyone under 18. Contact monoversalhub@gmail.com if you believe a minor has registered.</p>
 
         <h2 style={s.h2}>12. International Data Transfers</h2>
@@ -228,7 +228,7 @@ export default function PrivacyPage() {
         Email: monoversalhub@gmail.com<br />
         App: https://boss-africa.vercel.app</p>
         <p style={s.body}>To complain: <strong>Nigeria Data Protection Commission (NDPC)</strong> at ndpb.gov.ng</p>
-        <p style={{ ...s.body, fontStyle: "italic", fontSize: 14, color: "#8E8E93" }}>This Privacy Policy complies with the Nigeria Data Protection Act (NDPA) 2023, the NDPR 2019, and Google's OAuth API Services User Data Policy.</p>
+        <p style={{ ...s.body, fontStyle: "italic", fontSize: 14, color: "#8E8E93" }}>This Privacy Policy complies with the Nigeria Data Protection Act (NDPA) 2023, the NDPR 2019, and Google&rsquo;s OAuth API Services User Data Policy.</p>
 
         <div style={s.footer}>
           <p style={{ margin: 0 }}>Monoversal Hub &middot; Lagos, Nigeria &middot; CAC BN 9319562</p>

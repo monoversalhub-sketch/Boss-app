@@ -112,7 +112,7 @@ export default function TermsPage() {
           <li style={{ marginBottom: 6 }}>BOSS accesses only files it created (<code style={s.code}>drive.file</code> scope) and only events it created (<code style={s.code}>calendar.events</code> scope)</li>
         </ul>
 
-        <h2 style={s.h2}>9. Your Customers' Data</h2>
+        <h2 style={s.h2}>9. Your Customers&rsquo; Data</h2>
         <p style={s.body}>You are the data controller for all customer information you enter into BOSS. You are responsible for having the right to store this information and for responding to any requests from your customers about their data. Do not enter false or malicious information about individuals.</p>
 
         <h2 style={s.h2}>10. Acceptable Use</h2>
@@ -130,13 +130,13 @@ export default function TermsPage() {
         <p style={s.body}>You can export your data at any time from Profile → Financial Report (CSV) or Profile → Data &amp; Backup (JSON). You are encouraged to maintain your own backups. Monoversal Hub is not liable for data loss resulting from third-party infrastructure failures or your own account deletion.</p>
 
         <h2 style={s.h2}>12. Service Fees</h2>
-        <p style={s.body}>BOSS is currently free to use. We reserve the right to introduce fees (subscription, feature-based, or otherwise) with at least 30 days' notice to active users before any charges take effect.</p>
+        <p style={s.body}>BOSS is currently free to use. We reserve the right to introduce fees (subscription, feature-based, or otherwise) with at least 30 days&rsquo; notice to active users before any charges take effect.</p>
 
         <h2 style={s.h2}>13. Availability &amp; Changes</h2>
-        <p style={s.body}>We aim to keep BOSS available at all times but do not guarantee uninterrupted service. We may update, improve, or discontinue features with reasonable notice, and may modify these Terms with 30 days' notice to active users. Continued use after updated Terms take effect constitutes acceptance.</p>
+        <p style={s.body}>We aim to keep BOSS available at all times but do not guarantee uninterrupted service. We may update, improve, or discontinue features with reasonable notice, and may modify these Terms with 30 days&rsquo; notice to active users. Continued use after updated Terms take effect constitutes acceptance.</p>
 
         <h2 style={s.h2}>14. Limitation of Liability</h2>
-        <p style={s.body}>To the maximum extent permitted by Nigerian law, Monoversal Hub's total liability for any claim arising from your use of BOSS is limited to amounts you paid to BOSS (if any) in the 3 months preceding the claim. We are not liable for indirect, consequential, or incidental damages, including loss of business or lost profits.</p>
+        <p style={s.body}>To the maximum extent permitted by Nigerian law, Monoversal Hub&rsquo;s total liability for any claim arising from your use of BOSS is limited to amounts you paid to BOSS (if any) in the 3 months preceding the claim. We are not liable for indirect, consequential, or incidental damages, including loss of business or lost profits.</p>
 
         <h2 style={s.h2}>15. Governing Law</h2>
         <p style={s.body}>These Terms are governed by the laws of the Federal Republic of Nigeria. Any dispute will be subject to the exclusive jurisdiction of the courts of Lagos State, Nigeria.</p>
