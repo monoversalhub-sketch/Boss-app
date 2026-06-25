@@ -7,15 +7,17 @@ export default function FeatureRequestsPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queries: [
-        { key: "requests", table: "feature_requests", select: "*, tailor:tailors(shop)", order: "votes desc" },
-      ]}),
-    });
-    const json = await res.json();
-    setRequests(json.results?.[0]?.data || []);
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries: [
+          { key: "requests", table: "feature_requests", select: "*, tailor:tailors(shop)", order: "votes desc" },
+        ]}),
+      });
+      const json = await res.json();
+      setRequests(json.results?.[0]?.data || []);
+    } catch (e) { console.error("Failed to load feature requests", e); }
     setLoading(false);
   }, []);
 

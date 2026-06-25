@@ -8,10 +8,11 @@ export default function AdminRemindersPage() {
 
   const load = useCallback(async () => {
     const now = new Date();
-    const res = await fetch("/api/admin/data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queries: [
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries: [
         { key: "orders", table: "orders", select: "*", order: "delivery_date asc" },
         { key: "tailors", table: "tailors", select: "id, shop" },
       ]}),
@@ -23,14 +24,11 @@ export default function AdminRemindersPage() {
     (results.tailors || []).forEach(t => { tailorMap[t.id] = t.shop; });
 
     setOrders((results.orders || []).map(o => ({
-      ...o,
-      tailorName: tailorMap[o.tailor_id] || "—",
-      isDueSoon: o.delivery_date && o.status !== "Delivered" &&
-        new Date(o.delivery_date) > now &&
-        (new Date(o.delivery_date) - now) / 86400000 <= 7,
-      isOverdue: o.delivery_date && o.status !== "Delivered" &&
-        new Date(o.delivery_date) < now,
+      ...o, tailorName: tailorMap[o.tailor_id] || "—",
+      overdue: o.delivery_date && now > new Date(o.delivery_date + "T23:59:59"),
+      dueToday: o.delivery_date && Math.abs(now - new Date(o.delivery_date)) < 86400000,
     })));
+    } catch (e) { console.error("Failed to load reminders", e); }
     setLoading(false);
   }, []);
 

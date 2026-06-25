@@ -1,10 +1,10 @@
-export const dynamic = 'force-dynamic';
-
+import { unstable_noStore as noStore } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { listBackups } from "@/lib/drive";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
+  noStore();
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

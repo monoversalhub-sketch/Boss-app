@@ -7,15 +7,17 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queries: [
-        { key: "tickets", table: "support_tickets", select: "*, tailor:tailors(shop)", order: "created_at desc" },
-      ]}),
-    });
-    const json = await res.json();
-    setTickets(json.results?.[0]?.data || []);
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries: [
+          { key: "tickets", table: "support_tickets", select: "*, tailor:tailors(shop)", order: "created_at desc" },
+        ]}),
+      });
+      const json = await res.json();
+      setTickets(json.results?.[0]?.data || []);
+    } catch (e) { console.error("Failed to load support tickets", e); }
     setLoading(false);
   }, []);
 

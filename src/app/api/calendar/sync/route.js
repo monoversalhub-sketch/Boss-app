@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -7,6 +8,7 @@ import {
 } from "@/lib/calendar";
 
 export async function POST(request) {
+  noStore();
   try {
     const supabase = await createClient();
     const { data: { user }, error: authErr } = await supabase.auth.getUser();

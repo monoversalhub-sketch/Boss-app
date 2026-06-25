@@ -9,20 +9,22 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queries: [
-        { key: "orders", table: "orders", select: "*", order: "created_at desc" },
-        { key: "tailors", table: "tailors", select: "id, shop" },
-      ]}),
-    });
-    const json = await res.json();
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries: [
+          { key: "orders", table: "orders", select: "*", order: "created_at desc" },
+          { key: "tailors", table: "tailors", select: "id, shop" },
+        ]}),
+      });
+      const json = await res.json();
     const results = {};
     (json.results || []).forEach(r => { results[r.key] = r.data || []; });
     const tailorMap = {};
     (results.tailors || []).forEach(t => { tailorMap[t.id] = t.shop; });
     setOrders((results.orders || []).map(o => ({ ...o, tailorName: tailorMap[o.tailor_id] || "—" })));
+    } catch (e) { console.error("Failed to load orders", e); }
     setLoading(false);
   }, []);
 

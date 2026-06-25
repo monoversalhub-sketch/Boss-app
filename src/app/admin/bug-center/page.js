@@ -7,15 +7,17 @@ export default function BugCenterPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queries: [
-        { key: "bugs", table: "bug_reports", select: "*, tailor:tailors(shop)", order: "created_at desc" },
-      ]}),
-    });
-    const json = await res.json();
-    setBugs(json.results?.[0]?.data || []);
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries: [
+          { key: "bugs", table: "bug_reports", select: "*, tailor:tailors(shop)", order: "created_at desc" },
+        ]}),
+      });
+      const json = await res.json();
+      setBugs(json.results?.[0]?.data || []);
+    } catch (e) { console.error("Failed to load bug reports", e); }
     setLoading(false);
   }, []);
 

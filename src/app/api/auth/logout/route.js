@@ -2,10 +2,12 @@
 // MISSING-10: CSRF protection — require x-boss-request header.
 // Browsers never attach custom headers to cross-site form/fetch requests
 // by default, so this prevents a third-party page force-logging users out.
+import { unstable_noStore as noStore } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
+  noStore();
   // CSRF guard: x-boss-request must be "1" — browsers never send this cross-site
   const appHeader = request.headers.get("x-boss-request");
   if (appHeader !== "1") {

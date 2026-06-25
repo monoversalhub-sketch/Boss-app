@@ -73,7 +73,6 @@ function _enqueuePending(op) {
   const ops = _getPendingOps();
   ops.push({ ...op, timestamp: new Date().toISOString() });
   _setPendingOps(ops);
-  console.log("[db] enqueued pending op:", op.type, op.orderId || op.customerId);
 }
 
 export { getBrowserClient, ls, lsSet };

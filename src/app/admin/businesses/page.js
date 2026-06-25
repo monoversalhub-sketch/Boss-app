@@ -8,31 +8,33 @@ export default function BusinessesPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queries: [
-        { key: "tailors", table: "tailors", select: "id, shop, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
-        { key: "health", table: "business_health_scores", select: "*" },
-        { key: "churn", table: "churn_risk", select: "*" },
-      ]}),
-    });
-    const json = await res.json();
-    const results = {};
-    (json.results || []).forEach(r => { results[r.key] = r.data || []; });
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries: [
+          { key: "tailors", table: "tailors", select: "id, shop, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
+          { key: "health", table: "business_health_scores", select: "*" },
+          { key: "churn", table: "churn_risk", select: "*" },
+        ]}),
+      });
+      const json = await res.json();
+      const results = {};
+      (json.results || []).forEach(r => { results[r.key] = r.data || []; });
 
-    const healthMap = {};
-    (results.health || []).forEach(h => { healthMap[h.tailor_id] = h; });
-    const churnMap = {};
-    (results.churn || []).forEach(c => { churnMap[c.tailor_id] = c; });
+      const healthMap = {};
+      (results.health || []).forEach(h => { healthMap[h.tailor_id] = h; });
+      const churnMap = {};
+      (results.churn || []).forEach(c => { churnMap[c.tailor_id] = c; });
 
-    setBusinesses((results.tailors || []).map(t => ({
-      ...t,
-      health: healthMap[t.id]?.category || "unknown",
-      healthScore: healthMap[t.id]?.score || 0,
-      churnRisk: churnMap[t.id]?.risk_level || "unknown",
-      churnScore: churnMap[t.id]?.risk_score || 0,
-    })));
+      setBusinesses((results.tailors || []).map(t => ({
+        ...t,
+        health: healthMap[t.id]?.category || "unknown",
+        healthScore: healthMap[t.id]?.score || 0,
+        churnRisk: churnMap[t.id]?.risk_level || "unknown",
+        churnScore: churnMap[t.id]?.risk_score || 0,
+      })));
+    } catch (e) { console.error("Failed to load businesses", e); }
     setLoading(false);
   }, []);
 

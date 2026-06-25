@@ -8,17 +8,18 @@ export default function MeasurementsPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queries: [
-        { key: "customers", table: "customers", select: "*", order: "created_at desc" },
-        { key: "tailors", table: "tailors", select: "id, shop" },
-      ]}),
-    });
-    const json = await res.json();
-    const results = {};
-    (json.results || []).forEach(r => { results[r.key] = r.data || []; });
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries: [
+          { key: "customers", table: "customers", select: "*", order: "created_at desc" },
+          { key: "tailors", table: "tailors", select: "id, shop" },
+        ]}),
+      });
+      const json = await res.json();
+      const results = {};
+      (json.results || []).forEach(r => { results[r.key] = r.data || []; });
     const customersData = results.customers || [];
     const tailorsData = results.tailors || [];
 
@@ -40,7 +41,8 @@ export default function MeasurementsPage() {
       totalMeasurements: totalMeas,
       measFieldsPopulated,
       tailorMap,
-    });
+    }));
+    } catch (e) { console.error("Failed to load measurements", e); }
     setLoading(false);
   }, []);
 

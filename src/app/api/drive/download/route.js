@@ -1,10 +1,10 @@
-export const dynamic = 'force-dynamic';
-
+import { unstable_noStore as noStore } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { downloadBackup } from "@/lib/drive";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
+  noStore();
   const { searchParams } = new URL(request.url);
   const fileId = searchParams.get("id");
 

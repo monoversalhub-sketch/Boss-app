@@ -1,9 +1,9 @@
-// src/app/api/auth/session/route.js
-// Returns current user session — called on app load
+import { unstable_noStore as noStore } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  noStore();
   try {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();

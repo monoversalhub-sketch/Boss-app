@@ -8,16 +8,18 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queries: [
-        { key: "tailors", table: "tailors", select: "id, shop, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
-      ]}),
-    });
-    const json = await res.json();
-    const data = json.results?.[0]?.data || [];
-    setTailors(data);
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries: [
+          { key: "tailors", table: "tailors", select: "id, shop, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
+        ]}),
+      });
+      const json = await res.json();
+      const data = json.results?.[0]?.data || [];
+      setTailors(data);
+    } catch (e) { console.error("Failed to load users", e); }
     setLoading(false);
   }, []);
 
