@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { createClient } from "@/lib/supabase/server";
 import { exchangeCodeForTokens } from "@/lib/drive";
 import { NextResponse } from "next/server";
