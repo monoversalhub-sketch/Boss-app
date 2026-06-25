@@ -5,91 +5,90 @@
 //  tree-shakability. Import what you need.
 // ─────────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────
-// APP DATA CONSTANTS
-// ─────────────────────────────────────────
-export const CLOTH_TYPES = [
-  "Senator","Kaftan","Agbada","Gown","Buba & Skirt",
-  "Suit","Dress","Trousers & Shirt","Ankara Set","Jalabiya","Other",
-];
-export const MEAS_FIELDS = [
-  { k:"chest",    l:"Chest"    },{ k:"waist",   l:"Waist"   },
-  { k:"hip",      l:"Hip"      },{ k:"shoulder",l:"Shoulder"},
-  { k:"sleeve",   l:"Sleeve"   },{ k:"inseam",  l:"Inseam"  },
-  { k:"length",   l:"Length"   },{ k:"neck",    l:"Neck"    },
-];
+// ─────────────────────────────────────────────────────
+// MEASUREMENT FIELD SETS
+// Terms use plain Nigerian tailor language, not textbook.
+// Fields are ordered top-to-bottom, front-to-back —
+// matching the physical sequence tailors already follow.
+// Core = shown by default (8–10 fields max).
+// Suggestions = shown in the quick-add picker.
+// ─────────────────────────────────────────────────────
 
-// ── Gender-aware measurement fields ─────────────────────────────────
 export const MEAS_FIELDS_FEMALE = [
-  { k:"burst",      l:"Burst"      },{ k:"under_bust",l:"Under Bust"},
-  { k:"waist",      l:"Waist"      },{ k:"hip",      l:"Hip"       },
-  { k:"shoulder",   l:"Shoulder"   },{ k:"sleeve",   l:"Sleeve"    },
-  { k:"length",     l:"Length"     },{ k:"stomach",  l:"Stomach"   },
-  { k:"armhole",    l:"Armhole"    },{ k:"wrist",    l:"Wrist"     },
+  // Core — shown by default for female customers
+  { k: "burst",        l: "Burst"        },
+  { k: "under_bust",   l: "Under Bust"   },
+  { k: "waist",        l: "Waist"        },
+  { k: "stomach",      l: "Stomach"      },
+  { k: "hip",          l: "Hip"          },
+  { k: "shoulder",     l: "Shoulder"     },
+  { k: "sleeve",       l: "Sleeve"       },
+  { k: "armhole",      l: "Armhole"      },
+  { k: "back",         l: "Back"         },
+  { k: "length",       l: "Length"       },
 ];
 
 export const MEAS_FIELDS_MALE = [
-  { k:"chest",     l:"Chest"     },{ k:"neck",     l:"Neck"     },
-  { k:"shoulder",  l:"Shoulder"  },{ k:"sleeve",   l:"Sleeve"   },
-  { k:"waist",     l:"Waist"     },{ k:"hip",      l:"Hip"      },
-  { k:"inseam",    l:"Inseam"    },{ k:"length",   l:"Length"   },
-  { k:"trouser",   l:"Trouser"   },{ k:"thigh",    l:"Thigh"    },
+  // Core — shown by default for male customers
+  { k: "chest",        l: "Chest"        },
+  { k: "waist",        l: "Waist"        },
+  { k: "stomach",      l: "Stomach"      },
+  { k: "hip",          l: "Hip"          },
+  { k: "shoulder",     l: "Shoulder"     },
+  { k: "sleeve",       l: "Sleeve"       },
+  { k: "armhole",      l: "Armhole"      },
+  { k: "back",         l: "Back"         },
+  { k: "neck",         l: "Neck"         },
+  { k: "trouser",      l: "Trouser"      },
 ];
 
-export const MEAS_SUGGESTIONS_FEMALE = {
-  burst:      ["Burst","Bust","Chest","Front"],
-  under_bust: ["Under Bust","Rib","Underbust"],
-  waist:      ["Waist","Natural Waist"],
-  hip:        ["Hip","Bottom","Seat"],
-  shoulder:   ["Shoulder","Shoulder Width","Back"],
-  sleeve:     ["Sleeve","Sleeve Length","Arm"],
-  length:     ["Length","Full Length","Top Length","Skirt Length","Dress Length"],
-  stomach:    ["Stomach","Belly","Tummy"],
-  armhole:    ["Armhole","Armhole Depth","Scye"],
-  wrist:      ["Wrist","Wrist Round","Sleeve Opening"],
-};
-
-export const MEAS_SUGGESTIONS_MALE = {
-  chest:    ["Chest","Bust","Chest Round"],
-  neck:     ["Neck","Collar","Neck Round"],
-  shoulder: ["Shoulder","Shoulder Width","Back"],
-  sleeve:   ["Sleeve","Sleeve Length","Arm"],
-  waist:    ["Waist","Belly","Waist Round"],
-  hip:      ["Hip","Bottom","Seat"],
-  inseam:   ["Inseam","Leg Length","Inside Leg"],
-  length:   ["Length","Top Length","Full Length"],
-  trouser:  ["Trouser","Trouser Length","Pants Length","Outseam"],
-  thigh:    ["Thigh","Thigh Round","Leg Opening"],
-};
-
-// ── Extra measurement fields for suggestion chips ───────────────────
-export const MEAS_EXTRA_FIELDS_FEMALE = [
-  { k:"full_length",    l:"Full Length"    },{ k:"inner_sleeve", l:"Inner Sleeve" },
-  { k:"back_width",     l:"Back Width"     },{ k:"neck",          l:"Neck"         },
-  { k:"waist_to_floor", l:"Waist to Floor" },{ k:"belt",          l:"Belt"         },
-  { k:"armhole_depth",  l:"Armhole Depth"  },{ k:"head",          l:"Head"         },
-  { k:"ankle",          l:"Ankle"          },{ k:"thigh",         l:"Thigh"        },
+// Suggestions for female — common extras tailors add
+export const MEAS_SUGGESTIONS_FEMALE = [
+  { k: "neck",          l: "Neck"           },
+  { k: "thigh",         l: "Thigh"          },
+  { k: "knee",          l: "Knee"           },
+  { k: "calf",          l: "Calf"           },
+  { k: "ankle",         l: "Ankle"          },
+  { k: "wrist",         l: "Wrist"          },
+  { k: "arm_length",    l: "Arm Length"     },
+  { k: "inseam",        l: "Inseam"         },
+  { k: "waist_to_knee", l: "Waist to Knee"  },
+  { k: "blouse_length", l: "Blouse Length"  },
+  { k: "skirt_length",  l: "Skirt Length"   },
+  { k: "over_bust",     l: "Over Bust"      },
+  { k: "height",        l: "Height"         },
+  { k: "shoulder_bust", l: "Shoulder–Bust"  },
 ];
 
-export const MEAS_EXTRA_FIELDS_MALE = [
-  { k:"full_length",     l:"Full Length"     },{ k:"trouser_length",l:"Trouser Length"},
-  { k:"jacket_length",   l:"Jacket Length"   },{ k:"armhole",       l:"Armhole"       },
-  { k:"collar",          l:"Collar"          },{ k:"chest_width",   l:"Chest Width"   },
-  { k:"back_width",      l:"Back Width"      },{ k:"bicep",         l:"Bicep"         },
-  { k:"forearm",         l:"Forearm"         },{ k:"crotch",        l:"Crotch"        },
+// Suggestions for male — common extras tailors add
+export const MEAS_SUGGESTIONS_MALE = [
+  { k: "inseam",        l: "Inseam"         },
+  { k: "thigh",         l: "Thigh"          },
+  { k: "knee",          l: "Knee"           },
+  { k: "calf",          l: "Calf"           },
+  { k: "ankle",         l: "Ankle"          },
+  { k: "wrist",         l: "Wrist"          },
+  { k: "arm_length",    l: "Arm Length"     },
+  { k: "waist_to_knee", l: "Waist to Knee"  },
+  { k: "shirt_length",  l: "Shirt Length"   },
+  { k: "agbada_length", l: "Agbada Length"  },
+  { k: "height",        l: "Height"         },
+  { k: "neck_depth",    l: "Neck Depth"     },
 ];
 
-export function getDefaultMeasFields(gender = "female") {
-  return gender === "male" ? MEAS_FIELDS_MALE : MEAS_FIELDS_FEMALE;
+// Keep legacy fallback for existing data
+export const MEAS_FIELDS = MEAS_FIELDS_FEMALE;
+
+export function getDefaultMeasFields(gender) {
+  return gender === "male"
+    ? MEAS_FIELDS_MALE
+    : MEAS_FIELDS_FEMALE;
 }
 
-export function getMeasSuggestions(fieldKey, gender = "female") {
-  const map = gender === "male" ? MEAS_SUGGESTIONS_MALE : MEAS_SUGGESTIONS_FEMALE;
-  return map[fieldKey] || [];
-}
-
-export function getMeasExtraFields(gender = "female") {
-  return gender === "male" ? MEAS_EXTRA_FIELDS_MALE : MEAS_EXTRA_FIELDS_FEMALE;
+export function getMeasSuggestions(gender) {
+  return gender === "male"
+    ? MEAS_SUGGESTIONS_MALE
+    : MEAS_SUGGESTIONS_FEMALE;
 }
 // U-23: 3 statuses (removed "Pending" — tailors start work immediately)
 export const STATUSES = ["In Progress","Ready","Delivered"];

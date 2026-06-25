@@ -348,7 +348,22 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
               </button>
               {measOpen && (
                 <div style={{marginTop:8}}>
-                  <MeasGrid measurements={meas} onChange={setMeas} gender={gender} />
+                  <MeasGrid
+                    measurements={meas}
+                    onChange={setMeas}
+                    gender={gender}
+                    measConfig={tailor?.meas_config || null}
+                    onConfigChange={async newConfig => {
+                      await db.setTailor({
+                        ...(tailor || {}),
+                        meas_config: newConfig,
+                      });
+                    }}
+                    unit={tailor?.meas_unit || "inches"}
+                    onUnitToggle={u =>
+                      db.setTailor({ ...(tailor || {}), meas_unit: u })
+                    }
+                  />
                 </div>
               )}
             </div>

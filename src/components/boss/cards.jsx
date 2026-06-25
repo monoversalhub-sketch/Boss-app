@@ -3,7 +3,7 @@
 // TrustScoreCard, TrustScoreSheet, TodayMoneyCard,
 // OrderCard, StatusStepper, MeasGrid
 import { useState, useMemo, useEffect, useRef } from "react";
-import { C, S, STATUSES, getDefaultMeasFields, getMeasExtraFields } from "./tokens";
+import { C, S, STATUSES, getDefaultMeasFields, getMeasSuggestions } from "./tokens";
 import { fmt, fmtDate, getBalance, getTotalPaid, getPaymentState, allOrders, orderStatus, isOverdue, isDueToday, computeTrustScore } from "./helpers";
 import { Sheet, SectionLabel } from "./ui";
 import { useBOSS } from "./context";
@@ -277,152 +277,487 @@ export function StatusStepper({status,onChange}){
 }
 
 // ─────────────────────────────────────────
-// MEASUREMENT GRID (gender-aware, renameable, extensible)
+// MEASUREMENT GRID (renameable, suggestions, custom add)
 // ─────────────────────────────────────────
-export function MeasGrid({ measurements, onChange, gender: genderProp, measConfig, onConfigChange, onUnitToggle }) {
-  const { tailor, setTailor, toast } = useBOSS();
-  const gender = genderProp || "female";
-  const hasConfig = !!measConfig && !!onConfigChange;
-  const activeFields = hasConfig && measConfig.fields?.length > 0 ? measConfig.fields : getDefaultMeasFields(gender);
-  const unit = tailor?.meas_unit || "inches";
+export function MeasGrid({
+  measurements,
+  onChange,
+  gender        = "female",
+  measConfig,
+  onConfigChange,
+  unit          = "inches",
+  onUnitToggle,
+}) {
+  // Priority: tailor's saved config > gender default
+  const configKey    = gender === "male" ? "male" : "female";
+  const activeFields =
+    measConfig?.[configKey] ?? getDefaultMeasFields(gender);
+  const suggestions  = getMeasSuggestions(gender);
 
-  const [local, setLocal] = useState(measurements);
-  const timerRef = useRef(null);
-  const [editingKey, setEditingKey] = useState(null);
-  const [editingValue, setEditingValue] = useState("");
-  const [addingField, setAddingField] = useState(false);
-  const [newFieldName, setNewFieldName] = useState("");
-  const [showAll, setShowAll] = useState(false);
+  // ── State ────────────────────────────────────────────
+  const [local, setLocal]               = useState(measurements);
+  const [renamingKey, setRenamingKey]   = useState(null);
+  const [renameDraft, setRenameDraft]   = useState("");
+  const [showPicker, setShowPicker]     = useState(false);
+  const [customInput, setCustomInput]   = useState("");
+  const timerRef                        = useRef(null);
+  const renameInputRef                  = useRef(null);
 
   useEffect(() => { setLocal(measurements); }, [measurements]);
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
-  function handleChange(k, v) {
+  // Auto-focus rename input when it appears
+  useEffect(() => {
+    if (renamingKey && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [renamingKey]);
+
+  // ── Value change (debounced) ─────────────────────────
+  function handleValue(k, v) {
     const next = { ...local, [k]: v };
     setLocal(next);
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => onChange(next), 500);
+    timerRef.current = setTimeout(() => onChange(next), 400);
   }
 
-  function handleToggleUnit() {
-    if (onUnitToggle) return onUnitToggle();
-    const next = unit === "inches" ? "cm" : "inches";
-    setTailor({ ...(tailor || {}), meas_unit: next });
-    db.setTailor({ ...(tailor || {}), meas_unit: next });
-    toast?.(`📏 Switched to ${next}`);
+  // ── Config persistence ───────────────────────────────
+  function saveConfig(updatedFields) {
+    const newConfig = {
+      ...(measConfig || {}),
+      [configKey]: updatedFields,
+    };
+    onConfigChange?.(newConfig);
   }
 
-  function handleRename(key, label) {
-    if (!hasConfig) return;
-    const next = measConfig.fields.map(f => f.k === key ? { ...f, l: label } : f);
-    onConfigChange({ ...measConfig, fields: next });
+  // ── Rename ───────────────────────────────────────────
+  function startRename(field) {
+    if (!onConfigChange) return;
+    setRenamingKey(field.k);
+    setRenameDraft(field.l);
+    setShowPicker(false);
   }
 
-  function handleRemove(key) {
-    if (!hasConfig) return;
-    const next = measConfig.fields.filter(f => f.k !== key);
-    onConfigChange({ ...measConfig, fields: next });
-    setLocal(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
+  function commitRename() {
+    const label = renameDraft.trim();
+    if (!label || !renamingKey) {
+      setRenamingKey(null);
+      return;
+    }
+    const updated = activeFields.map(f =>
+      f.k === renamingKey ? { ...f, l: label } : f
+    );
+    saveConfig(updated);
+    setRenamingKey(null);
   }
 
-  function handleAddField(field) {
-    if (!hasConfig) return;
-    if (activeFields.some(f => f.k === field.k)) return;
-    const next = [...measConfig.fields, field];
-    onConfigChange({ ...measConfig, fields: next });
+  // ── Remove field ─────────────────────────────────────
+  function removeField(key) {
+    if (activeFields.length <= 1) return;
+    const updated = activeFields.filter(f => f.k !== key);
+    saveConfig(updated);
+    const next = { ...local };
+    delete next[key];
+    setLocal(next);
+    onChange(next);
   }
 
-  function handleAddCustom(label) {
-    if (!hasConfig || !label.trim()) return;
-    const k = label.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-    if (!k || activeFields.some(f => f.k === k)) return;
-    handleAddField({ k, l: label.trim() });
-    setAddingField(false);
-    setNewFieldName("");
+  // ── Add from suggestion ──────────────────────────────
+  function addSuggestion(s) {
+    if (activeFields.find(f => f.k === s.k)) return;
+    saveConfig([...activeFields, s]);
+    setShowPicker(false);
   }
 
-  const extraFields = getMeasExtraFields(gender).filter(f => !activeFields.some(af => af.k === f.k));
-  const visibleExtra = showAll ? extraFields : extraFields.slice(0, 4);
+  // ── Add custom term ──────────────────────────────────
+  function addCustom() {
+    const label = customInput.trim();
+    if (!label) return;
+    const key = label
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]/g, "")
+      .slice(0, 40);
+    if (!key || activeFields.find(f => f.k === key)) return;
+    saveConfig([...activeFields, { k: key, l: label }]);
+    setCustomInput("");
+  }
 
+  // ── Reset to gender default ──────────────────────────
+  function resetToDefault() {
+    saveConfig(getDefaultMeasFields(gender));
+    setShowPicker(false);
+  }
+
+  // Available suggestions = suggestions not already active
+  const available = suggestions.filter(
+    s => !activeFields.find(f => f.k === s.k)
+  );
+
+  // ─────────────────────────────────────────────────────
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: "0.4px" }}>Measurements</div>
-        <button className="tap" onClick={handleToggleUnit}
-          style={{ background: C.s2, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 11px", fontSize: 12, fontWeight: 700, color: C.text, cursor: "pointer", fontFamily: "inherit" }}>
-          {unit === "inches" ? "📏 in" : "📐 cm"}
-        </button>
+
+
+      {/* ── Header row ─────────────────────────────── */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 14,
+      }}>
+        <div style={{
+          fontSize: 12, fontWeight: 700,
+          color: C.sub, textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}>
+          Measurements
+          {onConfigChange && (
+            <span style={{
+              fontSize: 11, color: C.muted,
+              fontWeight: 500, marginLeft: 8,
+              textTransform: "none", letterSpacing: 0,
+            }}>
+              · tap label to rename
+            </span>
+          )}
+        </div>
+
+
+        {/* Unit toggle */}
+        {onUnitToggle && (
+          <div style={{
+            display: "flex",
+            background: C.s2,
+            border: `1px solid ${C.border}`,
+            borderRadius: 10,
+            padding: 3,
+            gap: 2,
+          }}>
+            {["in", "cm"].map(u => {
+              const isActive =
+                (u === "in" && unit === "inches") ||
+                (u === "cm" && unit === "cm");
+              return (
+                <button
+                  key={u}
+                  onClick={() =>
+                    onUnitToggle(u === "in" ? "inches" : "cm")
+                  }
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: 8,
+                    border: "none",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    background: isActive
+                      ? C.accent : "transparent",
+                    color: isActive ? "#fff" : C.sub,
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {u}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+
+
+      {/* ── Field grid ─────────────────────────────── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 10,
+      }}>
         {activeFields.map(f => (
-          <div key={f.k} style={{ background: C.s2, border: `1px solid ${C.border}`, borderRadius: 14, padding: "10px 13px", position: "relative" }}>
-            {hasConfig && (
-              <button onClick={() => handleRemove(f.k)} className="tap"
-                style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: C.red, color: "#fff", border: "none", fontSize: 11, cursor: "pointer", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>
+          <div
+            key={f.k}
+            style={{
+              background: C.s2,
+              border: renamingKey === f.k
+                ? `1.5px solid ${C.accent}`
+                : `1px solid ${C.border}`,
+              borderRadius: 14,
+              padding: "10px 13px",
+              position: "relative",
+              transition: "border-color 0.15s",
+            }}
+          >
+            {/* Remove × button */}
+            {onConfigChange && renamingKey !== f.k && (
+              <button
+                onClick={() => removeField(f.k)}
+                style={{
+                  position: "absolute",
+                  top: 6, right: 7,
+                  width: 18, height: 18,
+                  borderRadius: 5,
+                  border: "none",
+                  background: "rgba(255,59,48,0.12)",
+                  color: "#ff3b30",
+                  fontSize: 11,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontFamily: "inherit",
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+              >
                 ×
               </button>
             )}
-            {editingKey === f.k ? (
-              <input value={editingValue} onChange={e => setEditingValue(e.target.value)}
-                onBlur={() => { if (editingValue.trim()) handleRename(f.k, editingValue.trim()); setEditingKey(null); }}
-                onKeyDown={e => { if (e.key === "Enter") { if (editingValue.trim()) handleRename(f.k, editingValue.trim()); setEditingKey(null); } if (e.key === "Escape") setEditingKey(null); }}
-                autoFocus
-                style={{ ...S.input, fontSize: 13, fontWeight: 600, padding: "2px 6px", width: "100%", background: C.s1, letterSpacing: "0.4px", textTransform: "uppercase" }} />
+
+
+            {/* Label — tap to rename */}
+            {renamingKey === f.k ? (
+              <input
+                ref={renameInputRef}
+                value={renameDraft}
+                onChange={e => setRenameDraft(e.target.value)}
+                onBlur={commitRename}
+                onKeyDown={e => {
+                  if (e.key === "Enter") commitRename();
+                  if (e.key === "Escape") setRenamingKey(null);
+                }}
+                placeholder="Field name…"
+                style={{
+                  background: "none",
+                  border: "none",
+                  outline: "none",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: C.accent,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  width: "100%",
+                  padding: 0,
+                  fontFamily: "inherit",
+                  marginBottom: 2,
+                }}
+              />
             ) : (
-              <label onClick={() => hasConfig && (setEditingKey(f.k), setEditingValue(f.l))} className={hasConfig ? "tap" : ""}
-                style={{ fontSize: 13, fontWeight: 600, color: C.sub, letterSpacing: "0.4px", textTransform: "uppercase", cursor: hasConfig ? "pointer" : "default" }}>
+              <div
+                onClick={() => startRename(f)}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: C.sub,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  marginBottom: 2,
+                  cursor: onConfigChange ? "pointer" : "default",
+                  paddingRight: onConfigChange ? 18 : 0,
+                  userSelect: "none",
+                }}
+              >
                 {f.l}
-              </label>
+              </div>
             )}
-            <input type="number" inputMode="decimal" placeholder="—" value={local[f.k] || ""} onChange={e => handleChange(f.k, e.target.value)}
-              style={{ background: "none", border: "none", outline: "none", fontSize: 20, fontWeight: 700, color: C.text, width: "100%", padding: 0, fontFamily: "inherit", display: "block", marginTop: 2 }} />
-            <div style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>{unit}</div>
+
+
+            {/* Number input */}
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder="—"
+              value={local[f.k] || ""}
+              onChange={e => handleValue(f.k, e.target.value)}
+              style={{
+                background: "none",
+                border: "none",
+                outline: "none",
+                fontSize: 22,
+                fontWeight: 700,
+                color: C.text,
+                width: "100%",
+                padding: 0,
+                fontFamily: "inherit",
+                display: "block",
+                marginTop: 2,
+              }}
+            />
+
+
+            {/* Unit label */}
+            <div style={{
+              fontSize: 12,
+              color: C.muted,
+              fontWeight: 600,
+              marginTop: 1,
+            }}>
+              {unit === "inches" ? "inches" : "cm"}
+            </div>
           </div>
         ))}
       </div>
 
-      {hasConfig && extraFields.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.sub, marginBottom: 8, letterSpacing: "0.3px" }}>Suggestions</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {visibleExtra.map(f => (
-              <button key={f.k} className="tap" onClick={() => handleAddField(f)}
-                style={{ padding: "8px 13px", borderRadius: 10, background: "rgba(0,102,204,0.08)", border: "1px solid rgba(0,102,204,0.15)", fontSize: 13, fontWeight: 600, color: C.accent, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                + {f.l}
-              </button>
-            ))}
-            {extraFields.length > 4 && (
-              <button className="tap" onClick={() => setShowAll(v => !v)}
-                style={{ padding: "8px 13px", borderRadius: 10, background: C.s3, border: `1px solid ${C.border}`, fontSize: 13, fontWeight: 600, color: C.sub, cursor: "pointer", fontFamily: "inherit" }}>
-                {showAll ? "Show less" : `+${extraFields.length - 4} more`}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
-      {hasConfig && (
-        <div style={{ marginTop: 10 }}>
-          {addingField ? (
-            <div style={{ display: "flex", gap: 8 }}>
-              <input value={newFieldName} onChange={e => setNewFieldName(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") handleAddCustom(newFieldName); if (e.key === "Escape") { setAddingField(false); setNewFieldName(""); } }}
-                placeholder="Enter measurement name…" autoFocus
-                style={{ ...S.input, flex: 1, padding: "10px 12px" }} />
-              <button onClick={() => handleAddCustom(newFieldName)} className="tap"
-                style={{ padding: "10px 16px", borderRadius: 10, background: C.accent, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                Add
-              </button>
-              <button onClick={() => { setAddingField(false); setNewFieldName(""); }} className="tap"
-                style={{ padding: "10px 16px", borderRadius: 10, background: C.s3, color: C.sub, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                Cancel
+      {/* ── Add field section (only if editable) ───── */}
+      {onConfigChange && (
+        <div style={{ marginTop: 14 }}>
+
+
+          {/* Toggle button */}
+          <button
+            onClick={() => {
+              setShowPicker(s => !s);
+              setRenamingKey(null);
+            }}
+            style={{
+              width: "100%",
+              padding: "13px",
+              background: showPicker ? C.s3 : C.s2,
+              border: `1px dashed ${C.border}`,
+              borderRadius: 14,
+              fontSize: 14,
+              fontWeight: 700,
+              color: C.sub,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "-0.2px",
+            }}
+          >
+            {showPicker ? "▲ Close" : "＋ Add field"}
+          </button>
+
+
+          {showPicker && (
+            <div style={{
+              marginTop: 12,
+              padding: "16px",
+              background: C.s2,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+            }}>
+
+
+              {/* Suggestion chips */}
+              {available.length > 0 && (
+                <div>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: C.sub,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    marginBottom: 10,
+                  }}>
+                    Common Fields
+                  </div>
+                  <div style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                  }}>
+                    {available.map(s => (
+                      <button
+                        key={s.k}
+                        onClick={() => addSuggestion(s)}
+                        style={{
+                          padding: "8px 14px",
+                          background: C.s1,
+                          border: `1px solid ${C.border}`,
+                          borderRadius: 20,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: C.text,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        {s.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+
+              {/* Custom term input */}
+              <div>
+                <div style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: C.sub,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  marginBottom: 10,
+                }}>
+                  Custom
+                </div>
+                <div style={{
+                  display: "flex",
+                  gap: 8,
+                }}>
+                  <input
+                    value={customInput}
+                    onChange={e => setCustomInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") addCustom();
+                    }}
+                    placeholder="Type your own field name…"
+                    style={{
+                      flex: 1,
+                      padding: "10px 12px",
+                      background: C.s1,
+                      border: `1px solid ${C.border}`,
+                      borderRadius: 10,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: C.text,
+                      outline: "none",
+                      fontFamily: "inherit",
+                    }}
+                  />
+                  <button
+                    onClick={addCustom}
+                    style={{
+                      padding: "10px 16px",
+                      background: C.accent,
+                      border: "none",
+                      borderRadius: 10,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+
+              {/* Reset to default */}
+              <button
+                onClick={resetToDefault}
+                style={{
+                  alignSelf: "flex-start",
+                  padding: "8px 16px",
+                  background: "none",
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 10,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: C.sub,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Reset to gender default
               </button>
             </div>
-          ) : (
-            <button onClick={() => setAddingField(true)} className="tap"
-              style={{ width: "100%", padding: "11px", borderRadius: 12, border: `1.5px dashed ${C.border}`, background: "none", fontSize: 14, fontWeight: 600, color: C.sub, cursor: "pointer", fontFamily: "inherit" }}>
-              + Add measurement field
-            </button>
           )}
         </div>
       )}

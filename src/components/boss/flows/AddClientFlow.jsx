@@ -46,18 +46,18 @@ export function AddClientFlow({ open, onClose, onDone }) {
   return (
     <Flow open={open} onClose={onClose} title="New Client" action={isSaving ? "Saving…" : "Save"} onAction={isSaving ? undefined : save}>
       <Input label="Full Name *" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Amaka Johnson" autoComplete="off" />
-      <Input label="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="080XXXXXXXX" />
-      <div>
-        <label style={S.label}>Gender</label>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {["female", "male"].map(g => (
-            <button key={g} className="tap" onClick={() => setGender(g)}
-              style={{ padding: "13px", borderRadius: 14, border: `2px solid ${gender === g ? C.accent : C.border2}`, background: gender === g ? "rgba(0,102,204,0.06)" : C.s2, fontSize: 15, fontWeight: 700, color: gender === g ? C.accent : C.sub, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}>
-              {g === "female" ? "👩 Female" : "👨 Male"}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 10 }}>Gender</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          {[["female","👗","Female"],["male","👔","Male"]].map(([val,icon,label]) => (
+            <button key={val} type="button" onClick={() => setGender(val)}
+              style={{ flex: 1, padding: "14px 0", borderRadius: 14, border: gender === val ? `2px solid ${C.accent}` : `1px solid ${C.border}`, background: gender === val ? `${C.accent}18` : C.s2, color: gender === val ? C.accent : C.sub, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.15s" }}>
+              <span style={{ fontSize: 18 }}>{icon}</span>{label}
             </button>
           ))}
         </div>
       </div>
+      <Input label="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="080XXXXXXXX" />
       <div>
         <label style={S.label}>Measurements (inches) — optional</label>
         <MeasGrid measurements={meas} onChange={setMeas} gender={gender} />

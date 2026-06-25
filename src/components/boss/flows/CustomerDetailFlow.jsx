@@ -32,8 +32,7 @@ export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOp
     await db.setTailor({ ...tailor, meas_config: config });
   }
 
-  async function handleMeasUnitToggle() {
-    const next = tailor?.meas_unit === "inches" ? "cm" : "inches";
+  async function handleMeasUnitToggle(next) {
     setTailor({ ...tailor, meas_unit: next });
     await db.setTailor({ ...tailor, meas_unit: next });
     toast(`📏 Switched to ${next}`);
@@ -124,6 +123,7 @@ export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOp
                 gender={customer.gender}
                 measConfig={measConfig}
                 onConfigChange={handleMeasConfigChange}
+                unit={tailor?.meas_unit || "inches"}
                 onUnitToggle={handleMeasUnitToggle}
               />
             </div>
