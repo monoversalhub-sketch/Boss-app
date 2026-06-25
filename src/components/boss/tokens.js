@@ -90,6 +90,14 @@ export function getMeasSuggestions(gender) {
     ? MEAS_SUGGESTIONS_MALE
     : MEAS_SUGGESTIONS_FEMALE;
 }
+
+// ─────────────────────────────────────────
+// APP DATA CONSTANTS
+// ─────────────────────────────────────────
+export const CLOTH_TYPES = [
+  "Senator","Kaftan","Agbada","Gown","Buba & Skirt",
+  "Suit","Dress","Trousers & Shirt","Ankara Set","Jalabiya","Other",
+];
 // U-23: 3 statuses (removed "Pending" — tailors start work immediately)
 export const STATUSES = ["In Progress","Ready","Delivered"];
 
