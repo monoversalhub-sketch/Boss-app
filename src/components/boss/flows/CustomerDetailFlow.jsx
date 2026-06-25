@@ -10,7 +10,7 @@ import { db } from "../../../lib/db";
 import { Events } from "@/lib/admin/events";
 
 export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOpenOrder }) {
-  const { customers, setCustomers, toast } = useBOSS();
+  const { customers, setCustomers, toast, tailor, setTailor } = useBOSS();
   const customer = customers.find(c => c.id === customerId);
 
   const [editing, setEditing] = useState(false);
@@ -24,6 +24,20 @@ export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOp
   useEffect(() => {
     if (customer) { setEditName(customer.name || ""); setEditPhone(customer.phone || ""); }
   }, [customer?.id]);
+
+  const measConfig = tailor?.meas_config || null;
+
+  async function handleMeasConfigChange(config) {
+    setTailor({ ...tailor, meas_config: config });
+    await db.setTailor({ ...tailor, meas_config: config });
+  }
+
+  async function handleMeasUnitToggle() {
+    const next = tailor?.meas_unit === "inches" ? "cm" : "inches";
+    setTailor({ ...tailor, meas_unit: next });
+    await db.setTailor({ ...tailor, meas_unit: next });
+    toast(`📏 Switched to ${next}`);
+  }
 
   if (!customer) return null;
 
@@ -104,7 +118,14 @@ export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOp
 
             <div>
               <SectionLabel style={{ padding: 0, marginTop: 0, marginBottom: 12 }}>Saved Measurements</SectionLabel>
-              <MeasGrid measurements={customer.measurements || {}} onChange={m => { updateMeas(m); toast("✅ Saved"); }} />
+              <MeasGrid
+                measurements={customer.measurements || {}}
+                onChange={m => { updateMeas(m); toast("✅ Saved"); }}
+                gender={customer.gender}
+                measConfig={measConfig}
+                onConfigChange={handleMeasConfigChange}
+                onUnitToggle={handleMeasUnitToggle}
+              />
             </div>
 
             <div>

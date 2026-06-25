@@ -350,7 +350,11 @@ ALTER TABLE tailors
   ADD COLUMN IF NOT EXISTS notif_briefing              boolean DEFAULT true,
   ADD COLUMN IF NOT EXISTS last_seen_at                timestamptz,
   ADD COLUMN IF NOT EXISTS google_drive_refresh_token  text,
-  ADD COLUMN IF NOT EXISTS self_declared_years         text;
+  ADD COLUMN IF NOT EXISTS self_declared_years         text,
+  ADD COLUMN IF NOT EXISTS logo_url                    text,
+  ADD COLUMN IF NOT EXISTS meas_unit                   text DEFAULT 'inches',
+  ADD COLUMN IF NOT EXISTS custom_meas_fields          jsonb,
+  ADD COLUMN IF NOT EXISTS meas_config                 jsonb;
 
 ALTER TABLE orders
   ADD COLUMN IF NOT EXISTS updated_at  timestamptz DEFAULT now(),

@@ -213,7 +213,7 @@ async function updateBosScore(tailorId) {
       if (!authUser) return null;
       const { data } = await client
         .from("tailors")
-        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at,google_drive_refresh_token,notif_delivery,notif_payments,notif_briefing,logo_url,meas_unit,custom_meas_fields")
+        .select("id,shop,phone,city,bank_name,bank_code,account_number,account_name,bos_score,bos_score_updated_at,google_drive_refresh_token,notif_delivery,notif_payments,notif_briefing,logo_url,meas_unit,custom_meas_fields,meas_config")
         .eq("user_id", authUser.id)
         .single();
       if (data) { lsSet("boss_tailor", data); _cachedTailorId = data.id; }
@@ -263,6 +263,7 @@ async function updateBosScore(tailorId) {
       if (profile.logo_url           !== undefined) payload.logo_url           = profile.logo_url           || null;
       if (profile.meas_unit          !== undefined) payload.meas_unit          = profile.meas_unit          || "inches";
       if (profile.custom_meas_fields !== undefined) payload.custom_meas_fields = profile.custom_meas_fields || null;
+      if (profile.meas_config       !== undefined) payload.meas_config       = profile.meas_config       || null;
 
       _syncCallback?.("syncing");
       await client.from("tailors").upsert(payload, { onConflict: "user_id" });
@@ -293,6 +294,7 @@ async function updateBosScore(tailorId) {
       if (!data) return [];
       const mapped = data.map(c => ({
         id: c.id, name: c.name, phone: c.phone || "",
+        gender: c.gender || "female",
         measurements: c.measurements || {}, notes: c.notes || "",
         orders: (c.orders || []).map(o => ({
           id: o.id, type: o.type || "", price: o.price || 0,
@@ -411,9 +413,11 @@ async function updateBosScore(tailorId) {
     try {
       const client = await getBrowserClient();
       const dbPatch = {};
-      if (patch.phone        !== undefined) dbPatch.phone        = patch.phone;
-      if (patch.measurements !== undefined) dbPatch.measurements = patch.measurements;
-      if (patch.notes        !== undefined) dbPatch.notes        = patch.notes;
+      if (patch.name          !== undefined) dbPatch.name          = patch.name;
+      if (patch.phone         !== undefined) dbPatch.phone         = patch.phone;
+      if (patch.measurements  !== undefined) dbPatch.measurements  = patch.measurements;
+      if (patch.notes         !== undefined) dbPatch.notes         = patch.notes;
+      if (patch.gender        !== undefined) dbPatch.gender        = patch.gender;
       if (Object.keys(dbPatch).length > 0) {
         _syncCallback?.("syncing");
         const { error } = await client.from("customers").update(dbPatch).eq("id", customerId);

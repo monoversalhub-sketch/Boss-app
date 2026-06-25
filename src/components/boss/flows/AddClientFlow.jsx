@@ -60,7 +60,7 @@ export function AddClientFlow({ open, onClose, onDone }) {
       </div>
       <div>
         <label style={S.label}>Measurements (inches) — optional</label>
-        <MeasGrid measurements={meas} onChange={setMeas} />
+        <MeasGrid measurements={meas} onChange={setMeas} gender={gender} />
       </div>
     </Flow>
   );
