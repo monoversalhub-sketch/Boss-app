@@ -12,6 +12,7 @@ import { db } from "../../../lib/db";
 import { feedback } from "../../../lib/feedback";
 import { referral } from "../../../lib/referral";
 import { Events } from "@/lib/admin/events";
+import { useShareReceipt } from "../useShareReceipt";
 
 const STEP_LABELS = ["Customer", "Payment", "Delivery & Fit", "Review"];
 
@@ -27,6 +28,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   const [showCalc, setShowCalc] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
+  const { status: shareStatus, sharing, shareReceipt } = useShareReceipt();
   const [receiptPrompt, setReceiptPrompt] = useState(null);
   const startTime = useRef(null);
   const openRef = useRef(false);
@@ -89,14 +91,9 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
       cust.orders = [order, ...(cust.orders || [])];
       setCustomers(next);
 
-      const hasPaid = (parseFloat(stripCommas(deposit)) || 0) > 0;
-      const hasPhone = !!(cust.phone || "").trim();
-      if (hasPaid && hasPhone) {
-        vibrate(8);
-        toast("✅ Order saved!");
-        setReceiptPrompt({ order, customer: { ...cust } });
-      }
-      else { vibrate(8); onClose(); toast("✅ Order saved!"); }
+      vibrate(8);
+      toast("✅ Order saved!");
+      setReceiptPrompt({ order, customer: { ...cust } });
 
       const tailorId = await db.getTailorId();
       if (tailorId) {
@@ -133,7 +130,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
             }
           }).catch(e => console.error("[AddOrderFlow] voice upload", e));
         }
-      } else if (!hasPaid || !hasPhone) {
+      } else {
         toast("⚠️ Saved on this phone. Sign in to back up your data safely.");
       }
 
@@ -441,17 +438,42 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
           <div className="anim-slide" style={{ position: "relative", zIndex: 1, background: C.s1, borderRadius: "32px 32px 0 0", padding: "28px 24px 48px", width: "100%" }}>
             <div style={{ fontSize: 24, marginBottom: 8, textAlign: "center" }}>🧾</div>
             <div style={{ fontSize: 19, fontWeight: 900, color: C.text, marginBottom: 8, textAlign: "center" }}>
-              Receipt for {receiptPrompt.customer.name}
+              Invoice for {receiptPrompt.customer.name}
             </div>
             <div style={{ fontSize: 14, color: C.sub, lineHeight: 1.6, marginBottom: 24, textAlign: "center" }}>
-              Share the receipt link on WhatsApp — your customer sees a professional invoice with payment details.
+              Share a receipt image with your customer on WhatsApp. They see a professional invoice with payment details.
             </div>
-            <Btn variant="wa" onClick={()=>{
-              const url = invoiceUrl(receiptPrompt.order.id);
-              window.open(url, "_blank");
-              setReceiptPrompt(null);
-              setTimeout(onClose, 500);
-            }} style={{ marginBottom: 12 }}><span>📤</span> Share Receipt on WhatsApp</Btn>
+            <button
+              onClick={() => {
+                shareReceipt(receiptPrompt.order, receiptPrompt.customer, tailor);
+                if (shareStatus !== "idle") return;
+              }}
+              disabled={sharing}
+              style={{
+                width: "100%",
+                padding: "16px",
+                borderRadius: 14,
+                fontSize: 15,
+                fontWeight: 700,
+                border: "none",
+                cursor: sharing ? "default" : "pointer",
+                fontFamily: "inherit",
+                background: sharing ? C.s3 : "#25D366",
+                color: sharing ? C.sub : "#fff",
+                marginBottom: 12,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                transition: "all 0.15s",
+              }}
+            >
+              {shareStatus === "capturing" && "📸 Generating receipt…"}
+              {shareStatus === "sharing"   && "⏳ Opening share sheet…"}
+              {shareStatus === "done"      && "✅ Receipt sent!"}
+              {shareStatus === "error"     && "❌ Failed — tap to retry"}
+              {shareStatus === "idle"      && "📤 Send Receipt to Customer"}
+            </button>
             <Btn variant="outline" onClick={()=>{setReceiptPrompt(null);onClose();}}>Close</Btn>
           </div>
         </div>

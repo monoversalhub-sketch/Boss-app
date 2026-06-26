@@ -8,7 +8,15 @@ export function useAdminAuth({ skip } = {}) {
   const router = useRouter();
 
   useEffect(() => {
-    if (skip) { setLoading(false); return; }
+    if (skip) {
+      setLoading(false);
+      setAdmin(null);
+      return;
+    }
+
+    // Immediately set loading=true so AdminShell doesn't
+    // redirect before the async check() completes.
+    setLoading(true);
 
     async function check() {
       try {

@@ -13,7 +13,7 @@ export default function UsersPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ queries: [
-          { key: "tailors", table: "tailors", select: "id, shop, phone, bos_score, created_at, last_active_at", order: "created_at desc" },
+          { key: "tailors", table: "tailors", select: "id, shop, phone, bos_score, created_at, last_active_at, orders_count", order: "created_at desc" },
         ]}),
       });
       const json = await res.json();
@@ -52,14 +52,14 @@ export default function UsersPage() {
           { key: "shop", label: "Business" },
           { key: "phone", label: "Phone" },
           { key: "bos_score", label: "Trust Score", render: (v) => <ScoreBar score={v || 0} showLabel height={6} /> },
-          { key: "total_orders", label: "Orders", align: "right" },
+          { key: "orders_count", label: "Orders", align: "right" },
           { key: "created_at", label: "Joined", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
           { key: "last_active_at", label: "Active", render: (v) => v
             ? Math.floor((new Date() - new Date(v)) / 86400000) + "d ago"
             : "Never",
           },
         ]}
-        rows={filtered.map(t => ({ ...t, total_orders: "?" }))}
+        rows={filtered}
       />
     </div>
   );

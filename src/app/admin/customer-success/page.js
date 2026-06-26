@@ -20,6 +20,13 @@ export default function CustomerSuccessPage() {
   useEffect(() => { load(); }, [load]);
 
   if (loading && !data) return <div style={{color: C.sub}}>Loading customer success intelligence…</div>;
+  if (!data && !loading) return (
+    <div style={{color: C.sub, padding: 40, textAlign: "center"}}>
+      <div style={{fontSize: 48, marginBottom: 16}}>⚠️</div>
+      <div style={{fontSize: 18, fontWeight: 700, color: C.text, marginBottom: 8}}>Could not load data</div>
+      <div style={{fontSize: 14, lineHeight: 1.6}}>The customer success intelligence API returned an error. Check server logs for details.</div>
+    </div>
+  );
 
   const atRisk = data?.all || [];
   const filtered = filter === "all" ? atRisk

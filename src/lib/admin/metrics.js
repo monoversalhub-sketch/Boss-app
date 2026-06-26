@@ -7,7 +7,7 @@ export async function computeMetrics(tailorId) {
   const [{ data: orders }, { data: customers }, { data: payments }] = await Promise.all([
     client.from("orders").select("*").eq("tailor_id", tailorId),
     client.from("customers").select("*").eq("tailor_id", tailorId),
-    client.from("payments").select("*").eq("tailor_id", tailorId).gte("created_at", thirtyDaysAgo),
+    client.from("payments").select("*").eq("tailor_id", tailorId).gte("recorded_at", thirtyDaysAgo),
   ]);
 
   const totalOrders = orders?.length || 0;
@@ -79,7 +79,7 @@ export async function computeAggregateMetrics() {
   ] = await Promise.all([
     client.from("tailors").select("id", { count: "exact", head: true }),
     client.from("orders").select("id, price, deposit, paid, status, delivery_date, customer_id, tailor_id, created_at"),
-    client.from("payments").select("amount, created_at").gte("created_at", today),
+    client.from("payments").select("amount, recorded_at").gte("recorded_at", today),
     client.from("customers").select("id, tailor_id"),
     client.from("business_health_scores").select("*"),
     client.from("churn_risk").select("tailor_id, risk_level"),

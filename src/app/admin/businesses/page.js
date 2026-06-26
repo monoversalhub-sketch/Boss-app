@@ -66,8 +66,8 @@ export default function BusinessesPage() {
       } />
       <AdminTable
         columns={[
-          { key: "name", label: "Business" },
-          { key: "email", label: "Email" },
+          { key: "shop", label: "Business" },
+          { key: "phone", label: "Phone" },
           { key: "bos_score", label: "Trust Score", render: (v) => <ScoreBar score={v || 0} showLabel height={6} /> },
           { key: "health", label: "Health", render: (v) => <StatusBadge status={v === "unknown" ? "dormant" : v} /> },
           { key: "churnRisk", label: "Churn Risk", render: (v) => {

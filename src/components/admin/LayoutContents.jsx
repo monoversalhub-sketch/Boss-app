@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { AdminC as C } from "./Layout";
 
@@ -23,9 +23,8 @@ const NAV_ITEMS = [
   { label: "Settings", path: "/admin/settings", icon: "⚙️" },
 ];
 
-function Sidebar({ collapsed, onToggle }) {
+function Sidebar({ collapsed, mobile, open, onToggle, onNav }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const linkStyle = (active) => ({
     display: "flex", alignItems: "center", gap: 10,
@@ -37,24 +36,28 @@ function Sidebar({ collapsed, onToggle }) {
     transition: "all 0.12s", minHeight: 40,
   });
 
-  return (
+  const sidebar = (
     <div style={{
-      width: collapsed ? 64 : 240, height: "100vh",
-      backgroundColor: C.s1, borderRight: `1px solid ${C.border}`,
-      display: "flex", flexDirection: "column", flexShrink: 0,
+      width: collapsed && !mobile ? 64 : 240,
+      height: "100%",
+      backgroundColor: C.s1,
+      borderRight: mobile ? "none" : `1px solid ${C.border}`,
+      display: "flex", flexDirection: "column",
       transition: "width 0.2s", overflow: "hidden",
-      position: "sticky", top: 0,
     }}>
       <div style={{
         padding: "16px 14px", borderBottom: `1px solid ${C.border}`,
         display: "flex", alignItems: "center", gap: 10, minHeight: 56,
       }}>
-        {!collapsed && (
+        {(!collapsed || mobile) && (
           <div style={{ fontSize: 18, fontWeight: 900, color: C.text, letterSpacing: "-0.5px", whiteSpace: "nowrap" }}>
             BOSS<span style={{ color: C.accent }}> Admin</span>
           </div>
         )}
-        {collapsed && <div style={{ fontSize: 20, fontWeight: 900, color: C.accent }}>B</div>}
+        {collapsed && !mobile && <div style={{ fontSize: 20, fontWeight: 900, color: C.accent }}>B</div>}
+        {mobile && (
+          <div onClick={onToggle} style={{ marginLeft: "auto", fontSize: 20, cursor: "pointer", color: C.sub }} className="tap">✕</div>
+        )}
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
         {NAV_ITEMS.map(item => {
@@ -62,32 +65,72 @@ function Sidebar({ collapsed, onToggle }) {
           return (
             <div
               key={item.path}
-              onClick={() => router.push(item.path)}
+              onClick={() => { onNav?.(item.path); }}
               style={linkStyle(active)}
               className="tap"
-              title={collapsed ? item.label : undefined}
+              title={collapsed && !mobile ? item.label : undefined}
             >
               <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
-              {!collapsed && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>}
+              {(!collapsed || mobile) && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>}
             </div>
           );
         })}
       </div>
-      <div style={{ padding: 8, borderTop: `1px solid ${C.border}` }}>
-        <div
-          onClick={onToggle}
-          style={{ ...linkStyle(false), justifyContent: "center", fontSize: 14, minHeight: 36 }}
-          className="tap"
-        >
-          {collapsed ? "→" : "← Collapse"}
+      {!mobile && (
+        <div style={{ padding: 8, borderTop: `1px solid ${C.border}` }}>
+          <div
+            onClick={onToggle}
+            style={{ ...linkStyle(false), justifyContent: "center", fontSize: 14, minHeight: 36 }}
+            className="tap"
+          >
+            {collapsed ? "→" : "← Collapse"}
+          </div>
         </div>
-      </div>
+      )}
     </div>
+  );
+
+  if (!mobile) return sidebar;
+
+  return (
+    <>
+      {open && (
+        <div
+          onClick={() => onToggle()}
+          style={{ position: "fixed", inset: 0, zIndex: 998, backgroundColor: "rgba(0,0,0,0.6)" }}
+        />
+      )}
+      <div style={{
+        position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 999,
+        transform: open ? "translateX(0)" : "translateX(-100%)",
+        transition: "transform 0.25s cubic-bezier(0.32,0.72,0,1)",
+        boxShadow: open ? "4px 0 24px rgba(0,0,0,0.4)" : "none",
+      }}>
+        {sidebar}
+      </div>
+    </>
   );
 }
 
 export default function LayoutContents({ children, admin }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [isMobile]);
+
+  const mainPad = isMobile ? "16px 12px" : "28px 32px";
 
   return (
     <div style={{
@@ -95,10 +138,29 @@ export default function LayoutContents({ children, admin }) {
       backgroundColor: C.bg, color: C.text, fontFamily: "var(--font-plus-jakarta),sans-serif",
       overflow: "hidden",
     }}>
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
+      <Sidebar
+        collapsed={collapsed}
+        mobile={isMobile}
+        open={mobileOpen}
+        onToggle={() => setMobileOpen(v => !v)}
+        onNav={(path) => { setMobileOpen(false); router.push(path); }}
+      />
       <main style={{
-        flex: 1, overflowY: "auto", padding: "28px 32px", minWidth: 0,
+        flex: 1, overflowY: "auto", padding: mainPad, minWidth: 0,
       }}>
+        {isMobile && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, minHeight: 40 }}>
+            <div
+              onClick={() => setMobileOpen(true)}
+              style={{ fontSize: 22, cursor: "pointer", color: C.text, lineHeight: 1 }} className="tap"
+            >
+              ☰
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.text }}>
+              BOSS <span style={{ color: C.accent }}>Admin</span>
+            </div>
+          </div>
+        )}
         {children}
       </main>
       <style>{`

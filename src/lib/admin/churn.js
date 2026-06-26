@@ -87,31 +87,56 @@ export async function computeAndSaveChurnRisk(tailorId) {
 }
 
 export async function getChurnIntelligence() {
-  const client = await (await import("../db")).getEffectiveClient();
+  try {
+    const client = await (await import("../db")).getEffectiveClient();
 
-  const [{ data: churnData }, { data: tailors }] = await Promise.all([
-    client.from("churn_risk").select("*, tailor:tailors(shop, phone)").order("risk_score", { ascending: false }),
-    client.from("tailors").select("id, last_active_at"),
-  ]);
+    const [churnResult, tailorsResult] = await Promise.all([
+      client.from("churn_risk").select("*").order("risk_score", { ascending: false }),
+      client.from("tailors").select("id, shop, last_active_at"),
+    ]);
 
-  const critical = churnData?.filter(c => c.risk_level === "critical") || [];
-  const high = churnData?.filter(c => c.risk_level === "high") || [];
-  const medium = churnData?.filter(c => c.risk_level === "medium") || [];
-  const low = churnData?.filter(c => c.risk_level === "low") || [];
+    if (churnResult.error) throw new Error("churn_risk query: " + churnResult.error.message);
+    if (tailorsResult.error) throw new Error("tailors query: " + tailorsResult.error.message);
 
-  const allInactive = tailors?.filter(t => {
-    if (!t.last_active_at) return true;
-    return (new Date() - new Date(t.last_active_at)) / 86400000 > 30;
-  }) || [];
+    const churnData = churnResult.data || [];
+    const tailors = tailorsResult.data || [];
 
-  return {
-    all: churnData || [],
-    critical,
-    high,
-    medium,
-    low,
-    totalAtRisk: critical.length + high.length,
-    inactiveUsers: allInactive.length,
-    byLevel: { critical: critical.length, high: high.length, medium: medium.length, low: low.length },
-  };
+    // Build tailor lookup (manual join)
+    const tailorMap = {};
+    tailors.forEach(t => { tailorMap[t.id] = { shop: t.shop, phone: null }; });
+
+    // Attach tailor info to each churn row
+    const all = churnData.map(c => ({
+      ...c,
+      tailor: tailorMap[c.tailor_id] || null,
+    }));
+
+    const critical = all.filter(c => c.risk_level === "critical");
+    const high = all.filter(c => c.risk_level === "high");
+    const medium = all.filter(c => c.risk_level === "medium");
+    const low = all.filter(c => c.risk_level === "low");
+
+    const allInactive = tailors.filter(t => {
+      if (!t.last_active_at) return true;
+      return (new Date() - new Date(t.last_active_at)) / 86400000 > 30;
+    });
+
+    return {
+      all,
+      critical,
+      high,
+      medium,
+      low,
+      totalAtRisk: critical.length + high.length,
+      inactiveUsers: allInactive.length,
+      byLevel: { critical: critical.length, high: high.length, medium: medium.length, low: low.length },
+    };
+  } catch (err) {
+    console.error("[getChurnIntelligence]", err);
+    return {
+      all: [], critical: [], high: [], medium: [], low: [],
+      totalAtRisk: 0, inactiveUsers: 0,
+      byLevel: { critical: 0, high: 0, medium: 0, low: 0 },
+    };
+  }
 }
