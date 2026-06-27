@@ -7,7 +7,6 @@ const AdminLayoutContents = dynamic(() => import("./LayoutContents"), { ssr: fal
 
 export default function AdminShell({ children }) {
   const pathname = usePathname();
-  const router = useRouter();
   const isLoginPage = pathname === "/admin/login";
 
   const { admin, loading } = useAdminAuth({ skip: isLoginPage });
