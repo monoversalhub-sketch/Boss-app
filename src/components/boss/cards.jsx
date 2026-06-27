@@ -218,35 +218,130 @@ const MEAS_BADGE = {fontSize:13,fontWeight:700,color:C.accent,background:"rgba(0
 export function OrderCard({order,onClick}){
   const {customers}=useBOSS();
 
-  const overdue=isOverdue(order);const dueToday=isDueToday(order);
-  const status=orderStatus(order);const bal=getBalance(order);
-  const borderColor=overdue?"rgba(255,59,48,0.3)":dueToday?"rgba(255,159,10,0.3)":status==="Ready"?"rgba(52,199,89,0.3)":C.border;
-  const badgeStyle=overdue?{background:"rgba(255,59,48,0.1)",color:C.red}:dueToday?{background:"rgba(255,159,10,0.1)",color:"#FF9F0A"}:status==="Ready"?{background:"rgba(52,199,89,0.1)",color:C.green}:status==="Delivered"?{background:"rgba(52,199,89,0.08)",color:C.green}:{background:C.s3,color:C.sub};
-  const badgeText=overdue?"Overdue":dueToday?"Due Today":status;
-  const imgUrl=order.imageUrls?.[0];
+  const customerName=order._cname||order.customerName||"Customer";
+  const itemType=order.type||order.item||"";
+  const deliveryDate=order.delivery_date||order.date;
+  const imgUrl=order.imageUrls?.[0]||order.style_photos?.[0]||null;
+  const initial=customerName.trim()[0]?.toUpperCase()||"?";
+
+  const fmtDelivery=deliveryDate
+    ? new Date(deliveryDate).toLocaleDateString("en-NG",{day:"numeric",month:"short",year:"numeric"})
+    : null;
+
+  const total=Number(order.price||0);
+  const deposit=Number(order.deposit||order.deposit_paid||0);
+  const balance=total-deposit;
+  const isPaid=balance<=0;
+  const isPartial=deposit>0&&!isPaid;
+
+  const overdue=isOverdue(order);
+  const status=orderStatus(order);
+  const bal=getBalance(order);
+
+  const statusConfig={
+    "In Progress":{bg:"#F0F0F0",color:"#555",label:"In Progress"},
+    "Ready":      {bg:"#EAF6EC",color:"#1a7a4a",label:"Ready"},
+    "Delivered":  {bg:"#E8F0FE",color:"#1a56db",label:"Delivered"},
+  };
+  const ss=statusConfig[status]||{bg:"#F0F0F0",color:"#555",label:status||"Active"};
+
+  const paymentLabel=isPaid
+    ?{text:"Paid ✓",color:"#1a7a4a",weight:700}
+    :isPartial
+    ?{text:`₦${balance.toLocaleString("en-NG")} due`,color:"#b91c1c",weight:700}
+    :{text:`₦${total.toLocaleString("en-NG")} due`,color:"#b91c1c",weight:700};
+
+  const hasMeas=(customers||[]).find(c=>c.name===order._cname)?.measurements
+    &&Object.keys((customers||[]).find(c=>c.name===order._cname).measurements).length>0;
+
   return(
-    <div className="tap" onClick={onClick} style={{...S.card,border:`1px solid ${borderColor}`,...S.row}}>
-      {imgUrl?(
-        <img src={imgUrl} alt="" style={ORDER_IMG}/>
-      ):(
-        <div style={ORDER_PLACEHOLDER}>✂️</div>
-      )}
-      <div style={ORDER_BODY}>
-        <div style={ORDER_ROW}>
-          <div style={{fontSize:16,fontWeight:700,color:C.text}}>{order._cname||order.customerName||"—"}</div>
-          <div style={{...badgeStyle,...BADGE_BASE}}>{badgeText}</div>
-        </div>
-        <div style={{fontSize:13,color:C.sub,fontWeight:500}}>{order.type||"—"}</div>
-        <div style={ORDER_META}>
-          <div style={S.row}>
-            <div style={{fontSize:13,color:C.muted,fontWeight:600}}>📅 {fmtDate(order.date)}</div>
-            {(customers||[]).find(c=>c.name===order._cname)?.measurements&&Object.keys((customers||[]).find(c=>c.name===order._cname).measurements).length>0&&(
-              <button className="tap" onClick={e=>{e.stopPropagation();onClick?.();}} style={MEAS_BADGE}>📏</button>
-            )}
+    <div className="tap" onClick={onClick} style={{
+      display:"flex",alignItems:"flex-start",gap:14,
+      background:overdue?"#FFF8F8":"#fff",
+      border:overdue?"1.5px solid #fca5a5":"1px solid #EBEBEB",
+      borderRadius:18,padding:"14px 16px",marginBottom:10,
+      cursor:"pointer",WebkitTapHighlightColor:"transparent",
+    }}>
+      {/* Thumbnail */}
+      <div style={{
+        width:64,height:64,flexShrink:0,borderRadius:14,overflow:"hidden",
+        background:"#F3F3F3",border:"1px solid #EBEBEB",
+        display:"flex",alignItems:"center",justifyContent:"center",
+      }}>
+        {imgUrl?(
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imgUrl} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+        ):(
+          <div style={{
+            width:"100%",height:"100%",
+            background:"linear-gradient(135deg,#E8E8E8 0%,#D4D4D4 100%)",
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:22,fontWeight:900,color:"#AAAAAA",
+            fontFamily:"system-ui,sans-serif",letterSpacing:"-0.5px",userSelect:"none",
+          }}>
+            {initial}
           </div>
-          <div style={S.row}>
-            {getPaymentState(order)==="partially_paid"&&<div style={PARTIAL_BADGE}>PARTIAL</div>}
-            {bal>0?<div style={{...ORDER_BALANCE,color:C.red}}>{fmt(bal)} due</div>:<div style={{...ORDER_BALANCE,color:C.green}}>Paid ✓</div>}
+        )}
+      </div>
+
+      {/* Content */}
+      <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:4}}>
+        {/* Row 1: Name + badge */}
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
+          <div style={{
+            fontSize:16,fontWeight:800,color:"#0a0a0a",lineHeight:1.25,letterSpacing:"-0.3px",
+            overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",
+          }}>
+            {customerName}
+          </div>
+          <div style={{
+            flexShrink:0,fontSize:12,fontWeight:700,
+            padding:"4px 10px",borderRadius:20,whiteSpace:"nowrap",marginTop:1,
+            background:overdue?"#FEE2E2":ss.bg,
+            color:overdue?"#dc2626":ss.color,
+          }}>
+            {overdue?"Overdue":status==="Delivered"?"Delivered":status}
+          </div>
+        </div>
+
+        {/* Row 2: Item type + meas badge */}
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {itemType?(
+            <div style={{fontSize:14,fontWeight:500,color:"#666",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1}}>
+              {itemType}
+            </div>
+          ):null}
+          {hasMeas&&(
+            <button className="tap" onClick={e=>{e.stopPropagation();onClick?.();}} style={MEAS_BADGE}>📏</button>
+          )}
+        </div>
+
+        {/* Row 3: Date + Payment */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginTop:4}}>
+          {fmtDelivery?(
+            <div style={{
+              display:"flex",alignItems:"center",gap:4,
+              fontSize:12,color:overdue?"#dc2626":"#888",
+              fontWeight:overdue?700:500,
+              whiteSpace:"nowrap",flexShrink:0,
+            }}>
+              <span style={{fontSize:13}}>📅</span>
+              {fmtDelivery}
+            </div>
+          ):<div/>}
+          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+            {getPaymentState(order)==="partially_paid"&&(
+              <div style={{
+                fontSize:11,fontWeight:800,color:"#b45309",
+                background:"#FEF3C7",padding:"3px 8px",borderRadius:20,
+                whiteSpace:"nowrap",letterSpacing:"0.3px",
+              }}>
+                PARTIAL
+              </div>
+            )}
+            <div style={{fontSize:13,fontWeight:paymentLabel.weight,color:paymentLabel.color,whiteSpace:"nowrap"}}>
+              {paymentLabel.text}
+            </div>
           </div>
         </div>
       </div>
@@ -319,9 +414,38 @@ export function MeasGrid({
   const [customInput, setCustomInput]   = useState("");
   const timerRef                        = useRef(null);
   const renameInputRef                  = useRef(null);
+  const prevUnit                        = useRef(unit);
+  const convertTimer                    = useRef(null);
 
   useEffect(() => { setLocal(measurements); }, [measurements]);
-  useEffect(() => () => clearTimeout(timerRef.current), []);
+  useEffect(() => () => { clearTimeout(timerRef.current); clearTimeout(convertTimer.current); }, []);
+
+  // Auto-convert values when unit toggles
+  useEffect(() => {
+    if (prevUnit.current === unit) return;
+    const from = prevUnit.current;
+    const to = unit;
+    prevUnit.current = unit;
+    const factor = from === "inches" && to === "cm" ? 2.54
+                 : from === "cm" && to === "inches" ? 1 / 2.54
+                 : 1;
+    if (factor === 1) return;
+    const next = {};
+    let changed = false;
+    for (const [k, v] of Object.entries(local)) {
+      const num = parseFloat(v);
+      if (!isNaN(num)) {
+        next[k] = Math.round(num * factor * 10) / 10 + "";
+        changed = true;
+      } else {
+        next[k] = v;
+      }
+    }
+    if (!changed) return;
+    setLocal(next);
+    clearTimeout(convertTimer.current);
+    convertTimer.current = setTimeout(() => onChange(next), 100);
+  }, [unit, local, onChange]);
 
   // Auto-focus rename input when it appears
   useEffect(() => {

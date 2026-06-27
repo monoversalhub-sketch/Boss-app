@@ -6,6 +6,7 @@ export function useAdminAuth({ skip } = {}) {
   const [loading, setLoading] = useState(true);
   const [admin, setAdmin] = useState(null);
   const redirecting = useRef(false);
+  const checking = useRef(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -15,6 +16,16 @@ export function useAdminAuth({ skip } = {}) {
       return;
     }
 
+    // Guard: prevent re-entrant check
+    if (checking.current) return;
+    checking.current = true;
+
+    // Safety timeout: never spin forever
+    const safety = setTimeout(() => {
+      setLoading(false);
+      checking.current = false;
+    }, 15000);
+
     async function check() {
       redirecting.current = false;
       try {
@@ -22,13 +33,15 @@ export function useAdminAuth({ skip } = {}) {
         if (cached) {
           setAdmin(JSON.parse(cached));
           setLoading(false);
+          clearTimeout(safety);
+          checking.current = false;
           return;
         }
         const { getBrowserClient } = await import("@/lib/db");
         const client = await getBrowserClient();
         const { data: { user } } = await client.auth.getUser();
         if (user) {
-            const res = await fetch("/api/admin/login", {
+          const res = await fetch("/api/admin/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: user.email }),
@@ -38,22 +51,25 @@ export function useAdminAuth({ skip } = {}) {
             localStorage.setItem("boss_admin_user", JSON.stringify(json.admin));
             setAdmin(json.admin);
             setLoading(false);
+            clearTimeout(safety);
+            checking.current = false;
             return;
           }
         }
       } catch {
         // Not authenticated
       }
+      clearTimeout(safety);
       setLoading(false);
-      // Redirect happens here — after the full check — not in a
-      // separate effect that could race with state updates.
+      checking.current = false;
       if (!redirecting.current) {
         redirecting.current = true;
         router.replace("/admin/login");
       }
     }
     check();
-  }, [skip, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skip]);
 
   return { admin, loading };
 }
