@@ -1,53 +1,63 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 export function useShareReceipt() {
   const [status, setStatus] = useState("idle");
+  const [errorMsg, setErrorMsg] = useState(null);
+  const busy = useRef(false);
 
   const shareReceipt = useCallback(
     async (order, customer, tailor) => {
-      if (status !== "idle") return;
+      if (busy.current) return;
+      busy.current = true;
       setStatus("capturing");
+      setErrorMsg(null);
 
       const CAPTURE_ID = `receipt-capture-${Date.now()}`;
 
-      const [
-        { default: html2canvas },
-        { default: ReceiptCanvas },
-        ReactDOM,
-      ] = await Promise.all([
-        import("html2canvas"),
-        import("./ReceiptCanvas"),
-        import("react-dom/client"),
-      ]);
-
-      const host = document.createElement("div");
-      document.body.appendChild(host);
-      const root = ReactDOM.createRoot(host);
-
-      await new Promise(resolve => {
-        root.render(
-          <ReceiptCanvas
-            id={CAPTURE_ID}
-            order={order}
-            customer={customer}
-            tailor={tailor}
-          />
-        );
-        requestAnimationFrame(() =>
-          requestAnimationFrame(resolve)
-        );
-      });
-
+      let root, host;
       try {
-        const node = document.getElementById(CAPTURE_ID);
-        if (!node) throw new Error("Capture node not found");
+        const [
+          { default: html2canvas },
+          { default: ReceiptCanvas },
+          ReactDOM,
+        ] = await Promise.all([
+          import("html2canvas"),
+          import("./ReceiptCanvas"),
+          import("react-dom/client"),
+        ]);
 
+        host = document.createElement("div");
+        document.body.appendChild(host);
+        root = ReactDOM.createRoot(host);
+
+        // Render the receipt, then wait for layout + images
+        await new Promise(resolve => {
+          root.render(
+            <ReceiptCanvas
+              id={CAPTURE_ID}
+              order={order}
+              customer={customer}
+              tailor={tailor}
+            />
+          );
+          // Wait 3 frames + 300ms — reliable enough for images/fonts
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() =>
+              setTimeout(resolve, 300)
+            )
+          );
+        });
+
+        const node = document.getElementById(CAPTURE_ID);
+        if (!node) throw new Error("Capture node not found in DOM");
+
+        // Render the receipt as a high-DPI PNG
         const canvas = await html2canvas(node, {
-          backgroundColor: "#0a0a0a",
+          backgroundColor: "#FAFAF8",
           scale: 2,
           useCORS: true,
-          allowTaint: false,
+          allowTaint: true,
           logging: false,
         });
 
@@ -88,18 +98,19 @@ export function useShareReceipt() {
         }
 
         setStatus("done");
-        setTimeout(() => setStatus("idle"), 2500);
+        setTimeout(() => { setStatus("idle"); busy.current = false; }, 2500);
       } catch (err) {
         console.error("[useShareReceipt]", err);
         setStatus("error");
-        setTimeout(() => setStatus("idle"), 3000);
+        setErrorMsg(err.message || "Unknown error");
+        setTimeout(() => { setStatus("idle"); setErrorMsg(null); busy.current = false; }, 4000);
       } finally {
-        root.unmount();
-        document.body.removeChild(host);
+        if (root) root.unmount();
+        if (host) document.body.removeChild(host);
       }
     },
-    [status]
+    []
   );
 
-  return { status, sharing: status !== "idle", shareReceipt };
+  return { status, sharing: status !== "idle", errorMsg, shareReceipt };
 }

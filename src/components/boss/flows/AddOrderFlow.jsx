@@ -43,7 +43,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
     if (open) {
       const p = customers.find(c => c.id === prefilledCid);
       setName(p?.name || ""); setPhone(p?.phone || ""); setGender(p?.gender || "female"); setType(""); setPrice(""); setDeposit(""); setDate(""); setNotes(""); setMatches([]); setShowCalc(false); setIsSaving(false); savingRef.current = false;
-      setMeas({}); setMeasOpen(false); setStep(1); setVoiceBlob(null);
+      setMeas(p?.measurements || {}); setMeasOpen(false); setStep(1); setVoiceBlob(null);
       setSelectedImages(prev => { prev.forEach(i => URL.revokeObjectURL(i.url)); return []; });
       startTime.current = Date.now();
       openRef.current = true;
@@ -58,7 +58,7 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
   }, [open, prefilledCid]);
 
   function onNameChange(v) { setName(v); if (v.length < 1) { setMatches([]); return; } setMatches(customers.filter(c => c.name.toLowerCase().includes(v.toLowerCase())).slice(0, 5)); }
-  function pickExisting(c) { setName(c.name); setPhone(c.phone || ""); setGender(c.gender || "female"); setMatches([]); }
+  function pickExisting(c) { setName(c.name); setPhone(c.phone || ""); setGender(c.gender || "female"); setMeas(c.measurements || {}); setMatches([]); }
 
   function handleImageSelect(e) {
     const files = Array.from(e.target.files || []);
@@ -446,7 +446,6 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
             <button
               onClick={() => {
                 shareReceipt(receiptPrompt.order, receiptPrompt.customer, tailor);
-                if (shareStatus !== "idle") return;
               }}
               disabled={sharing}
               style={{
@@ -474,6 +473,14 @@ export function AddOrderFlow({ open, onClose, prefilledCid, onFeedbackTrigger })
               {shareStatus === "error"     && "❌ Failed — tap to retry"}
               {shareStatus === "idle"      && "📤 Send Receipt to Customer"}
             </button>
+            {shareStatus === "error" && (
+              <div style={{
+                fontSize: 12, color: C.red, lineHeight: 1.5,
+                marginBottom: 12, textAlign: "center", padding: "4px 0",
+              }}>
+                Try again or use the View Invoice link instead.
+              </div>
+            )}
             <Btn variant="outline" onClick={()=>{setReceiptPrompt(null);onClose();}}>Close</Btn>
           </div>
         </div>

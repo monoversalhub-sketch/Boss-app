@@ -1,10 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 export function useAdminAuth({ skip } = {}) {
   const [loading, setLoading] = useState(true);
   const [admin, setAdmin] = useState(null);
+  const redirecting = useRef(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -14,11 +15,8 @@ export function useAdminAuth({ skip } = {}) {
       return;
     }
 
-    // Immediately set loading=true so AdminShell doesn't
-    // redirect before the async check() completes.
-    setLoading(true);
-
     async function check() {
+      redirecting.current = false;
       try {
         const cached = localStorage.getItem("boss_admin_user");
         if (cached) {
@@ -39,15 +37,23 @@ export function useAdminAuth({ skip } = {}) {
           if (res.ok && json.admin) {
             localStorage.setItem("boss_admin_user", JSON.stringify(json.admin));
             setAdmin(json.admin);
+            setLoading(false);
+            return;
           }
         }
       } catch {
-        // Not authenticated - show nothing, redirect will happen via router
+        // Not authenticated
       }
       setLoading(false);
+      // Redirect happens here — after the full check — not in a
+      // separate effect that could race with state updates.
+      if (!redirecting.current) {
+        redirecting.current = true;
+        router.replace("/admin/login");
+      }
     }
     check();
-  }, [skip]);
+  }, [skip, router]);
 
   return { admin, loading };
 }

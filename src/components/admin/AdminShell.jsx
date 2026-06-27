@@ -1,7 +1,6 @@
 "use client";
-import { useEffect } from "react";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAdminAuth } from "@/lib/admin/auth";
 
 const AdminLayoutContents = dynamic(() => import("./LayoutContents"), { ssr: false });
@@ -12,12 +11,6 @@ export default function AdminShell({ children }) {
   const isLoginPage = pathname === "/admin/login";
 
   const { admin, loading } = useAdminAuth({ skip: isLoginPage });
-
-  useEffect(() => {
-    if (!loading && !admin && !isLoginPage) {
-      router.replace("/admin/login");
-    }
-  }, [loading, admin, isLoginPage]);
 
   if (isLoginPage) {
     return <>{children}</>;
