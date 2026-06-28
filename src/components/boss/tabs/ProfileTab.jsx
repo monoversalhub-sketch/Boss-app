@@ -616,6 +616,49 @@ export function ProfileTab({ onFeedbackTrigger, onTour }) {
       )}
 
       <div style={{ padding: "16px 20px 0" }}>
+        <button
+          className="tap"
+          onClick={async () => {
+            if (!("serviceWorker" in navigator)) { window.location.reload(); return; }
+            try {
+              const reg = await navigator.serviceWorker.getRegistration();
+              if (reg) {
+                await reg.update();
+                setTimeout(() => {
+                  if (reg.waiting) {
+                    reg.waiting.postMessage({ type: "SKIP_WAITING" });
+                  } else {
+                    toast("✅ You're on the latest version");
+                  }
+                }, 1500);
+              } else {
+                window.location.reload();
+              }
+            } catch { window.location.reload(); }
+          }}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            width: "100%", padding: "16px",
+            background: C.s1, border: `1px solid ${C.border}`,
+            borderRadius: 16, cursor: "pointer", fontFamily: "inherit",
+            marginBottom: 8,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ fontSize: 22 }}>🔄</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>
+                Check for Updates
+              </div>
+              <div style={{ fontSize: 13, color: C.sub, marginTop: 1 }}>
+                Get the latest version of BOSS
+              </div>
+            </div>
+          </div>
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth={2}>
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
         <button className="tap" onClick={handleSignOut}
           style={{ width: "100%", padding: "15px", borderRadius: 16, fontSize: 15, fontWeight: 700, border: "1.5px solid rgba(255,59,48,0.2)", cursor: "pointer", background: "rgba(255,59,48,0.05)", color: C.red, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           🚪 Sign Out

@@ -14,6 +14,8 @@ import { db, ls, lsSet } from "../lib/db";
 import { feedback } from "../lib/feedback";
 import { referral } from "../lib/referral";
 import { syncFromSupabase, initDB } from "../lib/localdb";
+import { usePWAUpdate } from "@/hooks/usePWAUpdate";
+import UpdateBanner from "./boss/UpdateBanner";
 import { FeedbackSheet } from "./boss/FeedbackSheet";
 import { OnboardingTour } from "./boss/OnboardingTour";
 
@@ -335,6 +337,13 @@ function BOSSApp(){
     };
   },[screen, tailor?.id]);
 
+  const { updateAvailable, triggerUpdate } = usePWAUpdate();
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    if (updateAvailable) setBannerDismissed(false);
+  }, [updateAvailable]);
+
   const pushPromptedRef = useRef(false);
   const prevOrderCountRef = useRef(allOrders(customers).length);
   const[pushConsentOpen,setPushConsentOpen]=useState(false);
@@ -576,6 +585,13 @@ function BOSSApp(){
               style={{fontSize:14,color:C.sub,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Maybe later</button>
           </div>
         </Sheet>
+
+        {updateAvailable && !bannerDismissed && (
+          <UpdateBanner
+            onUpdate={triggerUpdate}
+            onDismiss={() => setBannerDismissed(true)}
+          />
+        )}
       </div>
     </>
     </BOSSContext.Provider>

@@ -8,6 +8,12 @@ node_modules/
 out/
 build/
 
+# next-pwa generated files
+public/sw.js
+public/workbox-*.js
+public/sw.js.map
+public/workbox-*.js.map
+
 # Environment variables — NEVER commit these
 .env
 .env.local

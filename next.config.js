@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
+const withPWA = require("@ducanh2912/next-pwa").default;
+
 const nextConfig = {
   reactCompiler: true,
   cacheComponents: true,
+  turbopack: {},
   async headers() {
     return [
       {
@@ -39,4 +42,13 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withPWA({
+  dest: "public",
+  register: true,
+  skipWaiting: false,
+  disable: process.env.NODE_ENV === "development",
+  customWorkerDir: "worker",
+  fallbacks: {
+    document: "/offline",
+  },
+})(nextConfig);
