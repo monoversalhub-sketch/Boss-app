@@ -109,6 +109,13 @@ export function SectionHeader({ title, action }) {
   );
 }
 
+export function Badge({ bg, children }) {
+  return <span style={{
+    display: "inline-flex", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+    color: "#fff", backgroundColor: bg,
+  }}>{children}</span>;
+}
+
 export function ScoreBar({ score, height = 8, showLabel }) {
   const color = score >= 70 ? C.green : score >= 40 ? C.amber : C.red;
   return (

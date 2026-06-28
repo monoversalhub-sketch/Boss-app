@@ -10,37 +10,50 @@ import { useBOSS } from "./context";
 import { db } from "../../lib/db";
 
 export function TrustScoreCard({customers,onPress}){
-  const ts=computeTrustScore(customers);const pct=ts.score;
-  const ringColor=pct>=70?C.green:pct>=45?"#FF9F0A":C.muted;
+  const ts=computeTrustScore(customers);
+  const score=ts.score;
+  const scoreLabel=ts.level;
+  const creditReadiness=ts.readiness;
   return(
     <div className="tap" onClick={onPress} style={{
-      ...S.card,margin:"0 20px",display:"flex",alignItems:"center",gap:20,
-      padding:"24px 20px",borderRadius:20,cursor:"pointer",
+      background:"#fff",border:"1px solid #EBEBEB",borderRadius:20,
+      padding:"18px 20px",display:"flex",alignItems:"center",gap:16,
+      margin:"0 20px",marginTop:12,cursor:"pointer",
     }}>
-      {/* Ring */}
       <div style={{position:"relative",flexShrink:0}}>
-        <svg width={72} height={72} viewBox="0 0 72 72">
-          <circle cx={36} cy={36} r={30} fill="none" stroke={C.border} strokeWidth={5}/>
-          <circle cx={36} cy={36} r={30} fill="none" stroke={ringColor} strokeWidth={5} strokeLinecap="round"
-            strokeDasharray={`${2*Math.PI*30}`}
-            strokeDashoffset={`${2*Math.PI*30*(1-pct/100)}`}
-            transform="rotate(-90 36 36)"
-            style={{transition:"stroke-dashoffset 1s ease"}}/>
+        <svg width={68} height={68} viewBox="0 0 68 68">
+          <circle cx={34} cy={34} r={28} fill="none" stroke="#F0F0F0" strokeWidth={6}/>
+          <circle cx={34} cy={34} r={28} fill="none"
+            stroke={score>=70?"#1a7a4a":score>=40?"#b45309":"#dc2626"}
+            strokeWidth={6} strokeLinecap="round"
+            strokeDasharray={`${2*Math.PI*28}`}
+            strokeDashoffset={`${2*Math.PI*28*(1-(score||0)/100)}`}
+            transform="rotate(-90 34 34)"
+            style={{transition:"stroke-dashoffset 0.6s ease"}}/>
         </svg>
         <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-          <div style={{fontSize:20,fontWeight:800,lineHeight:1,color:C.text}}>{pct}</div>
-          <div style={{fontSize:13,fontWeight:700,color:C.sub,letterSpacing:"0.5px"}}>SCORE</div>
+          <div style={{fontSize:18,fontWeight:900,color:"#0a0a0a",lineHeight:1,letterSpacing:"-0.5px"}}>{score??0}</div>
+          <div style={{fontSize:9,fontWeight:700,color:"#AAAAAA",textTransform:"uppercase",letterSpacing:"0.5px",marginTop:1}}>/ 100</div>
         </div>
       </div>
-      {/* Text */}
-      <div style={{flex:1}}>
-        <div style={{fontSize:13,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:4}}>BOSS Trust Score</div>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
-          <div style={{fontSize:22,fontWeight:800,color:C.text,letterSpacing:"-0.5px"}}>{ts.level}</div>
-          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth={2}><polyline points="9 18 15 12 9 6"/></svg>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:10,fontWeight:700,color:"#AAAAAA",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:4}}>BOSS Trust Score</div>
+        <div style={{fontSize:18,fontWeight:900,color:"#0a0a0a",letterSpacing:"-0.4px",marginBottom:6,lineHeight:1.1}}>{scoreLabel??"New"}</div>
+        <div style={{display:"inline-flex",alignItems:"center",gap:5,
+          background:creditReadiness==="Low"?"#FEE2E2":creditReadiness==="Medium"?"#FEF3C7":"#D1FAE5",
+          borderRadius:20,padding:"3px 10px"}}>
+          <div style={{width:6,height:6,borderRadius:"50%",
+            background:creditReadiness==="Low"?"#dc2626":creditReadiness==="Medium"?"#b45309":"#1a7a4a",
+            flexShrink:0}}/>
+          <div style={{fontSize:11,fontWeight:700,
+            color:creditReadiness==="Low"?"#dc2626":creditReadiness==="Medium"?"#b45309":"#1a7a4a"}}>
+            Credit Readiness: {creditReadiness??"Low"}
+          </div>
         </div>
-        <div style={{fontSize:13,fontWeight:500,color:C.sub}}>Credit Readiness: <span style={{color:pct>=70?C.green:pct>=45?"#FF9F0A":C.red,fontWeight:700}}>{ts.readiness}</span></div>
       </div>
+      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#CCCCCC" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
     </div>
   );
 }
@@ -213,7 +226,6 @@ const ORDER_META = {...S.rowBetween,marginTop:4};
 const ORDER_BALANCE = {fontSize:14,fontWeight:700};
 const BADGE_BASE = {fontSize:13,fontWeight:700,padding:"4px 10px",borderRadius:20,letterSpacing:"0.2px",flexShrink:0};
 const PARTIAL_BADGE = {fontSize:13,fontWeight:700,color:"#FF9F0A",background:"rgba(255,159,10,0.1)",padding:"2px 7px",borderRadius:10};
-const MEAS_BADGE = {fontSize:13,fontWeight:700,color:C.accent,background:"rgba(0,102,204,0.1)",padding:"2px 7px",borderRadius:10,cursor:"pointer",border:"none",fontFamily:"inherit"};
 
 export function OrderCard({order,onClick}){
   const {customers}=useBOSS();
@@ -251,9 +263,6 @@ export function OrderCard({order,onClick}){
     ?{text:`₦${balance.toLocaleString("en-NG")} due`,color:"#b91c1c",weight:700}
     :{text:`₦${total.toLocaleString("en-NG")} due`,color:"#b91c1c",weight:700};
 
-  const hasMeas=(customers||[]).find(c=>c.name===order._cname)?.measurements
-    &&Object.keys((customers||[]).find(c=>c.name===order._cname).measurements).length>0;
-
   return(
     <div className="tap" onClick={onClick} style={{
       display:"flex",alignItems:"flex-start",gap:14,
@@ -261,6 +270,7 @@ export function OrderCard({order,onClick}){
       border:overdue?"1.5px solid #fca5a5":"1px solid #EBEBEB",
       borderRadius:18,padding:"14px 16px",marginBottom:10,
       cursor:"pointer",WebkitTapHighlightColor:"transparent",
+      overflow:"hidden",
     }}>
       {/* Thumbnail */}
       <div style={{
@@ -311,35 +321,33 @@ export function OrderCard({order,onClick}){
               {itemType}
             </div>
           ):null}
-          {hasMeas&&(
-            <button className="tap" onClick={e=>{e.stopPropagation();onClick?.();}} style={MEAS_BADGE}>📏</button>
-          )}
         </div>
 
         {/* Row 3: Date + Payment */}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginTop:4}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginTop:4,overflow:"hidden",width:"100%"}}>
           {fmtDelivery?(
             <div style={{
               display:"flex",alignItems:"center",gap:4,
               fontSize:12,color:overdue?"#dc2626":"#888",
               fontWeight:overdue?700:500,
-              whiteSpace:"nowrap",flexShrink:0,
+              whiteSpace:"nowrap",flexShrink:1,
+              overflow:"hidden",minWidth:0,
             }}>
               <span style={{fontSize:13}}>📅</span>
               {fmtDelivery}
             </div>
           ):<div/>}
-          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0,marginLeft:"auto"}}>
             {getPaymentState(order)==="partially_paid"&&(
               <div style={{
-                fontSize:11,fontWeight:800,color:"#b45309",
-                background:"#FEF3C7",padding:"3px 8px",borderRadius:20,
+                fontSize:10,fontWeight:800,color:"#b45309",
+                background:"#FEF3C7",padding:"3px 7px",borderRadius:20,
                 whiteSpace:"nowrap",letterSpacing:"0.3px",
               }}>
                 PARTIAL
               </div>
             )}
-            <div style={{fontSize:13,fontWeight:paymentLabel.weight,color:paymentLabel.color,whiteSpace:"nowrap"}}>
+            <div style={{fontSize:12,fontWeight:paymentLabel.weight,color:paymentLabel.color,whiteSpace:"nowrap"}}>
               {paymentLabel.text}
             </div>
           </div>

@@ -354,7 +354,8 @@ ALTER TABLE tailors
   ADD COLUMN IF NOT EXISTS logo_url                    text,
   ADD COLUMN IF NOT EXISTS meas_unit                   text DEFAULT 'inches',
   ADD COLUMN IF NOT EXISTS custom_meas_fields          jsonb,
-  ADD COLUMN IF NOT EXISTS meas_config                 jsonb;
+  ADD COLUMN IF NOT EXISTS meas_config                 jsonb,
+  ADD COLUMN IF NOT EXISTS welcome_sent_at             timestamptz;
 
 ALTER TABLE orders
   ADD COLUMN IF NOT EXISTS updated_at  timestamptz DEFAULT now(),

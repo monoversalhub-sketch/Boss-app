@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { label: "Reminders", path: "/admin/reminders", icon: "🔔" },
   { label: "Trust Score", path: "/admin/trust-score", icon: "🏆" },
   { label: "Customer Success", path: "/admin/customer-success", icon: "⭐" },
+  { label: "Onboarding", path: "/admin/onboarding", icon: "🚀" },
   { label: "Product Intelligence", path: "/admin/product-intelligence", icon: "📊" },
   { label: "Support Center", path: "/admin/support", icon: "🎧" },
   { label: "Feature Requests", path: "/admin/feature-requests", icon: "💡" },
@@ -130,11 +131,11 @@ export default function LayoutContents({ children, admin }) {
     setMobileOpen(false);
   }, [isMobile]);
 
-  const mainPad = isMobile ? "16px 12px" : "28px 32px";
+  const mainPad = isMobile ? "16px 12px 80px" : "28px 32px 48px";
 
   return (
-    <div style={{
-      display: "flex", height: "100vh", width: "100vw",
+    <div id="boss-admin" style={{
+      display: "flex", height: "100dvh", width: "100vw",
       backgroundColor: C.bg, color: C.text, fontFamily: "var(--font-plus-jakarta),sans-serif",
       overflow: "hidden",
     }}>
@@ -168,6 +169,8 @@ export default function LayoutContents({ children, admin }) {
         .tap:active{transform:scale(0.97);opacity:0.8}
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
         @keyframes pulse{0%,100%{opacity:0.5}50%{opacity:1}}
+        #boss-admin,#boss-admin *{max-width:none!important}
+        html:has(#boss-admin),html:has(#boss-admin) body{max-width:none!important;overflow:auto!important}
       `}</style>
     </div>
   );

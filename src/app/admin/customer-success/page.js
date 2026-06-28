@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { AdminC as C, AdminS as S, MetricsRow, MetricCard, SectionHeader, AdminTable, StatusBadge, ScoreBar } from "@/components/admin/Layout";
+import { AdminC as C, AdminS as S, MetricsRow, MetricCard, SectionHeader, AdminTable, StatusBadge, ScoreBar, Badge } from "@/components/admin/Layout";
 
 export default function CustomerSuccessPage() {
   const [data, setData] = useState(null);
@@ -74,19 +74,19 @@ export default function CustomerSuccessPage() {
           <SectionHeader title="Intervention Playbook" />
           <div style={{ fontSize: 13, color: C.sub, lineHeight: 1.7 }}>
             <div style={{ marginBottom: 12 }}>
-              <span style={S.badge("#FF375F")}>Critical</span>
+              <Badge bg="#FF375F">Critical</Badge>
               <span style={{ marginLeft: 8, color: C.text }}>Personal outreach call. Offer 1-on-1 onboarding session.</span>
             </div>
             <div style={{ marginBottom: 12 }}>
-              <span style={S.badge(C.amber)}>High</span>
+              <Badge bg={C.amber}>High</Badge>
               <span style={{ marginLeft: 8, color: C.text }}>Send re-engagement email. Share success stories.</span>
             </div>
             <div style={{ marginBottom: 12 }}>
-              <span style={S.badge(C.accent)}>Medium</span>
+              <Badge bg={C.accent}>Medium</Badge>
               <span style={{ marginLeft: 8, color: C.text }}>Push notification. In-app tips. Feature spotlight.</span>
             </div>
             <div>
-              <span style={S.badge(C.green)}>Low</span>
+              <Badge bg={C.green}>Low</Badge>
               <span style={{ marginLeft: 8, color: C.text }}>Maintain. Monthly newsletter. Referral encouragement.</span>
             </div>
           </div>

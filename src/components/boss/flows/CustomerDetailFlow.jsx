@@ -16,13 +16,14 @@ export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOp
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editGender, setEditGender] = useState("female");
   const [saving, setSaving] = useState(false);
   const saveEditRef = useRef(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (customer) { setEditName(customer.name || ""); setEditPhone(customer.phone || ""); }
+    if (customer) { setEditName(customer.name || ""); setEditPhone(customer.phone || ""); setEditGender(customer.gender || "female"); }
   }, [customer?.id]);
 
   const measConfig = tailor?.meas_config || null;
@@ -49,7 +50,7 @@ export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOp
     if (!editName.trim()) { toast("⚠️ Name cannot be empty"); return; }
     saveEditRef.current = true; setSaving(true);
     try {
-      const patch = { name: editName.trim(), phone: editPhone.trim() };
+      const patch = { name: editName.trim(), phone: editPhone.trim(), gender: editGender };
       const next = customers.map(c => c.id === customerId ? { ...c, ...patch } : c);
       setCustomers(next);
       await db.updateCustomer(customerId, patch);
@@ -98,6 +99,25 @@ export function CustomerDetailFlow({ open, onClose, customerId, onAddOrder, onOp
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Input label="Customer Name *" value={editName} onChange={e => setEditName(e.target.value)} placeholder="Full name" />
             <Input label="Phone Number" value={editPhone} onChange={e => setEditPhone(e.target.value)} type="tel" inputMode="tel" placeholder="080XXXXXXXX" />
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize:13, fontWeight:600, color:"#888", marginBottom:10 }}>Gender</div>
+              <div style={{ display:"flex", gap:10 }}>
+                {[["female","👗","Female"],["male","👔","Male"]].map(([val,icon,label])=>(
+                  <button key={val} type="button" onClick={()=>setEditGender(val)} style={{
+                    flex:1, padding:"14px 0", borderRadius:14,
+                    border:editGender===val?"2px solid #2563eb":"1.5px solid #E5E5E5",
+                    background:editGender===val?"#EFF6FF":"#F5F5F5",
+                    color:editGender===val?"#2563eb":"#888",
+                    fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+                    display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                    transition:"all 0.15s",
+                  }}>
+                    <span style={{fontSize:20}}>{icon}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <Btn variant="primary" onClick={saveEdit} disabled={saving}>{saving ? "Saving…" : "Save Changes"}</Btn>
             <Btn variant="outline" onClick={() => setEditing(false)}>Cancel</Btn>
           </div>

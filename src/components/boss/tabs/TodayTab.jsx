@@ -105,14 +105,25 @@ export function TodayTab({tailor,onAddOrder,onOpenOrder,onReminders,onCalendar,i
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           {isLoading
             ?[1,2,3].map(i=><SkeletonCard key={i}/>)
-            :sorted.length===0 && !tailor
+            :!tailor
               ?<EmptyState icon="✂️" title="Your first order is one tap away." sub="Every tailor trusted in Lagos started right here. You're next."/>
-              :sorted.length===0 && tailor
-                ?<div style={{textAlign:"center",padding:"24px 0",color:C.sub}}>
-                  <div style={{fontSize:32,marginBottom:8}}>⚠️</div>
-                  <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:4}}>Could not load orders</div>
-                  <div className="tap" onClick={()=>window.location.reload()} style={{fontSize:14,color:C.accent,cursor:"pointer",fontWeight:600,fontFamily:"inherit",background:"none",border:"none",padding:0}}>Tap to retry</div>
-                </div>
+              :sorted.length===0
+                ?(()=>{
+                  const msgs={
+                    active:{icon:"✂️",title:"No active orders",body:"New orders you create will appear here."},
+                    overdue:{icon:"✅",title:"Nothing overdue",body:"You're on top of everything."},
+                    today:{icon:"☀️",title:"Nothing due today",body:"Enjoy a clear day."},
+                    all:{icon:"📋",title:"No orders yet",body:"Tap + to create your first order."},
+                  };
+                  const m=msgs[filter]||msgs.all;
+                  return(
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"48px 24px",gap:12}}>
+                      <div style={{fontSize:40}}>{m.icon}</div>
+                      <div style={{fontSize:17,fontWeight:800,color:"#0a0a0a",letterSpacing:"-0.3px",textAlign:"center"}}>{m.title}</div>
+                      <div style={{fontSize:14,color:"#888",textAlign:"center",lineHeight:1.5}}>{m.body}</div>
+                    </div>
+                  );
+                })()
               :sorted.map(o=><OrderCard key={o.id} order={o} onClick={()=>onOpenOrder(o.id)}/>)}
         </div>
       </div>
