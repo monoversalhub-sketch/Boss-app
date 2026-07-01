@@ -25,9 +25,11 @@ export const metadata = {
     google: "googlec15a44381ada5908",
   },
   icons: {
-    icon:    [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    apple:   [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    shortcut: "/favicon.svg",
+    icon: [
+      { url: "/favicon.png", sizes: "32x32" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+    apple: [{ url: "/favicon.png", sizes: "180x180" }],
   },
   openGraph: {
     title:       "BOSS — Build Trust. Grow Faster.",
@@ -43,7 +45,7 @@ export const viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit:  "cover",
-  themeColor:   "#1C1C1E",
+  themeColor:   "#1C1C1C",
 };
 
 export default function RootLayout({ children }) {

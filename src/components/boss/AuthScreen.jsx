@@ -39,12 +39,15 @@ export function AuthScreen({ onAuthSuccess }) {
     }}>
       {/* Logo */}
       <div style={{ textAlign: "center", marginBottom: 48 }}>
-        <div style={{
-          width: 80, height: 80, background: C.text, borderRadius: 24,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 40, fontWeight: 900, color: "#fff",
-          margin: "0 auto 16px", boxShadow: "0 8px 30px rgba(0,0,0,0.15)"
-        }}>B</div>
+        <img
+          src="/boss-logo.png"
+          alt="BOSS"
+          style={{
+            width: 96, height: 96, borderRadius: 24,
+            objectFit: "contain", margin: "0 auto 16px",
+            display: "block",
+          }}
+        />
         <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-1px", color: C.text }}>BOSS</div>
         <div style={{ fontSize: 13, color: C.sub, marginTop: 6, letterSpacing: "1px", textTransform: "uppercase" }}>
           Build Trust. Grow Faster.

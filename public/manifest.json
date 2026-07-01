@@ -1,15 +1,15 @@
 {
   "name": "BOSS",
   "short_name": "BOSS",
-  "description": "Business management for tailors",
+  "description": "Build Trust. Grow Faster.",
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#1C1C1C",
+  "theme_color": "#1C1C1C",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
